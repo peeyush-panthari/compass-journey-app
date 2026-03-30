@@ -1,7 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Calendar, Clock, Users, Share2, Search, ChevronLeft, ChevronRight, BedDouble, UserRound } from "lucide-react";
+import { Plus, Calendar, Clock, Users, Share2, Search, ChevronLeft, ChevronRight, BedDouble, UserRound, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format, addDays } from "date-fns";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
