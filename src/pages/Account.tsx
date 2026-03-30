@@ -70,6 +70,10 @@ const Account = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [destination, setDestination] = useState("");
+  const [checkIn, setCheckIn] = useState<Date | undefined>(addDays(new Date(), 14));
+  const [checkOut, setCheckOut] = useState<Date | undefined>(addDays(new Date(), 15));
+  const [rooms, setRooms] = useState(1);
+  const [guests, setGuests] = useState(2);
 
   useEffect(() => { if (!user) navigate("/login"); }, [user, navigate]);
   if (!user) return null;
