@@ -876,6 +876,71 @@ const Itinerary = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Add Reservation Dialog */}
+      <Dialog open={reservationDialogOpen !== null} onOpenChange={(open) => { if (!open) setReservationDialogOpen(null); }}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-display font-bold text-center">
+              Add {reservationDialogOpen}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            const title = (form.elements.namedItem("res-title") as HTMLInputElement).value.trim();
+            const details = (form.elements.namedItem("res-details") as HTMLInputElement).value.trim();
+            const date = (form.elements.namedItem("res-date") as HTMLInputElement).value;
+            const confirmation = (form.elements.namedItem("res-confirmation") as HTMLInputElement).value.trim();
+            if (!title) { toast({ title: "Please enter a title", variant: "destructive" }); return; }
+            setReservations(prev => [...prev, {
+              id: String(Date.now()),
+              type: reservationDialogOpen!,
+              title,
+              details,
+              date: date || new Date().toLocaleDateString(),
+              confirmationNumber: confirmation || undefined,
+            }]);
+            toast({ title: `${reservationDialogOpen} added`, description: title });
+            setReservationDialogOpen(null);
+          }} className="space-y-4 mt-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                {reservationDialogOpen === "Flight" ? "Flight / Airline" :
+                 reservationDialogOpen === "Lodging" ? "Hotel / Property name" :
+                 reservationDialogOpen === "Rental car" ? "Rental company" :
+                 reservationDialogOpen === "Restaurant" ? "Restaurant name" : "Title"}
+              </label>
+              <Input name="res-title" placeholder={
+                reservationDialogOpen === "Flight" ? "e.g. Air France AF1234" :
+                reservationDialogOpen === "Lodging" ? "e.g. Hotel Le Marais" :
+                reservationDialogOpen === "Rental car" ? "e.g. Europcar CDG" :
+                reservationDialogOpen === "Restaurant" ? "e.g. Le Comptoir" : "e.g. Museum tickets"
+              } className="rounded-xl" required />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Details</label>
+              <Input name="res-details" placeholder={
+                reservationDialogOpen === "Flight" ? "CDG → LHR, 10:30 AM" :
+                reservationDialogOpen === "Lodging" ? "Check-in 3 PM, 2 nights" :
+                reservationDialogOpen === "Rental car" ? "Compact, pickup at airport" :
+                reservationDialogOpen === "Restaurant" ? "Reservation for 2, 8 PM" : "Additional details"
+              } className="rounded-xl" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+              <Input name="res-date" type="date" className="rounded-xl" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Confirmation # (optional)</label>
+              <Input name="res-confirmation" placeholder="e.g. ABC123" className="rounded-xl" />
+            </div>
+            <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground font-semibold text-base h-11">
+              Save
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <AddActivityDialog open={addActivityDayIndex !== null} onOpenChange={open => { if (!open) setAddActivityDayIndex(null); }} onSelect={addActivityFromSearch} />
       <ActivityDetailDialog activity={selectedActivity} open={!!selectedActivity} onOpenChange={open => { if (!open) setSelectedActivity(null); }} />
     </div>
