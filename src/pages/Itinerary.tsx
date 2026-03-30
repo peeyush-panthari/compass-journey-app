@@ -130,6 +130,7 @@ const Itinerary = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const mainRef = useRef<HTMLDivElement>(null);
+  const [otherPopoverOpen, setOtherPopoverOpen] = useState(false);
   let reservationNextId = reservations.length + 1;
 
   const cities = [...new Set(itinerary.map(d => d.city))];
