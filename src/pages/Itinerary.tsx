@@ -343,28 +343,69 @@ const Itinerary = () => {
                   <h3 className="text-sm font-bold text-foreground mb-3">Reservations and attachments</h3>
                   <div className="flex flex-wrap gap-4">
                     {([
-                      { icon: Plane, label: "Flight" as const },
-                      { icon: Hotel, label: "Lodging" as const },
-                      { icon: Car, label: "Rental car" as const },
-                      { icon: UtensilsCrossed, label: "Restaurant" as const },
-                      { icon: Paperclip, label: "Attachment" as const },
-                      { icon: MoreHorizontal, label: "Other" as const },
+                      { icon: Plane, label: "Flight" },
+                      { icon: Hotel, label: "Lodging" },
+                      { icon: Car, label: "Rental car" },
+                      { icon: UtensilsCrossed, label: "Restaurant" },
                     ] as const).map(({ icon: Icon, label }) => (
                       <button
                         key={label}
-                        onClick={() => {
-                          if (label === "Attachment") {
-                            fileInputRef.current?.click();
-                          } else {
-                            setReservationDialogOpen(label as Reservation["type"]);
-                          }
-                        }}
-                        className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={() => setReservationDialogOpen(label as Reservation["type"])}
+                        className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors relative"
                       >
                         <Icon className="w-5 h-5" />
                         <span className="text-[10px]">{label}</span>
+                        {reservations.filter(r => r.type === label).length > 0 && (
+                          <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full bg-muted text-[9px] font-bold text-foreground flex items-center justify-center">
+                            {reservations.filter(r => r.type === label).length}
+                          </span>
+                        )}
                       </button>
                     ))}
+
+                    {/* Other dropdown with Train, Bus, Ferry, Cruise */}
+                    <Popover open={otherPopoverOpen} onOpenChange={setOtherPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <button className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                          <MoreHorizontal className="w-5 h-5" />
+                          <span className="text-[10px]">Other</span>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-1" align="start">
+                        {([
+                          { icon: TrainFront, label: "Train" },
+                          { icon: Bus, label: "Bus" },
+                          { icon: Ship, label: "Ferry" },
+                          { icon: Anchor, label: "Cruise" },
+                        ] as const).map(({ icon: Icon, label }) => (
+                          <button
+                            key={label}
+                            onClick={() => {
+                              setReservationDialogOpen(label as Reservation["type"]);
+                              setOtherPopoverOpen(false);
+                            }}
+                            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                          >
+                            <Icon className="w-4 h-4 text-muted-foreground" />
+                            {label}
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Attachment */}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors relative"
+                    >
+                      <Paperclip className="w-5 h-5" />
+                      <span className="text-[10px]">Attachment</span>
+                      {attachments.length > 0 && (
+                        <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full bg-muted text-[9px] font-bold text-foreground flex items-center justify-center">
+                          {attachments.length}
+                        </span>
+                      )}
+                    </button>
                   </div>
                   <input
                     ref={fileInputRef}
