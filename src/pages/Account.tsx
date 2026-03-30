@@ -222,6 +222,36 @@ const Account = () => {
           ))}
         </HorizontalScroller>
 
+        {/* Explore */}
+        <div className="flex items-center gap-2 mt-12 mb-5">
+          <Compass className="w-5 h-5 text-primary" />
+          <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">Explore</h2>
+        </div>
+
+        {/* Popular destinations */}
+        <h3 className="text-sm font-semibold text-muted-foreground mb-3">Popular destinations</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+          {exploreBlogs.filter(b => b.category === "destination").map((blog, i) => (
+            <ExploreCard key={blog.id} blog={blog} index={i} />
+          ))}
+        </div>
+
+        {/* Food & Restaurants */}
+        <h3 className="text-sm font-semibold text-muted-foreground mb-3">Food & Restaurants</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+          {exploreBlogs.filter(b => b.category === "food").map((blog, i) => (
+            <ExploreCard key={blog.id} blog={blog} index={i} />
+          ))}
+        </div>
+
+        {/* Travel Videos */}
+        <h3 className="text-sm font-semibold text-muted-foreground mb-3">Travel Videos</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {exploreBlogs.filter(b => b.category === "video").map((blog, i) => (
+            <ExploreCard key={blog.id} blog={blog} index={i} />
+          ))}
+        </div>
+
       </div>
     </div>
   );
