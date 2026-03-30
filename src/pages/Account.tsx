@@ -294,31 +294,16 @@ const Account = () => {
         </HorizontalScroller>
 
         {/* Explore */}
-        <div className="flex items-center gap-2 mt-12 mb-5">
-          <Compass className="w-5 h-5 text-primary" />
-          <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">Explore</h2>
+        <div className="flex items-center justify-between mt-12 mb-5">
+          <div className="flex items-center gap-2">
+            <Compass className="w-5 h-5 text-primary" />
+            <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">Explore</h2>
+          </div>
+          <Link to="/explore"><Button variant="ghost" className="text-sm text-primary font-medium">See All</Button></Link>
         </div>
 
-        {/* Popular destinations */}
-        <h3 className="text-sm font-semibold text-muted-foreground mb-3">Popular destinations</h3>
         <HorizontalScroller>
-          {exploreBlogs.filter(b => b.category === "destination").map((blog, i) => (
-            <div key={blog.id} className="min-w-[260px] max-w-[280px] flex-shrink-0"><ExploreCard blog={blog} index={i} /></div>
-          ))}
-        </HorizontalScroller>
-
-        {/* Food & Restaurants */}
-        <h3 className="text-sm font-semibold text-muted-foreground mt-8 mb-3">Food & Restaurants</h3>
-        <HorizontalScroller>
-          {exploreBlogs.filter(b => b.category === "food").map((blog, i) => (
-            <div key={blog.id} className="min-w-[260px] max-w-[280px] flex-shrink-0"><ExploreCard blog={blog} index={i} /></div>
-          ))}
-        </HorizontalScroller>
-
-        {/* Travel Videos */}
-        <h3 className="text-sm font-semibold text-muted-foreground mt-8 mb-3">Travel Videos</h3>
-        <HorizontalScroller>
-          {exploreBlogs.filter(b => b.category === "video").map((blog, i) => (
+          {exploreBlogs.map((blog, i) => (
             <div key={blog.id} className="min-w-[260px] max-w-[280px] flex-shrink-0"><ExploreCard blog={blog} index={i} /></div>
           ))}
         </HorizontalScroller>
