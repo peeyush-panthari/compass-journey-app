@@ -76,6 +76,21 @@ const recommendedPlaces = [
 
 let nextId = 100;
 
+interface Expense {
+  id: string;
+  amount: number;
+  currency: string;
+  category: string;
+  paidBy: string;
+  split: string;
+  date: string;
+}
+
+let expenseNextId = 1;
+
+const CURRENCIES = ["$", "€", "£", "₹", "¥"];
+const EXPENSE_CATEGORIES = ["Flight", "Lodging", "Food", "Transport", "Activities", "Shopping", "Other"];
+
 const Itinerary = () => {
   const [itinerary, setItinerary] = useState<Day[]>(initialItinerary);
   const [shareEmail, setShareEmail] = useState("");
