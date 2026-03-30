@@ -4,7 +4,8 @@ import {
   Star, Clock, MapPin, Ticket, GripVertical, Plus, Trash2, Share2, Copy, Check, Plane,
   ChevronDown, ChevronRight, MoreHorizontal, StickyNote, MapPinned, Compass, FileText,
   Hotel, Car, UtensilsCrossed, Paperclip, DollarSign, Navigation, ThumbsUp, ThumbsDown,
-  Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar
+  Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar, Pencil, List,
+  Settings, Users, BarChart3
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import AddActivityDialog, { type PlaceResult } from "@/components/AddActivityDialog";
