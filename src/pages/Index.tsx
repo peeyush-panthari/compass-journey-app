@@ -37,11 +37,11 @@ const Index = () => {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Navbar />
 
       {/* Hero */}
-      <section className="relative min-h-[100svh] flex items-center bg-hero-gradient">
+      <section className="relative min-h-[100svh] flex items-center bg-hero-gradient overflow-x-hidden">
         <div className="absolute top-20 right-[30%] w-72 h-72 rounded-full bg-primary/5 blur-3xl animate-drift" />
         <div className="absolute bottom-20 left-20 w-96 h-96 rounded-full bg-accent/5 blur-3xl animate-drift" style={{ animationDelay: "5s" }} />
 
