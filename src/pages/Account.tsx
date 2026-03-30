@@ -147,7 +147,18 @@ const Account = () => {
                 </PopoverContent>
               </Popover>
               <div className="p-1.5 flex items-center">
-                <Button className="h-full w-full sm:w-auto px-5 rounded-md bg-foreground text-background font-semibold text-xs hover:bg-foreground/90 min-h-[32px]">
+                <Button
+                  className="h-full w-full sm:w-auto px-5 rounded-md bg-foreground text-background font-semibold text-xs hover:bg-foreground/90 min-h-[32px]"
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    if (destination) params.set("destination", destination);
+                    if (checkIn) params.set("checkIn", format(checkIn, "M/d"));
+                    if (checkOut) params.set("checkOut", format(checkOut, "M/d"));
+                    params.set("rooms", String(rooms));
+                    params.set("guests", String(guests));
+                    navigate(`/hotels?${params.toString()}`);
+                  }}
+                >
                   Search
                 </Button>
               </div>

@@ -35,6 +35,8 @@ const App = () => (
             <Route path="/itinerary" element={<Itinerary />} />
             <Route path="/account" element={<Account />} />
             <Route path="/edit-profile" element={<EditProfile />} />
+            <Route path="/hotels" element={<Hotels />} />
+            <Route path="/hotels/:id" element={<HotelDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
