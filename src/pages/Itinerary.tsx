@@ -4,7 +4,8 @@ import {
   Star, Clock, MapPin, Ticket, GripVertical, Plus, Trash2, Share2, Copy, Check, Plane,
   ChevronDown, ChevronRight, MoreHorizontal, StickyNote, MapPinned, Compass, FileText,
   Hotel, Car, UtensilsCrossed, Paperclip, DollarSign, Navigation, ThumbsUp, ThumbsDown,
-  Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar
+  Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar, Pencil, List,
+  Settings, Users, BarChart3
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import AddActivityDialog, { type PlaceResult } from "@/components/AddActivityDialog";
@@ -12,6 +13,7 @@ import ActivityDetailDialog, { type ActivityDetail } from "@/components/Activity
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
@@ -74,6 +76,21 @@ const recommendedPlaces = [
 
 let nextId = 100;
 
+interface Expense {
+  id: string;
+  amount: number;
+  currency: string;
+  category: string;
+  paidBy: string;
+  split: string;
+  date: string;
+}
+
+let expenseNextId = 1;
+
+const CURRENCIES = ["$", "€", "£", "₹", "¥"];
+const EXPENSE_CATEGORIES = ["Flight", "Lodging", "Food", "Transport", "Activities", "Shopping", "Other"];
+
 const Itinerary = () => {
   const [itinerary, setItinerary] = useState<Day[]>(initialItinerary);
   const [shareEmail, setShareEmail] = useState("");
@@ -85,6 +102,11 @@ const Itinerary = () => {
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
   const [activeSection, setActiveSection] = useState("overview");
   const [showHotelBanner, setShowHotelBanner] = useState(true);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [addExpenseOpen, setAddExpenseOpen] = useState(false);
+  const [budget, setBudget] = useState<number | null>(null);
+  const [setBudgetOpen, setSetBudgetOpen] = useState(false);
+  const [expenseSortBy, setExpenseSortBy] = useState<"newest" | "oldest">("newest");
   const { toast } = useToast();
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -198,6 +220,21 @@ const Itinerary = () => {
                 </CollapsibleContent>
               </Collapsible>
 
+              {/* Budget nav */}
+              <Collapsible defaultOpen className="mt-4">
+                <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left mb-1">
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-sm font-bold text-foreground">Budget</span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="ml-5 space-y-0.5">
+                    <button onClick={() => scrollToSection("budget")} className={`block w-full text-left text-sm py-1.5 px-2 rounded-md transition-colors ${activeSection === "budget" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+                      View
+                    </button>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
               <div className="mt-6 pt-4 border-t border-border space-y-1">
                 <button onClick={() => setSidebarOpen(false)} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground w-full py-1.5 px-2 rounded-md hover:bg-muted/50">
                   <PanelLeftClose className="w-3.5 h-3.5" /> Hide sidebar
@@ -297,11 +334,11 @@ const Itinerary = () => {
                     ))}
                   </div>
                 </div>
-                <div className="w-full sm:w-[180px] bg-muted/40 rounded-xl border border-border p-4">
+                <button onClick={() => scrollToSection("budget")} className="w-full sm:w-[180px] bg-muted/40 rounded-xl border border-border p-4 text-left hover:bg-muted/60 transition-colors">
                   <h3 className="text-sm font-bold text-foreground mb-1">Budgeting</h3>
-                  <p className="text-xl font-display font-bold text-foreground">$0.00</p>
-                  <button className="text-xs text-primary font-medium mt-1">View details</button>
-                </div>
+                  <p className="text-xl font-display font-bold text-foreground">{expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}</p>
+                  <span className="text-xs text-primary font-medium mt-1">View details</span>
+                </button>
               </div>
             </section>
 
@@ -531,9 +568,208 @@ const Itinerary = () => {
                 <Plus className="w-4 h-4 mr-1" /> Add Day
               </Button>
             </div>
+
+            {/* Budget Section */}
+            <section id="section-budget" className="mt-12">
+              <div className="border-t border-border pt-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-display font-bold text-foreground">Budgeting</h2>
+                  <Button onClick={() => setAddExpenseOpen(true)} className="rounded-full bg-primary text-primary-foreground font-semibold">
+                    <Plus className="w-4 h-4 mr-1" /> Add expense
+                  </Button>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                  {/* Budget summary */}
+                  <div className="flex-1 bg-muted/40 rounded-xl border border-border p-5">
+                    <p className="text-3xl font-display font-bold text-foreground mb-3">
+                      ${expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}
+                    </p>
+                    <div className="flex gap-3">
+                      <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={() => setSetBudgetOpen(true)}>
+                        <Pencil className="w-3 h-3 mr-1" /> Set budget
+                      </Button>
+                      <Button variant="outline" size="sm" className="rounded-lg text-xs">
+                        <List className="w-3 h-3 mr-1" /> Group balances
+                      </Button>
+                    </div>
+                    {budget !== null && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                          <span>Spent</span>
+                          <span>${expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)} / ${budget.toFixed(2)}</span>
+                        </div>
+                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, (expenses.reduce((s, e) => s + e.amount, 0) / budget) * 100)}%` }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Actions */}
+                  <div className="w-full sm:w-[200px] space-y-2">
+                    <button className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-sm text-foreground">
+                      <BarChart3 className="w-4 h-4 text-muted-foreground" /> View breakdown
+                    </button>
+                    <button className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-sm text-foreground">
+                      <UserPlus className="w-4 h-4 text-muted-foreground" /> Add tripmate
+                    </button>
+                    <button className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-sm text-foreground">
+                      <Settings className="w-4 h-4 text-muted-foreground" /> Settings
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expenses list */}
+                <Collapsible defaultOpen>
+                  <div className="flex items-center justify-between mb-3">
+                    <CollapsibleTrigger className="flex items-center gap-2">
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      <h3 className="text-xl font-display font-bold text-foreground">Expenses</h3>
+                    </CollapsibleTrigger>
+                    <select value={expenseSortBy} onChange={(e) => setExpenseSortBy(e.target.value as any)} className="text-xs border border-border rounded-lg px-2 py-1.5 bg-card text-foreground">
+                      <option value="newest">Date (newest first)</option>
+                      <option value="oldest">Date (oldest first)</option>
+                    </select>
+                  </div>
+                  <CollapsibleContent>
+                    {expenses.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4">You haven't added any expenses yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {[...expenses]
+                          .sort((a, b) => expenseSortBy === "newest" ? b.id.localeCompare(a.id) : a.id.localeCompare(b.id))
+                          .map((exp) => (
+                          <div key={exp.id} className="flex items-center justify-between bg-card border border-border rounded-xl p-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+                                <DollarSign className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{exp.category}</p>
+                                <p className="text-[10px] text-muted-foreground">{exp.date} • Paid by {exp.paidBy} • {exp.split}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-foreground">{exp.currency}{exp.amount.toFixed(2)}</span>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => {
+                                setExpenses(prev => prev.filter(e => e.id !== exp.id));
+                                toast({ title: "Expense removed" });
+                              }}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            </section>
+
           </div>
         </main>
       </div>
+
+      {/* Add Expense Dialog */}
+      <Dialog open={addExpenseOpen} onOpenChange={setAddExpenseOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-display font-bold text-center">Add expense</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            const amount = parseFloat((form.elements.namedItem("amount") as HTMLInputElement).value);
+            const currency = (form.elements.namedItem("currency") as HTMLSelectElement).value;
+            const category = (form.elements.namedItem("category") as HTMLSelectElement).value;
+            const split = (form.elements.namedItem("split") as HTMLSelectElement).value;
+            const date = (form.elements.namedItem("date") as HTMLInputElement).value;
+            if (!amount || amount <= 0) { toast({ title: "Enter a valid amount", variant: "destructive" }); return; }
+            setExpenses(prev => [...prev, {
+              id: String(expenseNextId++),
+              amount,
+              currency,
+              category: category || "Other",
+              paidBy: "You",
+              split: split || "Don't split",
+              date: date || new Date().toLocaleDateString(),
+            }]);
+            toast({ title: "Expense added", description: `${currency}${amount.toFixed(2)} for ${category}` });
+            setAddExpenseOpen(false);
+          }} className="space-y-4 mt-2">
+            {/* Amount with currency */}
+            <div className="flex items-center gap-2 border border-border rounded-xl p-3 focus-within:ring-2 focus-within:ring-primary/30">
+              <select name="currency" defaultValue="$" className="bg-transparent text-sm font-medium text-foreground border-0 outline-none w-12">
+                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <Input name="amount" type="number" step="0.01" min="0" placeholder="0" className="border-0 shadow-none text-lg font-medium focus-visible:ring-0 p-0 h-auto" />
+            </div>
+
+            {/* Category */}
+            <div className="border border-border rounded-xl p-3 flex items-center gap-3">
+              <List className="w-4 h-4 text-muted-foreground shrink-0" />
+              <select name="category" defaultValue="" className="bg-transparent text-sm text-foreground flex-1 border-0 outline-none">
+                <option value="" disabled>Select item</option>
+                {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+
+            {/* Paid by */}
+            <div className="border border-border rounded-xl p-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Paid by</span>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">P</div>
+                <span className="text-sm text-foreground">You</span>
+              </div>
+            </div>
+
+            {/* Split */}
+            <div className="border border-border rounded-xl p-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Split</span>
+              <select name="split" defaultValue="Don't split" className="bg-transparent text-sm text-foreground border-0 outline-none text-right">
+                <option>Don't split</option>
+                <option>Split equally</option>
+                <option>Split by amount</option>
+              </select>
+            </div>
+
+            {/* Date */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">Date:</span>
+              <Input name="date" type="date" className="border-0 shadow-none text-sm text-muted-foreground focus-visible:ring-0 p-0 h-auto w-auto" />
+            </div>
+
+            <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground font-semibold text-base h-11">
+              Save
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Set Budget Dialog */}
+      <Dialog open={setBudgetOpen} onOpenChange={setSetBudgetOpen}>
+        <DialogContent className="sm:max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-display font-bold text-center">Set Budget</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const val = parseFloat((e.target as HTMLFormElement).budgetAmount.value);
+            if (!val || val <= 0) { toast({ title: "Enter a valid budget", variant: "destructive" }); return; }
+            setBudget(val);
+            toast({ title: "Budget set", description: `$${val.toFixed(2)}` });
+            setSetBudgetOpen(false);
+          }} className="space-y-4 mt-2">
+            <div className="flex items-center gap-2 border border-border rounded-xl p-3">
+              <span className="text-lg font-medium text-foreground">$</span>
+              <Input name="budgetAmount" type="number" step="0.01" min="0" placeholder="0.00" defaultValue={budget?.toString() || ""} className="border-0 shadow-none text-lg font-medium focus-visible:ring-0 p-0 h-auto" />
+            </div>
+            <Button type="submit" className="w-full rounded-full bg-primary text-primary-foreground font-semibold h-10">Save</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AddActivityDialog open={addActivityDayIndex !== null} onOpenChange={open => { if (!open) setAddActivityDayIndex(null); }} onSelect={addActivityFromSearch} />
       <ActivityDetailDialog activity={selectedActivity} open={!!selectedActivity} onOpenChange={open => { if (!open) setSelectedActivity(null); }} />
