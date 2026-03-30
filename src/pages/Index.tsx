@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Globe, MapPin, Users, Sparkles, Calendar, Shield, FileText, MessageSquare, ArrowRight, Plane, Map, Compass, Star, Clock } from "lucide-react";
+import { Globe, MapPin, Users, Sparkles, Calendar, Shield, FileText, MessageSquare, ArrowRight, Plane, Map, Compass, Star, Clock, DollarSign, Hotel, Paperclip, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-travel.jpg";
