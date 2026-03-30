@@ -220,6 +220,21 @@ const Itinerary = () => {
                 </CollapsibleContent>
               </Collapsible>
 
+              {/* Budget nav */}
+              <Collapsible defaultOpen className="mt-4">
+                <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left mb-1">
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-sm font-bold text-foreground">Budget</span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="ml-5 space-y-0.5">
+                    <button onClick={() => scrollToSection("budget")} className={`block w-full text-left text-sm py-1.5 px-2 rounded-md transition-colors ${activeSection === "budget" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+                      View
+                    </button>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
               <div className="mt-6 pt-4 border-t border-border space-y-1">
                 <button onClick={() => setSidebarOpen(false)} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground w-full py-1.5 px-2 rounded-md hover:bg-muted/50">
                   <PanelLeftClose className="w-3.5 h-3.5" /> Hide sidebar
