@@ -15,6 +15,7 @@ import Account from "./pages/Account";
 import EditProfile from "./pages/EditProfile";
 import Hotels from "./pages/Hotels";
 import HotelDetail from "./pages/HotelDetail";
+import Explore from "./pages/Explore";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/edit-profile" element={<EditProfile />} />
             <Route path="/hotels" element={<Hotels />} />
             <Route path="/hotels/:id" element={<HotelDetail />} />
+            <Route path="/explore" element={<Explore />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
