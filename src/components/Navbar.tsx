@@ -1,6 +1,7 @@
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, LogOut, ArrowRight } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, User, LogOut, ArrowRight, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/globegenie-logo.png";
@@ -14,6 +15,7 @@ const Navbar = () => {
   const isLanding = location.pathname === "/";
   const { user, logout } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -43,16 +45,30 @@ const Navbar = () => {
             </>
           )}
           {user ? (
-            <>
-              <Link to="/account">
-                <Button variant="ghost" className="text-sm text-muted-foreground hover:text-foreground">
-                  <User className="w-4 h-4 mr-1" /> My Account
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" className="text-sm text-muted-foreground hover:text-foreground gap-2">
+                  <div className="w-7 h-7 rounded-full bg-ocean-gradient flex items-center justify-center text-primary-foreground font-display font-bold text-xs">{user.fullName.charAt(0).toUpperCase()}</div>
+                  My Account
                 </Button>
-              </Link>
-              <Button variant="ghost" className="text-sm text-muted-foreground hover:text-destructive" onClick={logout}>
-                <LogOut className="w-4 h-4 mr-1" /> Sign Out
-              </Button>
-            </>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 p-0 rounded-xl border-border/60">
+                <div className="p-4 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-ocean-gradient flex items-center justify-center text-primary-foreground font-display font-bold text-base shadow-md">{user.fullName.charAt(0).toUpperCase()}</div>
+                    <div className="min-w-0">
+                      <p className="font-display font-bold text-sm text-foreground truncate">{user.fullName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-2 flex flex-col gap-1">
+                  <button onClick={() => navigate("/account")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"><User className="w-4 h-4 text-muted-foreground" /> View Account</button>
+                  <button onClick={() => navigate("/edit-profile")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"><Pencil className="w-4 h-4 text-muted-foreground" /> Edit Profile</button>
+                  <button onClick={() => { logout(); navigate("/"); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"><LogOut className="w-4 h-4" /> Sign Out</button>
+                </div>
+              </PopoverContent>
+            </Popover>
           ) : (
             <>
               <Link to="/login">
