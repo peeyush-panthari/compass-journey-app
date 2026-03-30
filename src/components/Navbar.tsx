@@ -15,6 +15,7 @@ const Navbar = () => {
   const isLanding = location.pathname === "/";
   const { user, logout } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
