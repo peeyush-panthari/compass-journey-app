@@ -301,27 +301,27 @@ const Account = () => {
 
         {/* Popular destinations */}
         <h3 className="text-sm font-semibold text-muted-foreground mb-3">Popular destinations</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+        <HorizontalScroller>
           {exploreBlogs.filter(b => b.category === "destination").map((blog, i) => (
-            <ExploreCard key={blog.id} blog={blog} index={i} />
+            <div key={blog.id} className="min-w-[260px] max-w-[280px] flex-shrink-0"><ExploreCard blog={blog} index={i} /></div>
           ))}
-        </div>
+        </HorizontalScroller>
 
         {/* Food & Restaurants */}
-        <h3 className="text-sm font-semibold text-muted-foreground mb-3">Food & Restaurants</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+        <h3 className="text-sm font-semibold text-muted-foreground mt-8 mb-3">Food & Restaurants</h3>
+        <HorizontalScroller>
           {exploreBlogs.filter(b => b.category === "food").map((blog, i) => (
-            <ExploreCard key={blog.id} blog={blog} index={i} />
+            <div key={blog.id} className="min-w-[260px] max-w-[280px] flex-shrink-0"><ExploreCard blog={blog} index={i} /></div>
           ))}
-        </div>
+        </HorizontalScroller>
 
         {/* Travel Videos */}
-        <h3 className="text-sm font-semibold text-muted-foreground mb-3">Travel Videos</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <h3 className="text-sm font-semibold text-muted-foreground mt-8 mb-3">Travel Videos</h3>
+        <HorizontalScroller>
           {exploreBlogs.filter(b => b.category === "video").map((blog, i) => (
-            <ExploreCard key={blog.id} blog={blog} index={i} />
+            <div key={blog.id} className="min-w-[260px] max-w-[280px] flex-shrink-0"><ExploreCard blog={blog} index={i} /></div>
           ))}
-        </div>
+        </HorizontalScroller>
 
       </div>
     </div>
