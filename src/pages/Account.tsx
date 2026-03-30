@@ -84,8 +84,8 @@ const Account = () => {
       <div className="container mx-auto px-4 pt-18 sm:pt-24 pb-24 md:pb-16 max-w-6xl safe-top safe-bottom">
 
         {/* Need a place to stay */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border shadow-card p-5 sm:p-7 mb-10">
-          <h2 className="text-xl sm:text-2xl font-display font-bold text-foreground mb-5">Need a place to stay?</h2>
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border shadow-card px-5 py-3 sm:px-7 sm:py-4 mb-8">
+          <h2 className="text-lg font-display font-bold text-foreground mb-3">Need a place to stay?</h2>
           <div className="flex flex-col sm:flex-row items-stretch gap-0 border border-border rounded-xl overflow-hidden">
             {/* Where */}
             <div className="flex-1 px-4 py-3 border-b sm:border-b-0 sm:border-r border-border">
