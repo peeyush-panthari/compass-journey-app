@@ -132,6 +132,9 @@ const Itinerary = () => {
   const { toast } = useToast();
   const mainRef = useRef<HTMLDivElement>(null);
   const [otherPopoverOpen, setOtherPopoverOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"overview" | "itinerary" | "explore" | "budget" | "journal">("overview");
+  const [mobileSelectedDay, setMobileSelectedDay] = useState(0);
+  const isMobile = useIsMobile();
   let reservationNextId = reservations.length + 1;
 
   const cities = [...new Set(itinerary.map(d => d.city))];
