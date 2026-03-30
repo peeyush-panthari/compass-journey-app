@@ -8,7 +8,7 @@ const isInIframe = (() => {
 })();
 const isPreviewHost =
   window.location.hostname.includes("id-preview--") ||
-  window.location.hostname.includes("lovableproject.com");
+  window.location.hostname.includes("globegenie.app");
 
 if (isPreviewHost || isInIframe) {
   navigator.serviceWorker?.getRegistrations().then((registrations) => {

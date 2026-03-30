@@ -34,7 +34,7 @@
 
 ## 1. Architecture Overview
 
-**Recommended Stack:** Supabase (via Lovable Cloud) or self-hosted Supabase
+**Recommended Stack:** Supabase (via GlobeGenie Cloud) or self-hosted Supabase
 
 ```
 ┌──────────────────────┐
@@ -791,11 +791,11 @@ CREATE POLICY "Users manage own push subs" ON public.push_subscriptions FOR ALL 
 
 | Component | Service |
 |-----------|---------|
-| **Frontend Hosting** | Lovable (lovable.app) or Vercel/Netlify |
-| **Backend (DB + Auth + Storage)** | Supabase (via Lovable Cloud) |
+| **Frontend Hosting** | Vercel/Netlify |
+| **Backend (DB + Auth + Storage)** | Supabase (via GlobeGenie) |
 | **Edge Functions** | Supabase Edge Functions (Deno) |
-| **Domain** | Custom domain via Lovable or DNS provider |
-| **SSL** | Auto (included with Lovable/Supabase) |
+| **Domain** | Custom domain via GlobeGenie or DNS provider |
+| **SSL** | Auto (included with GlobeGenie/Supabase) |
 | **CDN** | Included with hosting provider |
 
 ### Supabase Project Size

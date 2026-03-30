@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 const EditProfile = () => {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -27,10 +27,27 @@ const EditProfile = () => {
   const [showNew, setShowNew] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
 
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => { if (!user) navigate("/login"); }, [user, navigate]);
   if (!user) return null;
 
-  const handleSaveProfile = () => { toast({ title: "Profile updated" }); };
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    const result = await updateProfile({
+      fullName,
+      phone,
+      age: age ? parseInt(age) : undefined,
+      gender
+    });
+    setIsSaving(false);
+    
+    if (result.success) {
+      toast({ title: "Profile updated" });
+    } else {
+      toast({ title: "Update failed", description: result.error, variant: "destructive" });
+    }
+  };
 
   const handleResetPassword = (e: React.FormEvent) => {
     e.preventDefault();

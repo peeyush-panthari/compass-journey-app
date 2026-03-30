@@ -5,6 +5,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
+const formatTime = (timeString?: string | null) => {
+  if (!timeString || timeString === "Not Available") return "Not Available";
+  try {
+    const date = new Date(timeString);
+    if (isNaN(date.getTime())) return timeString;
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+  } catch (e) {
+    return timeString;
+  }
+};
+
 export interface ActivityDetail {
   id: string;
   name: string;
@@ -67,7 +78,19 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
             <Separator />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <DetailItem icon={<Clock className="w-4 h-4 text-primary" />} label="Opening Hours" value={`${activity.openTime} – ${activity.closeTime}`} />
+              {(() => {
+                const formattedOpen = formatTime(activity.openTime);
+                const formattedClose = formatTime(activity.closeTime);
+                let hoursDisplay = "Not Available";
+                if (formattedOpen !== "Not Available" && formattedClose !== "Not Available") {
+                  hoursDisplay = `${formattedOpen} – ${formattedClose}`;
+                } else if (formattedOpen !== "Not Available") {
+                  hoursDisplay = `${formattedOpen} onwards`;
+                } else if (formattedClose !== "Not Available") {
+                  hoursDisplay = `Until ${formattedClose}`;
+                }
+                return <DetailItem icon={<Clock className="w-4 h-4 text-primary" />} label="Opening Hours" value={hoursDisplay} />;
+              })()}
               <DetailItem icon={<Clock className="w-4 h-4 text-accent" />} label="Est. Time Needed" value={activity.duration} />
               <DetailItem icon={<Ticket className="w-4 h-4 text-coral" />} label="Ticket Price" value={activity.ticketPrice} />
               <DetailItem icon={<Sun className="w-4 h-4 text-gold" />} label="Best Time to Visit" value={activity.bestTimeToVisit || "Morning"} />

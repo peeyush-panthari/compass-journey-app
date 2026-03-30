@@ -1,60 +1,147 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { supabase } from "../lib/supabaseClient";
 
 interface User {
+  id: string;
   email: string;
   fullName: string;
+  phone?: string;
+  age?: number;
+  gender?: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => { success: boolean; error?: string };
-  signup: (email: string, fullName: string, password: string) => { success: boolean; error?: string };
-  logout: () => void;
+  loading: boolean;
+  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, fullName: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
 }
-
-const DEMO_ACCOUNT = { email: "123456789@phone.user", password: "otp-verified", fullName: "Demo User" };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    return { user: null, login: () => ({ success: false, error: "Not ready" }), signup: () => ({ success: false, error: "Not ready" }), logout: () => {} } as AuthContextType;
+    return { 
+      user: null, 
+      loading: false,
+      login: async () => ({ success: false, error: "Not ready" }), 
+      signup: async () => ({ success: false, error: "Not ready" }), 
+      updateProfile: async () => ({ success: false, error: "Not ready" }), 
+      logout: async () => {},
+      signInWithGoogle: async () => ({ success: false, error: "Not ready" })
+    } as AuthContextType;
   }
   return ctx;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem("globegenie_user");
-    return stored ? JSON.parse(stored) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = (email: string, password: string) => {
-    if (email === DEMO_ACCOUNT.email && password === DEMO_ACCOUNT.password) {
-      const u = { email: DEMO_ACCOUNT.email, fullName: DEMO_ACCOUNT.fullName };
-      setUser(u);
-      localStorage.setItem("globegenie_user", JSON.stringify(u));
-      return { success: true };
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncUser(session);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncUser(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const syncUser = async (session: any) => {
+    if (!session?.user) {
+      setUser(null);
+      return;
     }
-    return { success: false, error: "Invalid email or password" };
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    if (profile) {
+      setUser({
+        id: session.user.id,
+        email: session.user.email || "",
+        fullName: profile.full_name || "User",
+        phone: profile.phone,
+        age: profile.age,
+        gender: profile.gender
+      });
+    } else {
+      setUser({ id: session.user.id, email: session.user.email || "", fullName: "User" });
+    }
   };
 
-  const signup = (email: string, fullName: string, _password: string) => {
-    const u = { email, fullName };
-    setUser(u);
-    localStorage.setItem("globegenie_user", JSON.stringify(u));
-    return { success: true };
+  const login = async (email: string, password?: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password: password || "testPassword123"
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("globegenie_user");
+  const signup = async (email: string, fullName: string, password?: string) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password: password || "testPassword123",
+        options: {
+          data: { full_name: fullName }
+        }
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  };
+  
+  const signInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google'
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  const updateProfile = async (data: Partial<User>) => {
+    if (!user) return { success: false, error: "No user logged in." };
+    try {
+      const payload: any = {};
+      if (data.fullName !== undefined) payload.full_name = data.fullName;
+      if (data.phone !== undefined) payload.phone = data.phone;
+      if (data.age !== undefined) payload.age = data.age;
+      if (data.gender !== undefined) payload.gender = data.gender;
+      
+      const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
+      if (error) throw error;
+      
+      setUser({ ...user, ...data });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, login, signup, updateProfile, logout, signInWithGoogle }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

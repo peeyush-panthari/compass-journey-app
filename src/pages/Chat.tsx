@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Globe, ArrowLeft } from "lucide-react";
+import { Send, Globe, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabaseClient";
 
 interface Message {
   id: string;
@@ -12,15 +13,14 @@ interface Message {
   options?: string[];
 }
 
-const chatFlow: { question: string; options?: string[]; key: string }[] = [
+const chatFlow = [
   { question: "Hi! I'm GlobeGenie 🌍 Let's plan your perfect trip. Where would you like to go?", key: "destination" },
   { question: "Great choice! When are you planning to travel, and for how many days?", key: "dates" },
   { question: "Who's traveling?", options: ["Solo", "With friends", "As a couple", "Family with kids"], key: "group" },
   { question: "What's the purpose of your trip?", options: ["Leisure", "Business", "Honeymoon", "Adventure", "Cultural exploration"], key: "purpose" },
   { question: "What's your budget range?", options: ["Budget-friendly", "Mid-range", "Luxury", "No limit"], key: "budget" },
   { question: "What activities interest you most?", options: ["Historical sites", "Food & dining", "Nature & outdoors", "Adventure sports", "Shopping", "Nightlife"], key: "activities" },
-  { question: "What pace do you prefer?", options: ["Relaxed — fewer stops", "Moderate — balanced mix", "Packed — see everything!"], key: "pace" },
-  { question: "Any special requirements? (dietary, accessibility, etc.) Type 'none' if not.", key: "special" },
+  { question: "What pace do you prefer?", options: ["Relaxed — fewer stops", "Moderate — balanced mix", "Packed — see everything!"], key: "pace" }
 ];
 
 const Chat = () => {
@@ -28,26 +28,67 @@ const Chat = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [inputValue, setInputValue] = useState("");
   const [isComplete, setIsComplete] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  // Store user answers
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isGenerating]);
+
+  const generateItinerary = async (finalAnswers: Record<string, string>) => {
+    setIsGenerating(true);
+    setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Perfect! I have everything I need. 🎉 Let me generate your personalized itinerary using Gemini AI..." }]);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-itinerary', {
+        body: {
+          destination: finalAnswers["destination"] || "Paris",
+          dates: finalAnswers["dates"] || "7 days",
+          companion: finalAnswers["group"] || "Solo",
+          purpose: finalAnswers["purpose"] || "Leisure",
+          experiences: [finalAnswers["activities"] || "Sightseeing"],
+          pace: finalAnswers["pace"] || "Moderate",
+          budget: finalAnswers["budget"] || "Mid-range"
+        }
+      });
+      
+      if (error) throw error;
+      
+      console.log('Generated Itinerary:', data);
+      
+      // Navigate to itinerary view. In a real app we'd save this to DB and pass trip_id.
+      // For now, we mock success state
+      setIsComplete(true);
+    } catch (err) {
+      console.error("AI Generation Error:", err);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Oops, there was an issue connecting to the Gemini backend. Try again later!" }]);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleSend = (value: string) => {
-    if (!value.trim() || isComplete) return;
+    if (!value.trim() || isComplete || isGenerating) return;
+    
+    const currentKey = chatFlow[currentStep].key;
+    const updatedAnswers = { ...answers, [currentKey]: value };
+    setAnswers(updatedAnswers);
+    
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: value };
+    
     const nextStep = currentStep + 1;
-
     if (nextStep < chatFlow.length) {
       const nextQ = chatFlow[nextStep];
       const botMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: nextQ.question, options: nextQ.options };
       setMessages(prev => [...prev, userMsg, botMsg]);
       setCurrentStep(nextStep);
     } else {
-      const finalMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: "Perfect! I have everything I need. 🎉 Let me generate your personalized itinerary..." };
-      setMessages(prev => [...prev, userMsg, finalMsg]);
-      setIsComplete(true);
+      setMessages(prev => [...prev, userMsg]);
+      generateItinerary(updatedAnswers);
     }
     setInputValue("");
   };
@@ -66,7 +107,7 @@ const Chat = () => {
             <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"}`}>
                 {msg.content}
-                {msg.options && (
+                {msg.options && !isGenerating && !isComplete && msg.id === messages[messages.length -1].id && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     {msg.options.map(opt => (
                       <button key={opt} onClick={() => handleSend(opt)} className="px-3 py-1.5 rounded-full bg-background text-foreground text-xs font-medium border border-border hover:border-primary hover:bg-primary/5 transition-colors compact-touch">{opt}</button>
@@ -76,16 +117,24 @@ const Chat = () => {
               </div>
             </motion.div>
           ))}
+          {isGenerating && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex justify-start">
+              <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed bg-muted text-foreground rounded-bl-sm flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                Thinking...
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {isComplete && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 }} className="flex justify-center mt-6">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="flex justify-center mt-6 mb-12">
             <Link to="/itinerary"><Button size="lg" className="bg-gold-gradient text-accent-foreground font-semibold shadow-gold">View Your Itinerary →</Button></Link>
           </motion.div>
         )}
       </div>
 
-      {!isComplete && (
+      {!isComplete && !isGenerating && (
         <div className="border-t border-border bg-card/80 backdrop-blur-xl p-3 sm:p-4 safe-bottom">
           <div className="max-w-3xl mx-auto flex gap-2">
             <Input value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSend(inputValue)} placeholder="Type your answer..." className="h-11" />
