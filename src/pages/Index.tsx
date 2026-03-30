@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Globe, MapPin, Users, Sparkles, Calendar, Shield, FileText, MessageSquare, ArrowRight, Plane, Map, Compass, Star, Clock } from "lucide-react";
+import { Globe, MapPin, Users, Sparkles, Calendar, Shield, FileText, MessageSquare, ArrowRight, Plane, Map, Compass, Star, Clock, DollarSign, Hotel, Paperclip, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-travel.jpg";
@@ -9,19 +9,21 @@ import AuthDialog from "@/components/AuthDialog";
 import { useAuth } from "@/contexts/AuthContext";
 
 const features = [
-  { icon: Sparkles, title: "AI-Powered Itineraries", description: "Tell us your preferences and our AI crafts a perfectly optimized day-by-day travel plan.", iconBg: "bg-primary/10 text-primary" },
-  { icon: MapPin, title: "Google Places Enriched", description: "Every venue enriched with real photos, ratings, hours, and addresses from Google.", iconBg: "bg-accent/10 text-accent" },
-  { icon: Users, title: "Collaborative Planning", description: "Invite travel companions to edit, comment, and build the perfect trip together.", iconBg: "bg-sea-foam/10 text-sea-foam" },
-  { icon: Calendar, title: "Smart Scheduling", description: "Geographically optimized routes with realistic timing and conflict detection.", iconBg: "bg-coral/10 text-coral" },
-  { icon: Shield, title: "Secure Document Storage", description: "Upload flight tickets, hotel bookings, and travel documents securely.", iconBg: "bg-primary/10 text-primary" },
-  { icon: FileText, title: "Export & Share", description: "Export as PDF, share read-only links, or duplicate itineraries for future trips.", iconBg: "bg-accent/10 text-accent" },
+  { icon: Sparkles, title: "AI-Powered Itineraries", description: "Chat with our AI to generate a personalized day-by-day travel plan optimized for your interests and budget.", iconBg: "bg-primary/10 text-primary" },
+  { icon: MapPin, title: "Drag & Drop Planner", description: "Reorder activities, add new stops, and customize your itinerary with an intuitive drag-and-drop interface.", iconBg: "bg-accent/10 text-accent" },
+  { icon: DollarSign, title: "Trip Budgeting", description: "Track expenses, set budgets, split costs with tripmates, and view spending breakdowns by category.", iconBg: "bg-sea-foam/10 text-sea-foam" },
+  { icon: Plane, title: "Reservations Hub", description: "Manage flights, hotels, rental cars, trains, ferries, restaurants, and more — all in one place.", iconBg: "bg-coral/10 text-coral" },
+  { icon: Compass, title: "Explore Destinations", description: "Discover top attractions, restaurants, cafes, and photo spots with curated guides for every stop.", iconBg: "bg-primary/10 text-primary" },
+  { icon: Hotel, title: "Hotel Search", description: "Find and compare hotels with transparent pricing — no commission-based sorting.", iconBg: "bg-accent/10 text-accent" },
+  { icon: Paperclip, title: "Attachments & Documents", description: "Attach boarding passes, booking confirmations, and travel documents directly to your trip.", iconBg: "bg-sea-foam/10 text-sea-foam" },
+  { icon: BookOpen, title: "Travel Journal", description: "Capture memories, write notes, and keep a personal journal of your trip experiences.", iconBg: "bg-coral/10 text-coral" },
 ];
 
 const steps = [
-  { step: "01", title: "Chat with our AI", description: "Tell GlobeGenie where you're going, your interests, budget, and travel style.", icon: MessageSquare },
-  { step: "02", title: "Get your itinerary", description: "Receive a detailed day-by-day plan with venues, timings, and real photos.", icon: Map },
-  { step: "03", title: "Customize & collaborate", description: "Drag, drop, replace venues, add notes, and plan together with friends.", icon: Compass },
-  { step: "04", title: "Travel with confidence", description: "Access your plans anywhere, with all your documents in one place.", icon: Plane },
+  { step: "01", title: "Plan your trip", description: "Chat with our AI or start from scratch — set your destinations, dates, and preferences.", icon: MessageSquare },
+  { step: "02", title: "Build your itinerary", description: "Get a day-by-day plan with activities, photos, and timings. Drag to reorder and customize.", icon: Map },
+  { step: "03", title: "Add reservations & budget", description: "Book hotels, add flights and restaurants, track expenses, and attach travel documents.", icon: Calendar },
+  { step: "04", title: "Explore & travel", description: "Discover local gems, share your trip with friends, and access everything on the go.", icon: Plane },
 ];
 
 const destinationCards = [
@@ -144,7 +146,7 @@ const Index = () => {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">From AI-generated itineraries to collaborative editing, GlobeGenie handles every detail.</p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {features.map((feature, i) => (
               <motion.div key={feature.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
                 className="group bg-card rounded-2xl p-5 sm:p-6 shadow-card hover:shadow-elevated transition-all duration-500 border border-border/60 hover:border-primary/20 hover:-translate-y-1">
