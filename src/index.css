@@ -162,3 +162,11 @@
   .shadow-gold { box-shadow: var(--shadow-gold); }
   .shadow-soft { box-shadow: var(--shadow-soft); }
 }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
