@@ -13,6 +13,8 @@ import PlanTrip from "./pages/PlanTrip";
 import Itinerary from "./pages/Itinerary";
 import Account from "./pages/Account";
 import EditProfile from "./pages/EditProfile";
+import Hotels from "./pages/Hotels";
+import HotelDetail from "./pages/HotelDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,8 @@ const App = () => (
             <Route path="/itinerary" element={<Itinerary />} />
             <Route path="/account" element={<Account />} />
             <Route path="/edit-profile" element={<EditProfile />} />
+            <Route path="/hotels" element={<Hotels />} />
+            <Route path="/hotels/:id" element={<HotelDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
