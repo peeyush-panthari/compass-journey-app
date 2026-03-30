@@ -78,7 +78,7 @@ let nextId = 100;
 
 interface Reservation {
   id: string;
-  type: "Flight" | "Lodging" | "Rental car" | "Restaurant" | "Other";
+  type: "Flight" | "Lodging" | "Rental car" | "Restaurant" | "Train" | "Bus" | "Ferry" | "Cruise" | "Other";
   title: string;
   details: string;
   date: string;
