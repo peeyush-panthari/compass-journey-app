@@ -955,13 +955,21 @@ const Itinerary = () => {
                 {reservationDialogOpen === "Flight" ? "Flight / Airline" :
                  reservationDialogOpen === "Lodging" ? "Hotel / Property name" :
                  reservationDialogOpen === "Rental car" ? "Rental company" :
-                 reservationDialogOpen === "Restaurant" ? "Restaurant name" : "Title"}
+                 reservationDialogOpen === "Restaurant" ? "Restaurant name" :
+                 reservationDialogOpen === "Train" ? "Train / Operator" :
+                 reservationDialogOpen === "Bus" ? "Bus line / Operator" :
+                 reservationDialogOpen === "Ferry" ? "Ferry / Operator" :
+                 reservationDialogOpen === "Cruise" ? "Cruise line / Ship" : "Title"}
               </label>
               <Input name="res-title" placeholder={
                 reservationDialogOpen === "Flight" ? "e.g. Air France AF1234" :
                 reservationDialogOpen === "Lodging" ? "e.g. Hotel Le Marais" :
                 reservationDialogOpen === "Rental car" ? "e.g. Europcar CDG" :
-                reservationDialogOpen === "Restaurant" ? "e.g. Le Comptoir" : "e.g. Museum tickets"
+                reservationDialogOpen === "Restaurant" ? "e.g. Le Comptoir" :
+                reservationDialogOpen === "Train" ? "e.g. Eurostar 9012" :
+                reservationDialogOpen === "Bus" ? "e.g. FlixBus Paris → Lyon" :
+                reservationDialogOpen === "Ferry" ? "e.g. Dover → Calais" :
+                reservationDialogOpen === "Cruise" ? "e.g. MSC Grandiosa" : "e.g. Museum tickets"
               } className="rounded-xl" required />
             </div>
             <div>
@@ -970,7 +978,11 @@ const Itinerary = () => {
                 reservationDialogOpen === "Flight" ? "CDG → LHR, 10:30 AM" :
                 reservationDialogOpen === "Lodging" ? "Check-in 3 PM, 2 nights" :
                 reservationDialogOpen === "Rental car" ? "Compact, pickup at airport" :
-                reservationDialogOpen === "Restaurant" ? "Reservation for 2, 8 PM" : "Additional details"
+                reservationDialogOpen === "Restaurant" ? "Reservation for 2, 8 PM" :
+                reservationDialogOpen === "Train" ? "Seat 42A, 1st class" :
+                reservationDialogOpen === "Bus" ? "Departure 8:00 AM, Platform 3" :
+                reservationDialogOpen === "Ferry" ? "Vehicle + 2 passengers" :
+                reservationDialogOpen === "Cruise" ? "Cabin B204, 7-night itinerary" : "Additional details"
               } className="rounded-xl" />
             </div>
             <div>
