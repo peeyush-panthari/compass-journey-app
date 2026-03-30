@@ -76,6 +76,22 @@ const recommendedPlaces = [
 
 let nextId = 100;
 
+interface Reservation {
+  id: string;
+  type: "Flight" | "Lodging" | "Rental car" | "Restaurant" | "Other";
+  title: string;
+  details: string;
+  date: string;
+  confirmationNumber?: string;
+}
+
+interface Attachment {
+  id: string;
+  name: string;
+  size: string;
+  addedAt: string;
+}
+
 interface Expense {
   id: string;
   amount: number;
