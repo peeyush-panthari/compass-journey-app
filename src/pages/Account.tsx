@@ -26,19 +26,6 @@ const Account = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 pt-18 sm:pt-24 pb-24 md:pb-16 max-w-5xl safe-top safe-bottom">
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border shadow-card p-5 sm:p-6 mb-8">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-ocean-gradient flex items-center justify-center text-primary-foreground font-display font-bold text-xl shadow-md">{user.fullName.charAt(0).toUpperCase()}</div>
-              <div><h1 className="text-lg sm:text-xl font-display font-bold text-foreground">{user.fullName}</h1><p className="text-sm text-muted-foreground">{user.email}</p></div>
-            </div>
-            <div className="flex gap-2">
-              <Link to="/edit-profile"><Button variant="outline" size="sm" className="rounded-xl"><User className="w-4 h-4 mr-1" /> Edit</Button></Link>
-              <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground hover:text-destructive" onClick={() => { logout(); navigate("/"); }}><LogOut className="w-4 h-4 mr-1" /> Sign Out</Button>
-            </div>
-          </div>
-        </motion.div>
-
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-display font-bold text-foreground">Your Itineraries</h2>
           <Link to="/plan"><Button className="bg-ocean-gradient text-primary-foreground font-semibold rounded-xl shadow-sm"><Plus className="w-4 h-4 mr-1" /> New Trip</Button></Link>
