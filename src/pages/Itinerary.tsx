@@ -102,6 +102,11 @@ const Itinerary = () => {
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
   const [activeSection, setActiveSection] = useState("overview");
   const [showHotelBanner, setShowHotelBanner] = useState(true);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [addExpenseOpen, setAddExpenseOpen] = useState(false);
+  const [budget, setBudget] = useState<number | null>(null);
+  const [setBudgetOpen, setSetBudgetOpen] = useState(false);
+  const [expenseSortBy, setExpenseSortBy] = useState<"newest" | "oldest">("newest");
   const { toast } = useToast();
   const mainRef = useRef<HTMLDivElement>(null);
 
