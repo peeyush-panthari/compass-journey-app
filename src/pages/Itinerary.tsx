@@ -1,9 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Star, Clock, MapPin, Ticket, GripVertical, Plus, Trash2, Share2, Copy, Check, Plane,
-  ChevronDown, ChevronRight, MoreHorizontal, StickyNote, MapPinned, Compass, FileText,
+  ChevronDown, ChevronRight, MoreHorizontal, StickyNote, MapPinned, Globe, FileText,
   Hotel, Car, UtensilsCrossed, Paperclip, DollarSign, Navigation, ThumbsUp, ThumbsDown,
   Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar, Pencil, List,
   Settings, Users, BarChart3, TrainFront, Bus, Ship, Anchor
@@ -18,6 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
@@ -110,6 +112,19 @@ const CURRENCIES = ["$", "€", "£", "₹", "¥"];
 const EXPENSE_CATEGORIES = ["Flight", "Lodging", "Food", "Transport", "Activities", "Shopping", "Other"];
 
 const Itinerary = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useState(() => {
+    // We use a functional state initializer for a one-time check if needed, 
+    // but the useEffect below is the main guard.
+  });
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/login");
+  }, [user, loading, navigate]);
+
+  if (loading || !user) return null;
   const [itinerary, setItinerary] = useState<Day[]>(initialItinerary);
   const [shareEmail, setShareEmail] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
@@ -545,7 +560,7 @@ const Itinerary = () => {
                       {cat === "Restaurants" && <UtensilsCrossed className="w-5 h-5 text-muted-foreground" />}
                       {cat === "Attractions" && <MapPin className="w-5 h-5 text-muted-foreground" />}
                       {cat === "Cafes" && <Star className="w-5 h-5 text-muted-foreground" />}
-                      {cat === "Photo spots" && <Compass className="w-5 h-5 text-muted-foreground" />}
+                      {cat === "Photo spots" && <Globe className="w-5 h-5 text-muted-foreground" />}
                       {cat}
                     </Link>
                   ))}

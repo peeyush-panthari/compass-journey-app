@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { Compass, Heart, Eye, Share, MoreHorizontal } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Globe, Heart, Eye, Share, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface ExploreBlog {
   id: string; title: string; excerpt: string; image: string; author: string; authorAvatar: string; likes: number; views: number; url: string; category: "destination" | "food" | "video"; type: "blog" | "video";
@@ -28,7 +30,15 @@ const categories = [
 ];
 
 const Explore = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/login");
+  }, [user, loading, navigate]);
+
+  if (loading || !user) return null;
 
   const filtered = activeCategory === "all" ? allBlogs : allBlogs.filter((b) => b.category === activeCategory);
 
@@ -37,7 +47,7 @@ const Explore = () => {
       <Navbar />
       <div className="container mx-auto px-4 pt-18 sm:pt-24 pb-24 md:pb-16 max-w-6xl safe-top safe-bottom">
         <div className="flex items-center gap-2 mb-2">
-          <Compass className="w-6 h-6 text-primary" />
+          <Globe className="w-6 h-6 text-primary" />
           <h1 className="text-2xl font-display font-bold text-foreground">Explore</h1>
         </div>
         <p className="text-sm text-muted-foreground mb-6">Discover travel blogs, food guides, and cinematic videos from around the world</p>

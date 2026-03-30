@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Globe, MapPin, Users, Sparkles, Calendar, Shield, FileText, MessageSquare, ArrowRight, Plane, Map, Compass, Star, Clock, DollarSign, Hotel, Paperclip, BookOpen } from "lucide-react";
+import { Globe, MapPin, Users, Sparkles, Calendar, Shield, FileText, MessageSquare, ArrowRight, Plane, Map, Star, Clock, DollarSign, Hotel, Paperclip, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-travel.jpg";
@@ -13,7 +13,7 @@ const features = [
   { icon: MapPin, title: "Drag & Drop Planner", description: "Reorder activities, add new stops, and customize your itinerary with an intuitive drag-and-drop interface.", iconBg: "bg-accent/10 text-accent" },
   { icon: DollarSign, title: "Trip Budgeting", description: "Track expenses, set budgets, split costs with tripmates, and view spending breakdowns by category.", iconBg: "bg-sea-foam/10 text-sea-foam" },
   { icon: Plane, title: "Reservations Hub", description: "Manage flights, hotels, rental cars, trains, ferries, restaurants, and more — all in one place.", iconBg: "bg-coral/10 text-coral" },
-  { icon: Compass, title: "Explore Destinations", description: "Discover top attractions, restaurants, cafes, and photo spots with curated guides for every stop.", iconBg: "bg-primary/10 text-primary" },
+  { icon: Globe, title: "Explore Destinations", description: "Discover top attractions, restaurants, cafes, and photo spots with curated guides for every stop.", iconBg: "bg-primary/10 text-primary" },
   { icon: Hotel, title: "Hotel Search", description: "Find and compare hotels with transparent pricing — no commission-based sorting.", iconBg: "bg-accent/10 text-accent" },
   { icon: Paperclip, title: "Attachments & Documents", description: "Attach boarding passes, booking confirmations, and travel documents directly to your trip.", iconBg: "bg-sea-foam/10 text-sea-foam" },
   { icon: BookOpen, title: "Travel Journal", description: "Capture memories, write notes, and keep a personal journal of your trip experiences.", iconBg: "bg-coral/10 text-coral" },

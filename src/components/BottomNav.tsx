@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Map, MessageSquare, Compass, User } from "lucide-react";
+import { Home, Map, MessageSquare, Globe, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const BottomNav = () => {
@@ -13,7 +13,7 @@ const BottomNav = () => {
 
   const navItems = [
     { to: "/", icon: Home, label: "Home" },
-    { to: "/plan", icon: Compass, label: "Plan" },
+    { to: "/plan", icon: Globe, label: "Plan" },
     { to: "/chat", icon: MessageSquare, label: "Chat" },
     { to: "/itinerary", icon: Map, label: "Itinerary" },
     { to: user ? "/account" : "/login", icon: User, label: user ? "Account" : "Login" },

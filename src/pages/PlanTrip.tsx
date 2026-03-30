@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
-import { CalendarIcon, MapPin, Users, Compass, Sparkles, ArrowRight, ArrowLeft, Minus, Plus, X, Search } from "lucide-react";
+import { CalendarIcon, MapPin, Users, Globe, Sparkles, ArrowRight, ArrowLeft, Minus, Plus, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import { countryCityData } from "@/data/destinations";
+import { useAuth } from "@/contexts/AuthContext";
 
 const TOTAL_STEPS = 6;
 
@@ -57,7 +58,14 @@ const budgetOptions = [
 ];
 
 const PlanTrip = () => {
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => { 
+    if (!loading && !user) navigate("/login"); 
+  }, [user, loading, navigate]);
+
+  if (loading || !user) return null;
   const [step, setStep] = useState(1);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);

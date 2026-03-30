@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 const EditProfile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, loading, updateProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -29,8 +29,11 @@ const EditProfile = () => {
 
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => { if (!user) navigate("/login"); }, [user, navigate]);
-  if (!user) return null;
+  useEffect(() => { 
+    if (!loading && !user) navigate("/login"); 
+  }, [user, loading, navigate]);
+
+  if (loading || !user) return null;
 
   const handleSaveProfile = async () => {
     setIsSaving(true);

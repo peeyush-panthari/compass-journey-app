@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin + "/account"
         }
       });
       if (error) return { success: false, error: error.message };
@@ -137,8 +137,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       setUser({ ...user, ...data });
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch (err) {
+      const error = err as Error;
+      return { success: false, error: error.message };
     }
   };
 
@@ -152,8 +153,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       if (error) return { success: false, error: error.message };
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch (err) {
+      const error = err as Error;
+      return { success: false, error: error.message };
     }
   }
 
@@ -169,8 +171,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       if (error) return { success: false, error: error.message };
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch (err) {
+      const error = err as Error;
+      return { success: false, error: error.message };
     }
   }
 

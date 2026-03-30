@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Calendar, Clock, Users, Share2, Search, ChevronLeft, ChevronRight, BedDouble, UserRound, Minus, Heart, Eye, Share, MoreHorizontal, Compass } from "lucide-react";
+import { Plus, Calendar, Clock, Users, Share2, Search, ChevronLeft, ChevronRight, BedDouble, UserRound, Minus, Heart, Eye, Share, MoreHorizontal, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -138,7 +138,7 @@ const HorizontalScroller = ({ children }: { children: React.ReactNode }) => {
 };
 
 const Account = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [destination, setDestination] = useState("");
   const [checkIn, setCheckIn] = useState<Date | undefined>(addDays(new Date(), 14));
@@ -146,8 +146,11 @@ const Account = () => {
   const [rooms, setRooms] = useState(1);
   const [guests, setGuests] = useState(2);
 
-  useEffect(() => { if (!user) navigate("/login"); }, [user, navigate]);
-  if (!user) return null;
+  useEffect(() => { 
+    if (!loading && !user) navigate("/login"); 
+  }, [user, loading, navigate]);
+
+  if (loading || !user) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -296,7 +299,7 @@ const Account = () => {
         {/* Explore */}
         <div className="flex items-center justify-between mt-12 mb-5">
           <div className="flex items-center gap-2">
-            <Compass className="w-5 h-5 text-primary" />
+            <Globe className="w-5 h-5 text-primary" />
             <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">Explore</h2>
           </div>
           <Link to="/explore"><Button variant="ghost" className="text-sm text-primary font-medium">See All</Button></Link>
