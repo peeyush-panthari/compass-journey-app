@@ -84,41 +84,85 @@ const Account = () => {
       <div className="container mx-auto px-4 pt-18 sm:pt-24 pb-24 md:pb-16 max-w-6xl safe-top safe-bottom">
 
         {/* Need a place to stay */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="bg-muted/50 rounded-2xl p-5 sm:p-8 mb-10">
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border shadow-card p-5 sm:p-7 mb-10">
           <h2 className="text-xl sm:text-2xl font-display font-bold text-foreground mb-5">Need a place to stay?</h2>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 bg-card rounded-xl border border-border p-3">
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Where</label>
-              <div className="relative">
-                <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search destinations"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  className="border-0 shadow-none pl-6 h-8 text-sm bg-transparent focus-visible:ring-0 p-0"
-                />
-              </div>
+          <div className="flex flex-col sm:flex-row items-stretch gap-0 border border-border rounded-xl overflow-hidden">
+            {/* Where */}
+            <div className="flex-1 px-4 py-3 border-b sm:border-b-0 sm:border-r border-border">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Where</label>
+              <Input
+                type="text"
+                placeholder="Search destinations"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                className="border-0 shadow-none h-7 text-sm bg-transparent focus-visible:ring-0 p-0 placeholder:text-muted-foreground/60"
+              />
             </div>
-            <div className="bg-card rounded-xl border border-border p-3 min-w-[150px]">
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">When</label>
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span>4/13 – 4/14</span>
-              </div>
+
+            {/* When */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="px-4 py-3 border-b sm:border-b-0 sm:border-r border-border text-left hover:bg-muted/40 transition-colors">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">When</label>
+                  <div className="flex items-center gap-1.5 text-sm text-foreground whitespace-nowrap">
+                    <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                    {checkIn ? format(checkIn, "M/d") : "Check in"} – {checkOut ? format(checkOut, "M/d") : "Check out"}
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <div className="flex flex-col sm:flex-row">
+                  <div className="p-3 border-b sm:border-b-0 sm:border-r border-border">
+                    <p className="text-xs font-medium text-muted-foreground mb-2 px-1">Check in</p>
+                    <CalendarComponent mode="single" selected={checkIn} onSelect={setCheckIn} disabled={(d) => d < new Date()} className={cn("pointer-events-auto")} />
+                  </div>
+                  <div className="p-3">
+                    <p className="text-xs font-medium text-muted-foreground mb-2 px-1">Check out</p>
+                    <CalendarComponent mode="single" selected={checkOut} onSelect={setCheckOut} disabled={(d) => d < (checkIn || new Date())} className={cn("pointer-events-auto")} />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Travelers */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="px-4 py-3 border-b sm:border-b-0 sm:border-r border-border text-left hover:bg-muted/40 transition-colors">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Travelers</label>
+                  <div className="flex items-center gap-2 text-sm text-foreground whitespace-nowrap">
+                    <BedDouble className="w-3.5 h-3.5 text-muted-foreground" />{rooms}
+                    <UserRound className="w-3.5 h-3.5 text-muted-foreground ml-1" />{guests}
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-4" align="start">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">Rooms</span>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setRooms(Math.max(1, rooms - 1))} className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted"><Minus className="w-3 h-3" /></button>
+                      <span className="text-sm font-medium w-4 text-center">{rooms}</span>
+                      <button onClick={() => setRooms(rooms + 1)} className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted"><Plus className="w-3 h-3" /></button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">Guests</span>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setGuests(Math.max(1, guests - 1))} className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted"><Minus className="w-3 h-3" /></button>
+                      <span className="text-sm font-medium w-4 text-center">{guests}</span>
+                      <button onClick={() => setGuests(guests + 1)} className="w-7 h-7 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:bg-muted"><Plus className="w-3 h-3" /></button>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Search */}
+            <div className="p-2 flex items-center">
+              <Button className="h-full w-full sm:w-auto px-7 rounded-lg bg-foreground text-background font-semibold text-sm hover:bg-foreground/90 min-h-[44px]">
+                Search
+              </Button>
             </div>
-            <div className="bg-card rounded-xl border border-border p-3 min-w-[130px]">
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Travelers</label>
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <BedDouble className="w-4 h-4 text-muted-foreground" />
-                <span>1</span>
-                <UserRound className="w-4 h-4 text-muted-foreground ml-1" />
-                <span>2</span>
-              </div>
-            </div>
-            <Button className="h-auto sm:h-full px-8 rounded-xl bg-foreground text-background font-semibold text-base hover:bg-foreground/90 self-stretch sm:self-auto min-h-[48px]">
-              Search
-            </Button>
           </div>
         </motion.div>
 
