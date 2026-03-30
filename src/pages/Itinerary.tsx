@@ -123,8 +123,13 @@ const Itinerary = () => {
   const [budget, setBudget] = useState<number | null>(null);
   const [setBudgetOpen, setSetBudgetOpen] = useState(false);
   const [expenseSortBy, setExpenseSortBy] = useState<"newest" | "oldest">("newest");
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [reservationDialogOpen, setReservationDialogOpen] = useState<Reservation["type"] | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const mainRef = useRef<HTMLDivElement>(null);
+  let reservationNextId = reservations.length + 1;
 
   const cities = [...new Set(itinerary.map(d => d.city))];
   const tripTitle = `Trip to ${cities.join(" and ")}`;
