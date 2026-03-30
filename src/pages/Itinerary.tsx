@@ -334,11 +334,11 @@ const Itinerary = () => {
                     ))}
                   </div>
                 </div>
-                <div className="w-full sm:w-[180px] bg-muted/40 rounded-xl border border-border p-4">
+                <button onClick={() => scrollToSection("budget")} className="w-full sm:w-[180px] bg-muted/40 rounded-xl border border-border p-4 text-left hover:bg-muted/60 transition-colors">
                   <h3 className="text-sm font-bold text-foreground mb-1">Budgeting</h3>
-                  <p className="text-xl font-display font-bold text-foreground">$0.00</p>
-                  <button className="text-xs text-primary font-medium mt-1">View details</button>
-                </div>
+                  <p className="text-xl font-display font-bold text-foreground">{expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}</p>
+                  <span className="text-xs text-primary font-medium mt-1">View details</span>
+                </button>
               </div>
             </section>
 
