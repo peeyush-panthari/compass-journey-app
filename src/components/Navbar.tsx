@@ -1,6 +1,7 @@
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, User, LogOut, ArrowRight } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, User, LogOut, ArrowRight, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/globegenie-logo.png";
