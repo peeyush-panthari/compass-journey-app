@@ -84,9 +84,9 @@ const Account = () => {
       <div className="container mx-auto px-4 pt-18 sm:pt-24 pb-24 md:pb-16 max-w-6xl safe-top safe-bottom">
 
         {/* Need a place to stay */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl border border-border shadow-card px-4 py-2.5 sm:px-5 sm:py-2.5 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-            <h2 className="text-sm font-display font-bold text-foreground sm:mr-4 shrink-0">Need a place to stay?</h2>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-xl border border-border shadow-card px-5 py-4 sm:px-6 sm:py-4 mb-7">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0">
+            <h2 className="text-base font-display font-bold text-foreground sm:mr-5 shrink-0">Need a place to stay?</h2>
             <div className="flex flex-col sm:flex-row sm:items-center flex-1 gap-0 border border-border rounded-lg overflow-hidden">
               <div className="flex-1 px-3 py-1.5 border-b sm:border-b-0 sm:border-r border-border">
                 <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Where</label>
