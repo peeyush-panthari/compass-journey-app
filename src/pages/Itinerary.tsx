@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronRight, MoreHorizontal, StickyNote, MapPinned, Compass, FileText,
   Hotel, Car, UtensilsCrossed, Paperclip, DollarSign, Navigation, ThumbsUp, ThumbsDown,
   Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar, Pencil, List,
-  Settings, Users, BarChart3
+  Settings, Users, BarChart3, TrainFront, Bus, Ship, Anchor
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import AddActivityDialog, { type PlaceResult } from "@/components/AddActivityDialog";
