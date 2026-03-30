@@ -340,20 +340,104 @@ const Itinerary = () => {
                 <div className="flex-1 bg-muted/40 rounded-xl border border-border p-4">
                   <h3 className="text-sm font-bold text-foreground mb-3">Reservations and attachments</h3>
                   <div className="flex flex-wrap gap-4">
-                    {[
-                      { icon: Plane, label: "Flight" },
-                      { icon: Hotel, label: "Lodging" },
-                      { icon: Car, label: "Rental car" },
-                      { icon: UtensilsCrossed, label: "Restaurant" },
-                      { icon: Paperclip, label: "Attachment" },
-                      { icon: MoreHorizontal, label: "Other" },
-                    ].map(({ icon: Icon, label }) => (
-                      <button key={label} className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                    {([
+                      { icon: Plane, label: "Flight" as const },
+                      { icon: Hotel, label: "Lodging" as const },
+                      { icon: Car, label: "Rental car" as const },
+                      { icon: UtensilsCrossed, label: "Restaurant" as const },
+                      { icon: Paperclip, label: "Attachment" as const },
+                      { icon: MoreHorizontal, label: "Other" as const },
+                    ] as const).map(({ icon: Icon, label }) => (
+                      <button
+                        key={label}
+                        onClick={() => {
+                          if (label === "Attachment") {
+                            fileInputRef.current?.click();
+                          } else {
+                            setReservationDialogOpen(label as Reservation["type"]);
+                          }
+                        }}
+                        className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                      >
                         <Icon className="w-5 h-5" />
                         <span className="text-[10px]">{label}</span>
                       </button>
                     ))}
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    multiple
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (!files) return;
+                      Array.from(files).forEach(f => {
+                        setAttachments(prev => [...prev, {
+                          id: String(Date.now() + Math.random()),
+                          name: f.name,
+                          size: f.size < 1024 ? `${f.size} B` : f.size < 1048576 ? `${(f.size / 1024).toFixed(1)} KB` : `${(f.size / 1048576).toFixed(1)} MB`,
+                          addedAt: new Date().toLocaleDateString(),
+                        }]);
+                      });
+                      toast({ title: `${files.length} file(s) attached` });
+                      e.target.value = "";
+                    }}
+                  />
+
+                  {/* Show added reservations */}
+                  {reservations.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border space-y-2">
+                      {reservations.map(r => (
+                        <div key={r.id} className="flex items-center justify-between bg-card rounded-lg border border-border/60 p-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                              {r.type === "Flight" && <Plane className="w-4 h-4" />}
+                              {r.type === "Lodging" && <Hotel className="w-4 h-4" />}
+                              {r.type === "Rental car" && <Car className="w-4 h-4" />}
+                              {r.type === "Restaurant" && <UtensilsCrossed className="w-4 h-4" />}
+                              {r.type === "Other" && <FileText className="w-4 h-4" />}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-foreground truncate">{r.title}</p>
+                              <p className="text-[10px] text-muted-foreground truncate">{r.type} • {r.date}{r.confirmationNumber ? ` • #${r.confirmationNumber}` : ""}</p>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => {
+                            setReservations(prev => prev.filter(x => x.id !== r.id));
+                            toast({ title: "Reservation removed" });
+                          }}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Show added attachments */}
+                  {attachments.length > 0 && (
+                    <div className={`${reservations.length > 0 ? "mt-2" : "mt-3 pt-3 border-t border-border"} space-y-2`}>
+                      {attachments.map(a => (
+                        <div key={a.id} className="flex items-center justify-between bg-card rounded-lg border border-border/60 p-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                              <Paperclip className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-foreground truncate">{a.name}</p>
+                              <p className="text-[10px] text-muted-foreground">{a.size} • {a.addedAt}</p>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => {
+                            setAttachments(prev => prev.filter(x => x.id !== a.id));
+                            toast({ title: "Attachment removed" });
+                          }}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => scrollToSection("budget")} className="w-full sm:w-[180px] bg-muted/40 rounded-xl border border-border p-4 text-left hover:bg-muted/60 transition-colors">
                   <h3 className="text-sm font-bold text-foreground mb-1">Budgeting</h3>
