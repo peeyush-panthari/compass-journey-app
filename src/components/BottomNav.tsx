@@ -9,6 +9,7 @@ const BottomNav = () => {
   // Hide on chat page (has its own input bar) and auth pages
   const hiddenPaths = ["/chat", "/login", "/signup"];
   if (hiddenPaths.includes(location.pathname)) return null;
+  if (!user && location.pathname === "/") return null;
 
   const navItems = [
     { to: "/", icon: Home, label: "Home" },
