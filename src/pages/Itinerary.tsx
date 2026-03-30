@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronRight, MoreHorizontal, StickyNote, MapPinned, Compass, FileText,
   Hotel, Car, UtensilsCrossed, Paperclip, DollarSign, Navigation, ThumbsUp, ThumbsDown,
   Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar, Pencil, List,
-  Settings, Users, BarChart3
+  Settings, Users, BarChart3, TrainFront, Bus, Ship, Anchor
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import AddActivityDialog, { type PlaceResult } from "@/components/AddActivityDialog";
@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 
 type Activity = ActivityDetail;
@@ -78,7 +79,7 @@ let nextId = 100;
 
 interface Reservation {
   id: string;
-  type: "Flight" | "Lodging" | "Rental car" | "Restaurant" | "Other";
+  type: "Flight" | "Lodging" | "Rental car" | "Restaurant" | "Train" | "Bus" | "Ferry" | "Cruise" | "Other";
   title: string;
   details: string;
   date: string;
@@ -129,6 +130,7 @@ const Itinerary = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const mainRef = useRef<HTMLDivElement>(null);
+  const [otherPopoverOpen, setOtherPopoverOpen] = useState(false);
   let reservationNextId = reservations.length + 1;
 
   const cities = [...new Set(itinerary.map(d => d.city))];
@@ -341,28 +343,69 @@ const Itinerary = () => {
                   <h3 className="text-sm font-bold text-foreground mb-3">Reservations and attachments</h3>
                   <div className="flex flex-wrap gap-4">
                     {([
-                      { icon: Plane, label: "Flight" as const },
-                      { icon: Hotel, label: "Lodging" as const },
-                      { icon: Car, label: "Rental car" as const },
-                      { icon: UtensilsCrossed, label: "Restaurant" as const },
-                      { icon: Paperclip, label: "Attachment" as const },
-                      { icon: MoreHorizontal, label: "Other" as const },
+                      { icon: Plane, label: "Flight" },
+                      { icon: Hotel, label: "Lodging" },
+                      { icon: Car, label: "Rental car" },
+                      { icon: UtensilsCrossed, label: "Restaurant" },
                     ] as const).map(({ icon: Icon, label }) => (
                       <button
                         key={label}
-                        onClick={() => {
-                          if (label === "Attachment") {
-                            fileInputRef.current?.click();
-                          } else {
-                            setReservationDialogOpen(label as Reservation["type"]);
-                          }
-                        }}
-                        className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={() => setReservationDialogOpen(label as Reservation["type"])}
+                        className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors relative"
                       >
                         <Icon className="w-5 h-5" />
                         <span className="text-[10px]">{label}</span>
+                        {reservations.filter(r => r.type === label).length > 0 && (
+                          <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full bg-muted text-[9px] font-bold text-foreground flex items-center justify-center">
+                            {reservations.filter(r => r.type === label).length}
+                          </span>
+                        )}
                       </button>
                     ))}
+
+                    {/* Other dropdown with Train, Bus, Ferry, Cruise */}
+                    <Popover open={otherPopoverOpen} onOpenChange={setOtherPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <button className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                          <MoreHorizontal className="w-5 h-5" />
+                          <span className="text-[10px]">Other</span>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-1" align="start">
+                        {([
+                          { icon: TrainFront, label: "Train" },
+                          { icon: Bus, label: "Bus" },
+                          { icon: Ship, label: "Ferry" },
+                          { icon: Anchor, label: "Cruise" },
+                        ] as const).map(({ icon: Icon, label }) => (
+                          <button
+                            key={label}
+                            onClick={() => {
+                              setReservationDialogOpen(label as Reservation["type"]);
+                              setOtherPopoverOpen(false);
+                            }}
+                            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                          >
+                            <Icon className="w-4 h-4 text-muted-foreground" />
+                            {label}
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Attachment */}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors relative"
+                    >
+                      <Paperclip className="w-5 h-5" />
+                      <span className="text-[10px]">Attachment</span>
+                      {attachments.length > 0 && (
+                        <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full bg-muted text-[9px] font-bold text-foreground flex items-center justify-center">
+                          {attachments.length}
+                        </span>
+                      )}
+                    </button>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -396,6 +439,10 @@ const Itinerary = () => {
                               {r.type === "Lodging" && <Hotel className="w-4 h-4" />}
                               {r.type === "Rental car" && <Car className="w-4 h-4" />}
                               {r.type === "Restaurant" && <UtensilsCrossed className="w-4 h-4" />}
+                              {r.type === "Train" && <TrainFront className="w-4 h-4" />}
+                              {r.type === "Bus" && <Bus className="w-4 h-4" />}
+                              {r.type === "Ferry" && <Ship className="w-4 h-4" />}
+                              {r.type === "Cruise" && <Anchor className="w-4 h-4" />}
                               {r.type === "Other" && <FileText className="w-4 h-4" />}
                             </div>
                             <div className="min-w-0">
@@ -908,13 +955,21 @@ const Itinerary = () => {
                 {reservationDialogOpen === "Flight" ? "Flight / Airline" :
                  reservationDialogOpen === "Lodging" ? "Hotel / Property name" :
                  reservationDialogOpen === "Rental car" ? "Rental company" :
-                 reservationDialogOpen === "Restaurant" ? "Restaurant name" : "Title"}
+                 reservationDialogOpen === "Restaurant" ? "Restaurant name" :
+                 reservationDialogOpen === "Train" ? "Train / Operator" :
+                 reservationDialogOpen === "Bus" ? "Bus line / Operator" :
+                 reservationDialogOpen === "Ferry" ? "Ferry / Operator" :
+                 reservationDialogOpen === "Cruise" ? "Cruise line / Ship" : "Title"}
               </label>
               <Input name="res-title" placeholder={
                 reservationDialogOpen === "Flight" ? "e.g. Air France AF1234" :
                 reservationDialogOpen === "Lodging" ? "e.g. Hotel Le Marais" :
                 reservationDialogOpen === "Rental car" ? "e.g. Europcar CDG" :
-                reservationDialogOpen === "Restaurant" ? "e.g. Le Comptoir" : "e.g. Museum tickets"
+                reservationDialogOpen === "Restaurant" ? "e.g. Le Comptoir" :
+                reservationDialogOpen === "Train" ? "e.g. Eurostar 9012" :
+                reservationDialogOpen === "Bus" ? "e.g. FlixBus Paris → Lyon" :
+                reservationDialogOpen === "Ferry" ? "e.g. Dover → Calais" :
+                reservationDialogOpen === "Cruise" ? "e.g. MSC Grandiosa" : "e.g. Museum tickets"
               } className="rounded-xl" required />
             </div>
             <div>
@@ -923,7 +978,11 @@ const Itinerary = () => {
                 reservationDialogOpen === "Flight" ? "CDG → LHR, 10:30 AM" :
                 reservationDialogOpen === "Lodging" ? "Check-in 3 PM, 2 nights" :
                 reservationDialogOpen === "Rental car" ? "Compact, pickup at airport" :
-                reservationDialogOpen === "Restaurant" ? "Reservation for 2, 8 PM" : "Additional details"
+                reservationDialogOpen === "Restaurant" ? "Reservation for 2, 8 PM" :
+                reservationDialogOpen === "Train" ? "Seat 42A, 1st class" :
+                reservationDialogOpen === "Bus" ? "Departure 8:00 AM, Platform 3" :
+                reservationDialogOpen === "Ferry" ? "Vehicle + 2 passengers" :
+                reservationDialogOpen === "Cruise" ? "Cabin B204, 7-night itinerary" : "Additional details"
               } className="rounded-xl" />
             </div>
             <div>
