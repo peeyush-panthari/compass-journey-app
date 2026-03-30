@@ -146,7 +146,7 @@ const Index = () => {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">From AI-generated itineraries to collaborative editing, GlobeGenie handles every detail.</p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {features.map((feature, i) => (
               <motion.div key={feature.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
                 className="group bg-card rounded-2xl p-5 sm:p-6 shadow-card hover:shadow-elevated transition-all duration-500 border border-border/60 hover:border-primary/20 hover:-translate-y-1">
