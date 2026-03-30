@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Download, Share } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import logo from "@/assets/globegenie-logo.png";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -63,7 +62,7 @@ const InstallPrompt = () => {
   return (
     <div className="fixed bottom-20 left-3 right-3 z-[60] md:left-auto md:right-4 md:bottom-4 md:max-w-sm animate-in slide-in-from-bottom-4 fade-in duration-300">
       <div className="bg-card border border-border rounded-2xl shadow-elevated p-4 flex items-start gap-3">
-        <img src={logo} alt="GlobeGenie" className="w-12 h-12 rounded-xl shadow-sm flex-shrink-0" />
+        <img src="/assets/logo.png" alt="GlobeGenie" className="h-10 sm:h-12 w-auto rounded-xl shadow-sm flex-shrink-0 object-contain" />
         <div className="flex-1 min-w-0">
           <p className="font-display font-bold text-sm text-foreground">Install GlobeGenie</p>
           {isIOS ? (

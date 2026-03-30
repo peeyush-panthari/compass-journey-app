@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "@/assets/globegenie-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthDialog from "@/components/AuthDialog";
 
@@ -31,10 +30,7 @@ const Navbar = () => {
     }`}>
       <div className="container mx-auto flex items-center justify-between h-14 sm:h-16 px-4 lg:px-8">
         <Link to="/" className="flex items-center gap-2 group">
-          <img src={logo} alt="GlobeGenie" className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl shadow-sm group-hover:shadow-md transition-shadow" />
-          <span className="text-lg sm:text-xl font-display font-bold tracking-tight text-foreground">
-            GlobeGenie
-          </span>
+          <img src="/assets/logo.png" alt="GlobeGenie" className="h-8 sm:h-10 w-auto object-contain transition-opacity hover:opacity-90" />
         </Link>
 
         <div className="hidden md:flex items-center gap-1">

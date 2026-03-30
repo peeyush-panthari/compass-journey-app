@@ -59,7 +59,10 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetState(); }}>
       <DialogContent className="sm:max-w-md rounded-2xl border-border/60">
-        <DialogHeader>
+        <DialogHeader className="flex flex-col items-center">
+          <div className="mb-4">
+            <img src="/assets/logo.png" alt="GlobeGenie" className="h-12 w-auto object-contain" />
+          </div>
           <DialogTitle className="text-xl font-display font-bold text-center">Sign in to start planning</DialogTitle>
           <p className="text-sm text-muted-foreground text-center">Create an account or sign in to build your AI-powered itinerary</p>
         </DialogHeader>
