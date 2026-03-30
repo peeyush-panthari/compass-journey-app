@@ -439,6 +439,10 @@ const Itinerary = () => {
                               {r.type === "Lodging" && <Hotel className="w-4 h-4" />}
                               {r.type === "Rental car" && <Car className="w-4 h-4" />}
                               {r.type === "Restaurant" && <UtensilsCrossed className="w-4 h-4" />}
+                              {r.type === "Train" && <TrainFront className="w-4 h-4" />}
+                              {r.type === "Bus" && <Bus className="w-4 h-4" />}
+                              {r.type === "Ferry" && <Ship className="w-4 h-4" />}
+                              {r.type === "Cruise" && <Anchor className="w-4 h-4" />}
                               {r.type === "Other" && <FileText className="w-4 h-4" />}
                             </div>
                             <div className="min-w-0">
