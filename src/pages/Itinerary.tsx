@@ -120,11 +120,13 @@ const Itinerary = () => {
     // but the useEffect below is the main guard.
   });
 
-  useEffect(() => {
-    if (!loading && !user) navigate("/login");
+  useEffect(() => { 
+    const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
+    if (!loading && !user && !isCallback) navigate("/login"); 
   }, [user, loading, navigate]);
 
-  if (loading || !user) return null;
+  if (loading || (!user && (window.location.hash.includes('access_token=') || window.location.search.includes('code=')))) return null;
+  if (!user) return null;
   const [itinerary, setItinerary] = useState<Day[]>(initialItinerary);
   const [shareEmail, setShareEmail] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);

@@ -47,13 +47,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      syncUser(session);
-      setLoading(false);
+    // Check if we're in the middle of a redirect flow.
+    const isAuthCallback = window.location.hash.includes('access_token=') || 
+                          window.location.search.includes('code=');
+    
+    // Maintain a reference to whether onAuthStateChange has seen a definitive event.
+    let eventReceived = false;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth event:", event, !!session);
+      
+      if (session) {
+        await syncUser(session);
+        setLoading(false);
+        eventReceived = true;
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setLoading(false);
+        eventReceived = true;
+      } else if (event === 'INITIAL_SESSION') {
+        // Only finish loading on INITIAL_SESSION if there's no callback pending.
+        if (!isAuthCallback) {
+          await syncUser(session);
+          setLoading(false);
+          eventReceived = true;
+        }
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncUser(session);
+    // Fallback/Init: Explicitly get session once
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        syncUser(session).finally(() => setLoading(false));
+      } else if (!isAuthCallback && !eventReceived) {
+        // If no user and no callback is pending, we can stop loading.
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();

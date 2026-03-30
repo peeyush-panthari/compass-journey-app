@@ -62,10 +62,12 @@ const PlanTrip = () => {
   const navigate = useNavigate();
 
   useEffect(() => { 
-    if (!loading && !user) navigate("/login"); 
+    const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
+    if (!loading && !user && !isCallback) navigate("/login"); 
   }, [user, loading, navigate]);
 
-  if (loading || !user) return null;
+  if (loading || (!user && (window.location.hash.includes('access_token=') || window.location.search.includes('code=')))) return null;
+  if (!user) return null;
   const [step, setStep] = useState(1);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);

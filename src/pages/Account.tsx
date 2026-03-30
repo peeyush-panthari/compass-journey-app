@@ -147,10 +147,12 @@ const Account = () => {
   const [guests, setGuests] = useState(2);
 
   useEffect(() => { 
-    if (!loading && !user) navigate("/login"); 
+    const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
+    if (!loading && !user && !isCallback) navigate("/login"); 
   }, [user, loading, navigate]);
 
-  if (loading || !user) return null;
+  if (loading || (!user && (window.location.hash.includes('access_token=') || window.location.search.includes('code=')))) return null;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-background">
