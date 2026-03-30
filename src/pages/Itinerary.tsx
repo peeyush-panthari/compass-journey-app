@@ -207,12 +207,491 @@ const Itinerary = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="flex pt-14 sm:pt-16 safe-top" style={{ minHeight: "calc(100vh - 0px)" }}>
+      {/* MOBILE / TABLET TAB BAR (< md) */}
+      <div className="md:hidden">
+        {/* Hero */}
+        <div className="relative h-48 overflow-hidden bg-muted pt-14">
+          <img src="https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&h=400&fit=crop" alt="Trip" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        </div>
+        {/* Trip header card overlapping hero */}
+        <div className="px-4 -mt-20 relative z-10">
+          <div className="bg-card rounded-xl border border-border shadow-card p-4 mb-0">
+            <h1 className="text-xl font-display font-bold text-foreground">{tripTitle}</h1>
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="w-4 h-4" />
+                <span>{dateRange}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">P</div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="default" className="rounded-full text-xs h-8 px-4 font-semibold">Share</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader><DialogTitle className="font-display">Share Itinerary</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="flex gap-2">
+                        <Input placeholder="Email" value={shareEmail} onChange={e => setShareEmail(e.target.value)} className="rounded-xl" />
+                        <Button onClick={handleShare} className="rounded-xl bg-primary text-primary-foreground">Send</Button>
+                      </div>
+                      <Button variant="outline" className="w-full rounded-xl" onClick={copyLink}>
+                        {linkCopied ? <><Check className="w-4 h-4 mr-2" /> Copied!</> : <><Copy className="w-4 h-4 mr-2" /> Copy Link</>}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                <button className="text-muted-foreground"><MoreHorizontal className="w-5 h-5" /></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="sticky top-14 z-30 bg-background border-b border-border">
+          <div className="flex overflow-x-auto scrollbar-hide px-4">
+            {([
+              { key: "overview" as const, label: "Overview" },
+              { key: "itinerary" as const, label: "Itinerary" },
+              { key: "explore" as const, label: "Explore" },
+              { key: "budget" as const, label: "$" },
+              { key: "journal" as const, label: "Journal" },
+            ]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setMobileTab(tab.key)}
+                className={`shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  mobileTab === tab.key
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile tab content */}
+        <div className="px-4 pb-24 pt-4">
+          {/* OVERVIEW TAB */}
+          {mobileTab === "overview" && (
+            <div className="space-y-6">
+              {/* Reservations and attachments */}
+              <div>
+                <h3 className="text-sm font-bold text-foreground mb-3">Reservations and attachments</h3>
+                <div className="flex items-center gap-6">
+                  {([
+                    { icon: Plane, label: "Flight" },
+                    { icon: Hotel, label: "Lodging" },
+                    { icon: Car, label: "Rental car" },
+                    { icon: Paperclip, label: "Attachment" },
+                  ] as const).map(({ icon: Icon, label }) => (
+                    <button
+                      key={label}
+                      onClick={() => {
+                        if (label === "Attachment") fileInputRef.current?.click();
+                        else setReservationDialogOpen(label as Reservation["type"]);
+                      }}
+                      className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors relative"
+                    >
+                      <Icon className="w-6 h-6" />
+                      <span className="text-[10px]">{label}</span>
+                      {label !== "Attachment" && reservations.filter(r => r.type === label).length > 0 && (
+                        <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full bg-muted text-[9px] font-bold text-foreground flex items-center justify-center">
+                          {reservations.filter(r => r.type === label).length}
+                        </span>
+                      )}
+                      {label === "Attachment" && attachments.length > 0 && (
+                        <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full bg-muted text-[9px] font-bold text-foreground flex items-center justify-center">
+                          {attachments.length}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                  <Popover open={otherPopoverOpen} onOpenChange={setOtherPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <button className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                        <MoreHorizontal className="w-6 h-6" />
+                        <span className="text-[10px]">Other</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-1" align="start">
+                      {([
+                        { icon: UtensilsCrossed, label: "Restaurant" },
+                        { icon: TrainFront, label: "Train" },
+                        { icon: Bus, label: "Bus" },
+                        { icon: Ship, label: "Ferry" },
+                        { icon: Anchor, label: "Cruise" },
+                      ] as const).map(({ icon: Icon, label }) => (
+                        <button key={label} onClick={() => { setReservationDialogOpen(label as Reservation["type"]); setOtherPopoverOpen(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors">
+                          <Icon className="w-4 h-4 text-muted-foreground" /> {label}
+                        </button>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Reservation items */}
+                {reservations.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {reservations.map(r => (
+                      <div key={r.id} className="flex items-center justify-between bg-card rounded-lg border border-border/60 p-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                            {r.type === "Flight" && <Plane className="w-4 h-4" />}
+                            {r.type === "Lodging" && <Hotel className="w-4 h-4" />}
+                            {r.type === "Rental car" && <Car className="w-4 h-4" />}
+                            {r.type === "Restaurant" && <UtensilsCrossed className="w-4 h-4" />}
+                            {r.type === "Train" && <TrainFront className="w-4 h-4" />}
+                            {r.type === "Bus" && <Bus className="w-4 h-4" />}
+                            {r.type === "Ferry" && <Ship className="w-4 h-4" />}
+                            {r.type === "Cruise" && <Anchor className="w-4 h-4" />}
+                            {r.type === "Other" && <FileText className="w-4 h-4" />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate">{r.title}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{r.type} • {r.date}</p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => { setReservations(prev => prev.filter(x => x.id !== r.id)); toast({ title: "Reservation removed" }); }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Notes */}
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex items-center gap-2 mb-2">
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-xl font-display font-bold text-foreground">Notes</h2>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Textarea
+                    placeholder="Write or paste general notes here, e.g. how to get around, local tips, reminders"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="min-h-[80px] rounded-xl border-border/60 resize-none text-sm"
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Places to visit */}
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex items-center gap-2 mb-2">
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="text-xl font-display font-bold text-foreground">Places to visit</h2>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-3">
+                    {tripPlaces.map((place, i) => (
+                      <div key={place.name} className="bg-muted/30 rounded-xl p-4 flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">{i + 1}</div>
+                        <div>
+                          <h4 className="text-sm font-bold text-foreground">{place.name}</h4>
+                          <Link to={place.exploreLink} className="text-xs text-primary font-medium hover:underline">Explore {place.name}</Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 mt-4 bg-muted/20 rounded-xl border border-border/50 px-3 py-2.5">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Add a place" className="border-0 shadow-none h-7 bg-transparent focus-visible:ring-0 text-sm p-0" />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          )}
+
+          {/* ITINERARY TAB */}
+          {mobileTab === "itinerary" && (
+            <div>
+              {/* Day pills - horizontal scroll */}
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-4 -mx-1 px-1">
+                <button className="shrink-0 w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                  <Calendar className="w-5 h-5" />
+                </button>
+                {itinerary.map((day, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setMobileSelectedDay(i)}
+                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      mobileSelectedDay === i
+                        ? "bg-foreground text-background"
+                        : "bg-muted text-foreground"
+                    }`}
+                  >
+                    {day.date}
+                  </button>
+                ))}
+              </div>
+
+              {/* Selected day content */}
+              {itinerary[mobileSelectedDay] && (() => {
+                const day = itinerary[mobileSelectedDay];
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-2xl font-display font-bold text-foreground">{day.date}</h2>
+                      <button className="text-muted-foreground"><MoreHorizontal className="w-5 h-5" /></button>
+                    </div>
+
+                    {/* Hotel banner */}
+                    {mobileSelectedDay === 0 && showHotelBanner && (
+                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-4 flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2">
+                          <Hotel className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm text-foreground">Looks like you don't have lodging for Apr 14 – 18 yet. <Link to="/hotels" className="text-primary font-semibold hover:underline">Book hotels</Link></p>
+                          </div>
+                        </div>
+                        <button onClick={() => setShowHotelBanner(false)} className="text-muted-foreground shrink-0"><X className="w-4 h-4" /></button>
+                      </div>
+                    )}
+
+                    {/* Activities */}
+                    <DragDropContext onDragEnd={onDragEnd}>
+                      <Droppable droppableId={String(mobileSelectedDay)}>
+                        {(provided) => (
+                          <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1">
+                            {day.activities.map((activity, actIdx) => (
+                              <Draggable key={activity.id} draggableId={activity.id} index={actIdx}>
+                                {(prov, snap) => (
+                                  <div ref={prov.innerRef} {...prov.draggableProps}>
+                                    {/* Travel info */}
+                                    {actIdx > 0 && day.activities[actIdx].travelTimeFromPrevious && (
+                                      <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground pl-2">
+                                        <Navigation className="w-3.5 h-3.5" />
+                                        <span>{activity.travelTimeFromPrevious}</span>
+                                        <span>•</span>
+                                        <button className="text-primary hover:underline">Directions</button>
+                                      </div>
+                                    )}
+
+                                    <div className={`flex items-start gap-3 p-3 bg-card border border-border/60 rounded-xl mb-1 ${snap.isDragging ? "shadow-elevated ring-2 ring-primary/30" : ""}`}>
+                                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0 mt-0.5">
+                                        {actIdx + 1}
+                                      </div>
+                                      <button onClick={() => setSelectedActivity(activity)} className="flex-1 min-w-0 text-left">
+                                        <h4 className="font-semibold text-foreground text-sm">{activity.name}</h4>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                          Open {activity.openTime}–{activity.closeTime} • {activity.description?.slice(0, 80)}…
+                                        </p>
+                                      </button>
+                                      {activity.photoUrl && (
+                                        <img src={activity.photoUrl} alt={activity.name} className="w-16 h-16 rounded-lg object-cover shrink-0" />
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
+
+                    <Button variant="outline" size="sm" className="w-full rounded-xl border-dashed text-muted-foreground mt-4" onClick={() => setAddActivityDayIndex(mobileSelectedDay)}>
+                      <Plus className="w-4 h-4 mr-1" /> Add Activity
+                    </Button>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* EXPLORE TAB */}
+          {mobileTab === "explore" && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 bg-muted/50 rounded-xl border border-border px-3 py-2.5">
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <Input placeholder={cities[0] || "Search"} className="border-0 shadow-none h-7 bg-transparent focus-visible:ring-0 text-sm p-0" />
+              </div>
+
+              {/* Stops along route */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-foreground">Stops along your route</h3>
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                  {tripPlaces.map((place, i) => (
+                    <div key={place.name} className="min-w-[150px] h-[130px] rounded-xl overflow-hidden relative shrink-0">
+                      <img src={exploreCards[i]?.image || exploreCards[0].image} alt={place.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-3 left-3">
+                        {i === 0 && <span className="text-[10px] bg-muted/80 text-foreground rounded-full px-2 py-0.5 mb-1 inline-block">Viewing now</span>}
+                        <p className="text-white font-bold text-sm">{place.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Categories */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-foreground">Categories</h3>
+                  <Link to="/explore" className="text-sm text-muted-foreground hover:text-foreground">See all</Link>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {["Restaurants", "Attractions", "Cafes", "Photo spots"].map(cat => (
+                    <Link key={cat} to="/explore" className="flex items-center gap-2.5 bg-muted/40 rounded-xl px-3 py-3 text-sm font-medium text-foreground hover:bg-muted/60 transition-colors">
+                      {cat === "Restaurants" && <UtensilsCrossed className="w-5 h-5 text-muted-foreground" />}
+                      {cat === "Attractions" && <MapPin className="w-5 h-5 text-muted-foreground" />}
+                      {cat === "Cafes" && <Star className="w-5 h-5 text-muted-foreground" />}
+                      {cat === "Photo spots" && <Compass className="w-5 h-5 text-muted-foreground" />}
+                      {cat}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Explore cards */}
+              <div className="space-y-3">
+                {exploreCards.map((card, i) => (
+                  <Link key={i} to="/explore" className="flex items-center gap-3 hover:bg-muted/30 rounded-xl p-1 transition-colors">
+                    <img src={card.image} alt={card.title} className="w-20 h-20 rounded-lg object-cover shrink-0" />
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-foreground line-clamp-2">{card.title}</h4>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{card.description}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* BUDGET TAB */}
+          {mobileTab === "budget" && (
+            <div>
+              {/* Budget hero */}
+              <div className="bg-[hsl(var(--primary)/0.9)] rounded-xl p-6 text-center mb-6 -mx-4 -mt-4 rounded-t-none">
+                <p className="text-4xl font-display font-bold text-primary-foreground mb-1">
+                  ₹{expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}
+                </p>
+                <button onClick={() => setSetBudgetOpen(true)} className="text-sm text-primary-foreground/80 hover:text-primary-foreground underline">
+                  Set a budget
+                </button>
+                {budget !== null && (
+                  <div className="mt-3">
+                    <div className="w-full h-2 bg-primary-foreground/20 rounded-full overflow-hidden">
+                      <div className="h-full bg-primary-foreground rounded-full transition-all" style={{ width: `${Math.min(100, (expenses.reduce((s, e) => s + e.amount, 0) / budget) * 100)}%` }} />
+                    </div>
+                    <p className="text-xs text-primary-foreground/70 mt-1">${expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)} / ${budget.toFixed(2)}</p>
+                  </div>
+                )}
+                <div className="flex items-center justify-center gap-3 mt-4">
+                  <button className="w-9 h-9 rounded-full border border-primary-foreground/30 flex items-center justify-center text-primary-foreground">
+                    <UserPlus className="w-4 h-4" />
+                  </button>
+                  <Button variant="outline" size="sm" className="rounded-full border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 text-xs">
+                    <List className="w-3.5 h-3.5 mr-1" /> Group balances
+                  </Button>
+                  <Button variant="outline" size="sm" className="rounded-full border-primary-foreground/30 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 text-xs">
+                    <BarChart3 className="w-3.5 h-3.5 mr-1" /> View breakdown
+                  </Button>
+                </div>
+              </div>
+
+              {/* Expenses */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xl font-display font-bold text-foreground">Expenses</h3>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <span className="font-medium">Sort:</span>
+                    <select value={expenseSortBy} onChange={(e) => setExpenseSortBy(e.target.value as any)} className="bg-transparent text-xs text-foreground border-0 outline-none font-medium">
+                      <option value="newest">Date (newest first)</option>
+                      <option value="oldest">Date (oldest first)</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                {expenses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8">You haven't added any expenses yet. Track your spending and split costs by adding an expense.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {[...expenses]
+                      .sort((a, b) => expenseSortBy === "newest" ? b.id.localeCompare(a.id) : a.id.localeCompare(b.id))
+                      .map(exp => (
+                      <div key={exp.id} className="flex items-center justify-between bg-card border border-border rounded-xl p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+                            <DollarSign className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{exp.category}</p>
+                            <p className="text-[10px] text-muted-foreground">{exp.date} • {exp.paidBy} • {exp.split}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-foreground">{exp.currency}{exp.amount.toFixed(2)}</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => { setExpenses(prev => prev.filter(e => e.id !== exp.id)); toast({ title: "Expense removed" }); }}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Fixed add expense button */}
+              <div className="fixed bottom-20 left-0 right-0 flex justify-center z-30">
+                <Button onClick={() => setAddExpenseOpen(true)} className="rounded-full bg-primary text-primary-foreground font-semibold shadow-lg px-6 h-11">
+                  <Plus className="w-4 h-4 mr-1" /> Add expense
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* JOURNAL TAB */}
+          {mobileTab === "journal" && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-display font-bold text-foreground">Journal</h2>
+              <Textarea
+                placeholder="Write about your trip experiences, memories, and moments..."
+                className="min-h-[200px] rounded-xl border-border/60 resize-none text-sm"
+              />
+              <p className="text-xs text-muted-foreground text-center">Your journal entries will appear here. Start writing to capture your travel memories!</p>
+            </div>
+          )}
+        </div>
+
+        {/* Hidden file input for attachments */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          multiple
+          onChange={(e) => {
+            const files = e.target.files;
+            if (!files) return;
+            Array.from(files).forEach(f => {
+              setAttachments(prev => [...prev, {
+                id: String(Date.now() + Math.random()),
+                name: f.name,
+                size: f.size < 1024 ? `${f.size} B` : f.size < 1048576 ? `${(f.size / 1024).toFixed(1)} KB` : `${(f.size / 1048576).toFixed(1)} MB`,
+                addedAt: new Date().toLocaleDateString(),
+              }]);
+            });
+            toast({ title: `${files.length} file(s) attached` });
+            e.target.value = "";
+          }}
+        />
+      </div>
+
+      {/* DESKTOP LAYOUT (md+) */}
+      <div className="hidden md:flex pt-14 sm:pt-16 safe-top" style={{ minHeight: "calc(100vh - 0px)" }}>
         {/* Sidebar */}
         {sidebarOpen && (
-          <aside className="w-[220px] shrink-0 border-r border-border bg-card overflow-y-auto sticky top-14 sm:top-16 hidden md:block" style={{ height: "calc(100vh - 56px)" }}>
+          <aside className="w-[220px] shrink-0 border-r border-border bg-card overflow-y-auto sticky top-14 sm:top-16" style={{ height: "calc(100vh - 56px)" }}>
             <div className="p-4">
-              {/* Overview */}
               <Collapsible defaultOpen>
                 <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left mb-1">
                   <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
@@ -229,7 +708,6 @@ const Itinerary = () => {
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Itinerary nav */}
               <Collapsible defaultOpen className="mt-4">
                 <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left mb-1">
                   <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
@@ -247,7 +725,6 @@ const Itinerary = () => {
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Budget nav */}
               <Collapsible defaultOpen className="mt-4">
                 <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left mb-1">
                   <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
@@ -271,23 +748,20 @@ const Itinerary = () => {
           </aside>
         )}
 
-        {/* Main Content */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-24 md:pb-16">
-          {/* Show sidebar button */}
+        <main ref={mainRef} className="flex-1 overflow-y-auto pb-16">
           {!sidebarOpen && (
-            <button onClick={() => setSidebarOpen(true)} className="hidden md:flex fixed left-2 top-20 z-40 items-center gap-1 text-xs bg-card border border-border rounded-lg px-2 py-1.5 text-muted-foreground hover:text-foreground shadow-sm">
+            <button onClick={() => setSidebarOpen(true)} className="fixed left-2 top-20 z-40 flex items-center gap-1 text-xs bg-card border border-border rounded-lg px-2 py-1.5 text-muted-foreground hover:text-foreground shadow-sm">
               <PanelLeft className="w-3.5 h-3.5" />
             </button>
           )}
 
           {/* Hero */}
-          <div className="relative h-48 sm:h-56 overflow-hidden bg-muted">
+          <div className="relative h-56 overflow-hidden bg-muted">
             <img src="https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&h=400&fit=crop" alt="Trip" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
           </div>
 
           <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-16 relative z-10">
-            {/* Trip Header Card */}
             <div className="bg-card rounded-xl border border-border shadow-card p-5 sm:p-6 mb-8">
               <h1 className="text-2xl sm:text-3xl font-display font-bold text-foreground">{tripTitle}</h1>
               <div className="flex items-center justify-between mt-3 flex-wrap gap-3">
@@ -367,7 +841,6 @@ const Itinerary = () => {
                       </button>
                     ))}
 
-                    {/* Other dropdown with Train, Bus, Ferry, Cruise */}
                     <Popover open={otherPopoverOpen} onOpenChange={setOtherPopoverOpen}>
                       <PopoverTrigger asChild>
                         <button className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
@@ -382,26 +855,14 @@ const Itinerary = () => {
                           { icon: Ship, label: "Ferry" },
                           { icon: Anchor, label: "Cruise" },
                         ] as const).map(({ icon: Icon, label }) => (
-                          <button
-                            key={label}
-                            onClick={() => {
-                              setReservationDialogOpen(label as Reservation["type"]);
-                              setOtherPopoverOpen(false);
-                            }}
-                            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
-                          >
-                            <Icon className="w-4 h-4 text-muted-foreground" />
-                            {label}
+                          <button key={label} onClick={() => { setReservationDialogOpen(label as Reservation["type"]); setOtherPopoverOpen(false); }} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors">
+                            <Icon className="w-4 h-4 text-muted-foreground" /> {label}
                           </button>
                         ))}
                       </PopoverContent>
                     </Popover>
 
-                    {/* Attachment */}
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors relative"
-                    >
+                    <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors relative">
                       <Paperclip className="w-5 h-5" />
                       <span className="text-[10px]">Attachment</span>
                       {attachments.length > 0 && (
@@ -432,7 +893,6 @@ const Itinerary = () => {
                     }}
                   />
 
-                  {/* Show added reservations */}
                   {reservations.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-border space-y-2">
                       {reservations.map(r => (
@@ -454,10 +914,7 @@ const Itinerary = () => {
                               <p className="text-[10px] text-muted-foreground truncate">{r.type} • {r.date}{r.confirmationNumber ? ` • #${r.confirmationNumber}` : ""}</p>
                             </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => {
-                            setReservations(prev => prev.filter(x => x.id !== r.id));
-                            toast({ title: "Reservation removed" });
-                          }}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => { setReservations(prev => prev.filter(x => x.id !== r.id)); toast({ title: "Reservation removed" }); }}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
@@ -465,7 +922,6 @@ const Itinerary = () => {
                     </div>
                   )}
 
-                  {/* Show added attachments */}
                   {attachments.length > 0 && (
                     <div className={`${reservations.length > 0 ? "mt-2" : "mt-3 pt-3 border-t border-border"} space-y-2`}>
                       {attachments.map(a => (
@@ -479,10 +935,7 @@ const Itinerary = () => {
                               <p className="text-[10px] text-muted-foreground">{a.size} • {a.addedAt}</p>
                             </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => {
-                            setAttachments(prev => prev.filter(x => x.id !== a.id));
-                            toast({ title: "Attachment removed" });
-                          }}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => { setAttachments(prev => prev.filter(x => x.id !== a.id)); toast({ title: "Attachment removed" }); }}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
@@ -541,14 +994,10 @@ const Itinerary = () => {
                       </div>
                     ))}
                   </div>
-
-                  {/* Add a place */}
                   <div className="flex items-center gap-2 mt-4 bg-muted/20 rounded-xl border border-border/50 px-3 py-2.5">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
                     <Input placeholder="Add a place" className="border-0 shadow-none h-7 bg-transparent focus-visible:ring-0 text-sm p-0" />
                   </div>
-
-                  {/* Recommended */}
                   <Collapsible className="mt-4">
                     <CollapsibleTrigger className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
                       <ChevronRight className="w-3.5 h-3.5" /> Recommended places
@@ -624,7 +1073,6 @@ const Itinerary = () => {
                         </div>
                       )}
 
-                      {/* Need a place to stay banner */}
                       {dayIndex === 0 && showHotelBanner && (
                         <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-4 flex items-center justify-between gap-4">
                           <div>
@@ -640,7 +1088,6 @@ const Itinerary = () => {
                         </div>
                       )}
 
-                      {/* Day header */}
                       <div className="border-b border-border py-3">
                         <div className="flex items-center justify-between">
                           <button onClick={() => toggleDay(dayIndex)} className="flex items-center gap-2 text-left">
@@ -658,7 +1105,6 @@ const Itinerary = () => {
                         </div>
                       </div>
 
-                      {/* Expanded day content */}
                       {isExpanded && (
                         <Droppable droppableId={String(dayIndex)}>
                           {(provided) => (
@@ -667,7 +1113,6 @@ const Itinerary = () => {
                                 <Draggable key={activity.id} draggableId={activity.id} index={actIdx}>
                                   {(prov, snap) => (
                                     <div ref={prov.innerRef} {...prov.draggableProps} className={`rounded-xl transition-all ${snap.isDragging ? "bg-card shadow-elevated ring-2 ring-primary/30" : ""}`}>
-                                      {/* Activity row */}
                                       <div className="flex items-start gap-3 p-3 bg-card border border-border/60 rounded-xl hover:shadow-card transition-shadow mb-1">
                                         <div {...prov.dragHandleProps} className="mt-1 text-muted-foreground/40 hover:text-muted-foreground cursor-grab shrink-0">
                                           <GripVertical className="w-4 h-4" />
@@ -692,7 +1137,6 @@ const Itinerary = () => {
                                         </Button>
                                       </div>
 
-                                      {/* Travel info between activities */}
                                       {actIdx < day.activities.length - 1 && activity.travelTimeFromPrevious && (
                                         <div className="flex items-center gap-2 pl-14 py-1 text-[10px] text-muted-foreground">
                                           <Navigation className="w-3 h-3" />
@@ -736,7 +1180,6 @@ const Itinerary = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                  {/* Budget summary */}
                   <div className="flex-1 bg-muted/40 rounded-xl border border-border p-5">
                     <p className="text-3xl font-display font-bold text-foreground mb-3">
                       ${expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}
@@ -761,7 +1204,6 @@ const Itinerary = () => {
                       </div>
                     )}
                   </div>
-                  {/* Actions */}
                   <div className="w-full sm:w-[200px] space-y-2">
                     <button className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-sm text-foreground">
                       <BarChart3 className="w-4 h-4 text-muted-foreground" /> View breakdown
@@ -775,7 +1217,6 @@ const Itinerary = () => {
                   </div>
                 </div>
 
-                {/* Expenses list */}
                 <Collapsible defaultOpen>
                   <div className="flex items-center justify-between mb-3">
                     <CollapsibleTrigger className="flex items-center gap-2">
