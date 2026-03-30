@@ -16,42 +16,60 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const { signup } = useAuth();
+  const { signInWithGoogle, signInWithPhone, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const DEMO_PHONE = "123456789";
-  const DEMO_OTP = "0987";
-
-  const handleGoogleSignup = () => {
-    toast({ title: "Google Sign-In", description: "Google SSO will be available once the backend is connected." });
+  const handleGoogleSignup = async () => {
+    try {
+      const { success, error } = await signInWithGoogle();
+      if (!success) {
+        toast({ 
+          title: "Login Failed", 
+          description: error || "Could not connect to Google. Please try again.", 
+          variant: "destructive" 
+        });
+      }
+    } catch (err: any) {
+      toast({ 
+        title: "Error", 
+        description: "An unexpected error occurred.", 
+        variant: "destructive" 
+      });
+    }
   };
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone || phone.length < 6) {
       toast({ title: "Invalid number", description: "Please enter a valid mobile number.", variant: "destructive" });
       return;
     }
-    setOtpSent(true);
-    toast({ title: "OTP Sent", description: `A verification code has been sent to ${phone}` });
+    const { success, error } = await signInWithPhone(phone);
+    if (success) {
+      setOtpSent(true);
+      toast({ title: "OTP Sent", description: `A verification code has been sent to ${phone}` });
+    } else {
+      toast({ title: "Error", description: error, variant: "destructive" });
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp || otp.length < 4) {
       toast({ title: "Invalid OTP", description: "Please enter the verification code.", variant: "destructive" });
       return;
     }
-    if (phone.replace(/\D/g, "") !== DEMO_PHONE || otp !== DEMO_OTP) {
-      toast({ title: "Invalid OTP", description: "The verification code is incorrect.", variant: "destructive" });
-      return;
+    
+    const { success, error } = await verifyOtp(phone, otp);
+    if (success) {
+      toast({ title: "Welcome back!", description: "Let's plan your trip!" });
+      onOpenChange(false);
+      resetState();
+      navigate("/account");
+    } else {
+      toast({ title: "Verification Failed", description: error, variant: "destructive" });
     }
-    signup(phone + "@phone.user", "Demo User", "otp-verified");
-    toast({ title: "Welcome!", description: "Let's plan your trip!" });
-    onOpenChange(false);
-    resetState();
-    navigate("/plan");
   };
 
   const resetState = () => { setPhone(""); setOtp(""); setOtpSent(false); };

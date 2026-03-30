@@ -11,31 +11,45 @@ const Login = () => {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const { login } = useAuth();
+  const { signInWithGoogle, signInWithPhone, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleGoogleLogin = () => {
-    toast({ title: "Google Sign-In", description: "Google SSO will be available once the backend is connected." });
+  const handleGoogleLogin = async () => {
+    const { success, error } = await signInWithGoogle();
+    if (!success) {
+      toast({ title: "Login Failed", description: error, variant: "destructive" });
+    }
   };
 
-  const DEMO_PHONE = "123456789";
-  const DEMO_OTP = "0987";
-
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone || phone.length < 6) { toast({ title: "Invalid number", variant: "destructive" }); return; }
-    setOtpSent(true);
-    toast({ title: "OTP Sent", description: `Code sent to ${phone}` });
+    if (!phone || phone.length < 6) { 
+      toast({ title: "Invalid number", description: "Please enter a valid phone number", variant: "destructive" }); 
+      return; 
+    }
+    const { success, error } = await signInWithPhone(phone);
+    if (success) {
+      setOtpSent(true);
+      toast({ title: "OTP Sent", description: `Code sent to ${phone}` });
+    } else {
+      toast({ title: "Error", description: error, variant: "destructive" });
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp || otp.length < 4) { toast({ title: "Invalid OTP", variant: "destructive" }); return; }
-    if (phone.replace(/\D/g, "") !== DEMO_PHONE || otp !== DEMO_OTP) { toast({ title: "Invalid OTP", variant: "destructive" }); return; }
-    login(phone + "@phone.user", "otp-verified");
-    toast({ title: "Welcome!" });
-    navigate("/account");
+    if (!otp || otp.length < 4) { 
+      toast({ title: "Invalid OTP", description: "Please enter the verification code", variant: "destructive" }); 
+      return; 
+    }
+    const { success, error } = await verifyOtp(phone, otp);
+    if (success) {
+      toast({ title: "Welcome back!" });
+      navigate("/account");
+    } else {
+      toast({ title: "Invalid OTP", description: error, variant: "destructive" });
+    }
   };
 
   return (
@@ -44,9 +58,8 @@ const Login = () => {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md relative z-10">
         <div className="bg-card rounded-2xl shadow-elevated p-6 sm:p-8 border border-border/60">
           <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-ocean-gradient flex items-center justify-center shadow-sm"><Globe className="w-5 h-5 text-primary-foreground" /></div>
-              <span className="text-2xl font-display font-bold text-foreground">GlobeGenie</span>
+            <Link to="/" className="inline-flex justify-center mb-6 w-full">
+              <img src="/assets/logo.png" alt="GlobeGenie" className="h-12 w-auto object-contain" />
             </Link>
             <h1 className="text-2xl font-display font-bold text-foreground">Welcome back</h1>
             <p className="text-muted-foreground text-sm mt-1">Sign in to access your itineraries</p>

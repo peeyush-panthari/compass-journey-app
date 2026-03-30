@@ -18,6 +18,8 @@ interface AuthContextType {
   updateProfile: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  signInWithPhone: (phone: string) => Promise<{ success: boolean; error?: string }>;
+  verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -32,7 +34,9 @@ export const useAuth = () => {
       signup: async () => ({ success: false, error: "Not ready" }), 
       updateProfile: async () => ({ success: false, error: "Not ready" }), 
       logout: async () => {},
-      signInWithGoogle: async () => ({ success: false, error: "Not ready" })
+      signInWithGoogle: async () => ({ success: false, error: "Not ready" }),
+      signInWithPhone: async () => ({ success: false, error: "Not ready" }),
+      verifyOtp: async () => ({ success: false, error: "Not ready" })
     } as AuthContextType;
   }
   return ctx;
@@ -107,7 +111,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signInWithGoogle = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google'
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
       });
       if (error) return { success: false, error: error.message };
       return { success: true };
@@ -135,12 +142,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const signInWithPhone = async (phone: string) => {
+    try {
+      // Ensure phone is in E.164 format (+CountryCodeNumber)
+      const formattedPhone = phone.startsWith('+') ? phone : `+${phone.replace(/\D/g, '')}`;
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  const verifyOtp = async (phone: string, token: string) => {
+    try {
+      // Ensure phone is in E.164 format (+CountryCodeNumber)
+      const formattedPhone = phone.startsWith('+') ? phone : `+${phone.replace(/\D/g, '')}`;
+      
+      const { error } = await supabase.auth.verifyOtp({
+        phone: formattedPhone,
+        token,
+        type: 'sms'
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
   const logout = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, updateProfile, logout, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, updateProfile, logout, signInWithGoogle, signInWithPhone, verifyOtp }}>
       {!loading && children}
     </AuthContext.Provider>
   );
