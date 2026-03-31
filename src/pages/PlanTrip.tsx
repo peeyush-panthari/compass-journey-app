@@ -11,6 +11,11 @@ import { cn } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import { countryCityData } from "@/data/destinations";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
+import { generateWithGeminiFallback } from "@/lib/gemini";
+import GeneratingItinerary from "@/components/GeneratingItinerary";
 
 const TOTAL_STEPS = 6;
 
@@ -60,6 +65,7 @@ const budgetOptions = [
 const PlanTrip = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => { 
     const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
@@ -73,7 +79,12 @@ const PlanTrip = () => {
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
   const [countrySearch, setCountrySearch] = useState("");
   const [citySearch, setCitySearch] = useState("");
-  const [startDate, setStartDate] = useState<Date>();
+  const [startDate, setStartDate] = useState<Date>(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  });
+
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [numDays, setNumDays] = useState<number>(7);
   const [companion, setCompanion] = useState("");
@@ -81,6 +92,7 @@ const PlanTrip = () => {
   const [experiences, setExperiences] = useState<string[]>([]);
   const [pace, setPace] = useState("");
   const [budget, setBudget] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const toggleExperience = (id: string) => {
     setExperiences(prev => prev.includes(id) ? prev.filter(e => e !== id) : prev.length < 5 ? [...prev, id] : prev);
@@ -122,8 +134,224 @@ const PlanTrip = () => {
       default: return false;
     }
   };
+  const handleFinish = async () => {
+    setIsGenerating(true);
+    
+    // Emergency loading reset after 120 seconds to prevent the UI from being permanently stuck
+    const emergencyReset = setTimeout(() => {
+      setIsGenerating(false);
+      console.warn("[PlanTrip] Emergency loading reset triggered.");
+    }, 120000);
 
-  const handleFinish = () => navigate("/itinerary");
+    const destination = selectedCities.length > 0 ? selectedCities : selectedCountries;
+    const destinationStr = Array.isArray(destination) ? destination.join(', ') : destination;
+
+    try {
+      console.log("[PlanTrip] Attempting Edge Function generation...");
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      try {
+        const { data: itineraryData, error: functionError } = await supabase.functions.invoke('generate-itinerary', {
+          body: {
+            destination: destinationStr,
+            dates: `${format(startDate, "MMM d")} - ${format(new Date(startDate.getTime() + (numDays - 1) * 86400000), "MMM d, yyyy")} (${numDays} days)`,
+            startDate: startDate.toISOString(),
+            companion,
+            purpose,
+            experiences,
+            pace,
+            budget,
+            userId: user.id
+          },
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (functionError) throw functionError;
+        if (!itineraryData?.tripId && !itineraryData?.days) throw new Error("Incomplete data from Edge Function");
+
+        console.log("[PlanTrip] Edge Function success!");
+        if (itineraryData.tripId) {
+          toast({ title: "✨ Trip Created!", description: `Your ${destinationStr} itinerary is ready.`, variant: "default" });
+          navigate(`/trip?id=${itineraryData.tripId}`);
+          return;
+        }
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        console.warn("[PlanTrip] Edge Function failed or timed out. Falling back to browser-mode Gemini. Error:", err.message);
+      }
+
+      // --- BROWSER FALLBACK MODE (GLOBEGENIE SYNC) ---
+      console.log("[PlanTrip] Starting Direct Browser Generation (GlobeGenie Mode)...");
+      
+      const prompt = `
+      Generate a detailed travel itinerary for a trip to ${destinationStr}.
+      Trip Details:
+      - Duration: ${numDays} days
+      - Start Date: ${startDate.toISOString()}
+      - Traveling with: ${companion}
+      - Purpose: ${purpose}
+      - Pace: ${pace}
+      - Budget: ${budget}
+      - Preferences: ${experiences.join(', ')}
+
+      For every place in the itinerary MUST include:
+      - name: String (Specific name of the place, do NOT club places together. E.g. "Eiffel Tower" not "Eiffel Tower and Champ de Mars")
+      - description: Short description
+      - whyVisit: Why it is worth visiting
+      - openTime: Specific opening time (e.g. "09:00"), strictly output "Not Available" if unknown.
+      - closeTime: Specific closing time (e.g. "18:00"), strictly output "Not Available" if unknown.
+      - duration: Estimated time needed (e.g. "2 hours")
+      - ticketPrice: Price if any (e.g. "$15" or "Free")
+      - bestTimeToVisit: Specific time (e.g. "Early morning" or "Sunset")
+      - travelTimeFromPrevious: Estimated travel time from previous location (e.g. "15 mins walk" or "10 mins taxi")
+      - foodSuggestions: Array of top 3 restaurants or local food to try nearby
+      - hiddenGems: Array of hidden gems or local experiences nearby
+      - photoSpots: Array of the best photo spots at or near this location
+      - restStops: Array of cafes or rest stops nearby
+      - timeOfDay: Strictly one of: 'morning', 'afternoon', 'evening'
+      - sortOrder: Chronological order of activity in the day
+      - googleMapsUrl: Google Maps link if known (else null)
+
+      Constraint 1 (CRITICAL): Ensure the itinerary is GEOGRAPHICALLY OPTIMIZED so that places visited within the same day are close to each other to minimize travel time.
+      Constraint 2 (CRITICAL): A single day MUST cover activities from a SINGLE CITY ONLY. Do not mix cities on the same day.
+      Constraint 3 (CRITICAL): DO NOT club or group 2 distinct places or activities together in a single entry. Each generated activity must be one single physical place.
+
+      Please respond with a valid JSON object matching this schema:
+      {
+        "days": [
+          {
+            "dayNumber": number,
+            "city": "string",
+            "country": "string",
+            "activities": [
+              {
+                "name": "string",
+                "description": "string",
+                "whyVisit": "string",
+                "openTime": "string",
+                "closeTime": "string",
+                "duration": "string",
+                "ticketPrice": "string",
+                "bestTimeToVisit": "string",
+                "travelTimeFromPrevious": "string",
+                "foodSuggestions": ["string"],
+                "hiddenGems": ["string"],
+                "photoSpots": ["string"],
+                "restStops": ["string"],
+                "timeOfDay": "string",
+                "sortOrder": number,
+                "googleMapsUrl": "string"
+              }
+            ]
+          }
+        ]
+      }
+
+      Respond ONLY with the JSON. Do not wrap the JSON in markdown code blocks.
+      `;
+
+      const fallbackController = new AbortController();
+      const fallbackTimeout = setTimeout(() => fallbackController.abort(), 90000);
+      
+      const rawText = await generateWithGeminiFallback(prompt, fallbackController.signal);
+      clearTimeout(fallbackTimeout);
+
+      // GLOBEGENIE-STYLE JSON EXTRACTION
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      const jsonContent = jsonMatch ? jsonMatch[0] : rawText;
+      const itineraryData = JSON.parse(jsonContent);
+
+      if (!itineraryData?.days) throw new Error("AI returned invalid data structure (missing 'days').");
+
+      // PERSISTENCE (Browser Handled)
+      console.log("[PlanTrip] Persisting browser-generated trip...");
+      const { data: trip, error: tripError } = await supabase.from('trips').insert({
+        user_id: user.id,
+        title: `Trip to ${destinationStr}`,
+        countries: Array.isArray(destination) ? destination : [destination],
+        start_date: startDate.toISOString().split('T')[0],
+        num_days: itineraryData.days.length,
+        companion,
+        purpose,
+        experiences,
+        pace,
+        budget_tier: budget,
+        status: 'published'
+      }).select().single();
+
+      if (tripError) {
+        console.warn("[PlanTrip] DB error saving trip, showing transiently:", tripError);
+        navigate("/trip", { state: { transientItinerary: itineraryData.days } });
+      } else {
+        // Bulk insert days
+        const daysToInsert = itineraryData.days.map((day: any, idx: number) => {
+          const dDate = new Date(startDate);
+          dDate.setDate(startDate.getDate() + idx);
+          return {
+            trip_id: trip.id,
+            day_number: day.dayNumber || (idx + 1),
+            date: dDate.toISOString().split('T')[0],
+            city: day.city,
+            country: day.country,
+            sort_order: idx
+          };
+        });
+
+        const { data: dayRecords, error: daysError } = await supabase.from('itinerary_days').insert(daysToInsert).select();
+
+        if (dayRecords) {
+          const activitiesToInsert: any[] = [];
+          itineraryData.days.forEach((day: any, dIdx: number) => {
+            const dayRec = dayRecords.find((r: any) => r.day_number === (day.dayNumber || dIdx + 1));
+            if (dayRec && day.activities) {
+              day.activities.forEach((act: any, aIdx: number) => {
+                activitiesToInsert.push({
+                  day_id: dayRec.id,
+                  name: act.name?.substring(0, 255),
+                  description: act.description?.substring(0, 1500),
+                  why_visit: act.whyVisit?.substring(0, 1000),
+                  duration: act.duration,
+                  time_of_day: act.timeOfDay,
+                  best_time_to_visit: act.bestTimeToVisit,
+                  open_time: act.openTime,
+                  close_time: act.closeTime,
+                  ticket_price: act.ticketPrice,
+                  travel_time_from_previous: act.travelTimeFromPrevious,
+                  food_suggestions: Array.isArray(act.foodSuggestions) ? act.foodSuggestions : [],
+                  hidden_gems: Array.isArray(act.hiddenGems) ? act.hiddenGems : [],
+                  photo_spots: Array.isArray(act.photoSpots) ? act.photoSpots : [],
+                  rest_stops: Array.isArray(act.restStops) ? act.restStops : [],
+                  sort_order: aIdx
+                });
+              });
+            }
+          });
+
+          if (activitiesToInsert.length > 0) {
+            await supabase.from('activities').insert(activitiesToInsert);
+          }
+        }
+        
+        toast({ title: "✨ Trip Created!", description: `Your ${destinationStr} itinerary is ready.`, variant: "default" });
+        navigate(`/trip?id=${trip.id}`);
+      }
+    } catch (err: any) {
+      console.error("[PlanTrip] Complete failure:", err);
+      toast({ 
+        title: "Generation Failed", 
+        description: err.name === 'AbortError' ? "The AI took too long. Please try again." : err.message || "Failed to generate your trip. Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsGenerating(false);
+      clearTimeout(emergencyReset);
+    }
+  };
+
 
   return (
     <div className="min-h-[100svh] bg-hero-gradient">
@@ -308,11 +536,13 @@ const PlanTrip = () => {
             )}
             <Button size="lg" className="flex-1 bg-ocean-gradient text-primary-foreground font-semibold rounded-xl h-12 text-base" disabled={!canProceed()}
               onClick={() => step < TOTAL_STEPS ? setStep(s => s + 1) : handleFinish()}>
-              {step < TOTAL_STEPS ? (<>Continue <ArrowRight className="w-4 h-4 ml-2" /></>) : (<><Sparkles className="w-4 h-4 mr-2" /> Generate Itinerary</>)}
+              {step < TOTAL_STEPS ? (<>Continue <ArrowRight className="w-4 h-4 ml-2" /></>) : (<><Sparkles className="w-4 h-4 mr-2" /> Generate Trip</>)}
             </Button>
           </div>
         </div>
       </div>
+
+      <GeneratingItinerary isOpen={isGenerating} />
     </div>
   );
 };

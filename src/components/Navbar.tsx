@@ -61,7 +61,7 @@ const Navbar = () => {
                 <div className="p-2 flex flex-col gap-1">
                   <button onClick={() => navigate("/account")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"><User className="w-4 h-4 text-muted-foreground" /> View Account</button>
                   <button onClick={() => navigate("/edit-profile")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"><Pencil className="w-4 h-4 text-muted-foreground" /> Edit Profile</button>
-                  <button onClick={() => { logout(); navigate("/"); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"><LogOut className="w-4 h-4" /> Sign Out</button>
+                  <button onClick={async () => { await logout(); navigate("/"); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"><LogOut className="w-4 h-4" /> Sign Out</button>
                 </div>
               </PopoverContent>
             </Popover>
@@ -101,7 +101,7 @@ const Navbar = () => {
                 <Link to="/account" onClick={() => setMobileOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start"><User className="w-4 h-4 mr-2" /> My Account</Button>
                 </Link>
-                <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={() => { logout(); setMobileOpen(false); }}>
+                <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={async () => { await logout(); setMobileOpen(false); navigate("/"); }}>
                   <LogOut className="w-4 h-4 mr-2" /> Sign Out
                 </Button>
               </>

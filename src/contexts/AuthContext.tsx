@@ -78,14 +78,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Fallback/Init: Explicitly get session once
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        syncUser(session).finally(() => setLoading(false));
+        syncUser(session).finally(() => {
+          setLoading(false);
+          eventReceived = true;
+        });
       } else if (!isAuthCallback && !eventReceived) {
         // If no user and no callback is pending, we can stop loading.
         setLoading(false);
+        eventReceived = true;
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Safety Timeout: If auth check takes too long (>1.5s), force render
+    const safetyTimeout = setTimeout(() => {
+      if (!eventReceived) {
+        console.warn("Auth check timed out after 1.5s. Rendering app anyway.");
+        setLoading(false);
+      }
+    }, 1500);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(safetyTimeout);
+    };
   }, []);
 
   const syncUser = async (session: any) => {
@@ -207,6 +222,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const logout = async () => {
+    setUser(null); // Clear immediately so UI updates at once
     await supabase.auth.signOut();
   };
 

@@ -82,7 +82,7 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
             <img src="/assets/logo.png" alt="GlobeGenie" className="h-12 w-auto object-contain" />
           </div>
           <DialogTitle className="text-xl font-display font-bold text-center">Sign in to start planning</DialogTitle>
-          <p className="text-sm text-muted-foreground text-center">Create an account or sign in to build your AI-powered itinerary</p>
+          <p className="text-sm text-muted-foreground text-center">Create an account or sign in to build your AI-powered trip</p>
         </DialogHeader>
 
         <div className="mt-4 space-y-4">

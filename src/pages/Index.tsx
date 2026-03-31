@@ -3,14 +3,13 @@ import { motion } from "framer-motion";
 import { Globe, MapPin, Users, Sparkles, Calendar, Shield, FileText, MessageSquare, ArrowRight, Plane, Map, Star, Clock, DollarSign, Hotel, Paperclip, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import heroImage from "@/assets/hero-travel.jpg";
 import Navbar from "@/components/Navbar";
 import AuthDialog from "@/components/AuthDialog";
 import { useAuth } from "@/contexts/AuthContext";
 
 const features = [
-  { icon: Sparkles, title: "AI-Powered Itineraries", description: "Chat with our AI to generate a personalized day-by-day travel plan optimized for your interests and budget.", iconBg: "bg-primary/10 text-primary" },
-  { icon: MapPin, title: "Drag & Drop Planner", description: "Reorder activities, add new stops, and customize your itinerary with an intuitive drag-and-drop interface.", iconBg: "bg-accent/10 text-accent" },
+  { icon: Sparkles, title: "AI-Powered Trips", description: "Chat with our AI to generate a personalized day-by-day travel plan optimized for your interests and budget.", iconBg: "bg-primary/10 text-primary" },
+  { icon: MapPin, title: "Drag & Drop Planner", description: "Reorder activities, add new stops, and customize your trip with an intuitive drag-and-drop interface.", iconBg: "bg-accent/10 text-accent" },
   { icon: DollarSign, title: "Trip Budgeting", description: "Track expenses, set budgets, split costs with tripmates, and view spending breakdowns by category.", iconBg: "bg-sea-foam/10 text-sea-foam" },
   { icon: Plane, title: "Reservations Hub", description: "Manage flights, hotels, rental cars, trains, ferries, restaurants, and more — all in one place.", iconBg: "bg-coral/10 text-coral" },
   { icon: Globe, title: "Explore Destinations", description: "Discover top attractions, restaurants, cafes, and photo spots with curated guides for every stop.", iconBg: "bg-primary/10 text-primary" },
@@ -21,7 +20,7 @@ const features = [
 
 const steps = [
   { step: "01", title: "Plan your trip", description: "Chat with our AI or start from scratch — set your destinations, dates, and preferences.", icon: MessageSquare },
-  { step: "02", title: "Build your itinerary", description: "Get a day-by-day plan with activities, photos, and timings. Drag to reorder and customize.", icon: Map },
+  { step: "02", title: "Build your trip", description: "Get a day-by-day plan with activities, photos, and timings. Drag to reorder and customize.", icon: Map },
   { step: "03", title: "Add reservations & budget", description: "Book hotels, add flights and restaurants, track expenses, and attach travel documents.", icon: Calendar },
   { step: "04", title: "Explore & travel", description: "Discover local gems, share your trip with friends, and access everything on the go.", icon: Plane },
 ];
@@ -61,7 +60,7 @@ const Index = () => {
               </h1>
 
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8 max-w-md leading-relaxed">
-                GlobeGenie uses AI to create personalized itineraries, enriched with real venue data, photos, and smart scheduling.
+                GlobeGenie uses AI to create personalized trips, enriched with real venue data, photos, and smart scheduling.
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="flex flex-col sm:flex-row gap-3">
@@ -83,13 +82,19 @@ const Index = () => {
             <div className="relative hidden md:flex items-center justify-center min-h-[440px] lg:min-h-[540px] overflow-visible">
               <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.8, type: "spring", stiffness: 70 }} className="relative z-10 w-full max-w-[340px] lg:max-w-[400px]">
                 <div className="rounded-3xl overflow-hidden shadow-elevated border border-border/40">
-                  <img src={heroImage} alt="Beautiful coastal destination" className="w-full h-[260px] lg:h-[320px] object-cover" />
+                  <img
+                    src="/assets/hero-travel.jpg"
+                    alt="Beautiful coastal destination"
+                    className="w-full h-[260px] lg:h-[320px] object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </div>
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0 }} className="absolute -bottom-5 left-4 right-4 bg-card/95 backdrop-blur-xl rounded-2xl p-4 shadow-elevated border border-border/50">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><Sparkles className="w-5 h-5 text-primary" /></div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">3-Day Rome Itinerary</p>
+                      <p className="text-sm font-semibold text-foreground">3-Day Rome Trip</p>
                       <p className="text-xs text-muted-foreground">AI-generated · 12 venues</p>
                     </div>
                     <div className="text-xs font-semibold text-sea-foam bg-sea-foam/10 px-2.5 py-1 rounded-full shrink-0 compact-touch">Ready</div>
@@ -143,7 +148,7 @@ const Index = () => {
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12 sm:mb-16">
             <span className="text-sm font-semibold text-primary tracking-wider uppercase mb-3 block compact-touch">Features</span>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-foreground mb-4">Everything for the <span className="text-gradient-gold">perfect trip</span></h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">From AI-generated itineraries to collaborative editing, GlobeGenie handles every detail.</p>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">From AI-generated trips to collaborative editing, GlobeGenie handles every detail.</p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">

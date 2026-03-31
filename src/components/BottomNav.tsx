@@ -15,7 +15,7 @@ const BottomNav = () => {
     { to: "/", icon: Home, label: "Home" },
     { to: "/plan", icon: Globe, label: "Plan" },
     { to: "/chat", icon: MessageSquare, label: "Chat" },
-    { to: "/itinerary", icon: Map, label: "Itinerary" },
+    { to: "/trip", icon: Map, label: "Trip" },
     { to: user ? "/account" : "/login", icon: User, label: user ? "Account" : "Login" },
   ];
 

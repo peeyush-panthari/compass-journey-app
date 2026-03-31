@@ -32,4 +32,39 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },
+  build: {
+    // Target modern browsers for smaller output
+    target: "es2020",
+    rollupOptions: {
+      output: {
+        // Split vendors into cacheable chunks
+        manualChunks: (id) => {
+          // Core React
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom") || id.includes("node_modules/react-router-dom")) {
+            return "vendor-react";
+          }
+          // Radix UI components
+          if (id.includes("node_modules/@radix-ui")) {
+            return "vendor-radix";
+          }
+          // Framer Motion animations
+          if (id.includes("node_modules/framer-motion")) {
+            return "vendor-motion";
+          }
+          // Supabase
+          if (id.includes("node_modules/@supabase")) {
+            return "vendor-supabase";
+          }
+          // Tanstack / React Query
+          if (id.includes("node_modules/@tanstack")) {
+            return "vendor-query";
+          }
+          // Lucide icons
+          if (id.includes("node_modules/lucide-react")) {
+            return "vendor-icons";
+          }
+        },
+      },
+    },
+  },
 }));
