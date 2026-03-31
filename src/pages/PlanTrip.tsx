@@ -284,66 +284,92 @@ const PlanTrip = () => {
       }).select().single();
 
       if (tripError) {
-        console.warn("[PlanTrip] DB error saving trip, showing transiently:", tripError);
-        navigate("/trip", { state: { transientItinerary: itineraryData.days } });
-      } else {
-        // Bulk insert days
-        const daysToInsert = itineraryData.days.map((day: any, idx: number) => {
-          const dDate = new Date(startDate);
-          dDate.setDate(startDate.getDate() + idx);
-          return {
-            trip_id: trip.id,
-            day_number: day.dayNumber || (idx + 1),
-            date: dDate.toISOString().split('T')[0],
-            city: day.city,
-            country: day.country,
-            sort_order: idx
-          };
+        console.error("[PlanTrip] Database error saving trip:", tripError.message);
+        throw new Error(`Database Error (Trip): ${tripError.message}. Make sure the 'trips' table is updated.`);
+      }
+
+      // Bulk insert days
+      const daysToInsert = itineraryData.days.map((day: any, idx: number) => {
+        const dDate = new Date(startDate);
+        dDate.setDate(startDate.getDate() + idx);
+        return {
+          trip_id: trip.id,
+          day_number: day.dayNumber || (idx + 1),
+          date: dDate.toISOString().split('T')[0],
+          city: day.city,
+          country: day.country,
+          sort_order: idx
+        };
+      });
+
+      const { data: dayRecords, error: daysError } = await supabase.from('itinerary_days').insert(daysToInsert).select();
+      if (daysError) throw new Error(`Database Error (Days): ${daysError.message}`);
+
+      if (dayRecords) {
+        // Prepare activities
+        const activitiesToInsert: any[] = [];
+        itineraryData.days.forEach((day: any, dIdx: number) => {
+          const dayRec = dayRecords.find((r: any) => r.day_number === (day.dayNumber || dIdx + 1));
+          if (dayRec && day.activities) {
+            day.activities.forEach((act: any, aIdx: number) => {
+              activitiesToInsert.push({
+                day_id: dayRec.id,
+                name: act.name?.substring(0, 255),
+                description: act.description?.substring(0, 1500),
+                why_visit: act.whyVisit?.substring(0, 1000),
+                duration: act.duration,
+                time_of_day: act.timeOfDay,
+                best_time_to_visit: act.bestTimeToVisit,
+                open_time: act.openTime,
+                close_time: act.closeTime,
+                ticket_price: act.ticketPrice,
+                travel_time_from_previous: act.travelTimeFromPrevious,
+                food_suggestions: Array.isArray(act.foodSuggestions) ? act.foodSuggestions : [],
+                hidden_gems: Array.isArray(act.hiddenGems) ? act.hiddenGems : [],
+                photo_spots: Array.isArray(act.photoSpots) ? act.photoSpots : [],
+                rest_stops: Array.isArray(act.restStops) ? act.restStops : [],
+                google_maps_url: act.googleMapsUrl,
+                sort_order: aIdx
+              });
+            });
+          }
         });
 
-        const { data: dayRecords, error: daysError } = await supabase.from('itinerary_days').insert(daysToInsert).select();
-
-        if (dayRecords) {
-          const activitiesToInsert: any[] = [];
-          itineraryData.days.forEach((day: any, dIdx: number) => {
-            const dayRec = dayRecords.find((r: any) => r.day_number === (day.dayNumber || dIdx + 1));
-            if (dayRec && day.activities) {
-              day.activities.forEach((act: any, aIdx: number) => {
-                activitiesToInsert.push({
-                  day_id: dayRec.id,
-                  name: act.name?.substring(0, 255),
-                  description: act.description?.substring(0, 1500),
-                  why_visit: act.whyVisit?.substring(0, 1000),
-                  duration: act.duration,
-                  time_of_day: act.timeOfDay,
-                  best_time_to_visit: act.bestTimeToVisit,
-                  open_time: act.openTime,
-                  close_time: act.closeTime,
-                  ticket_price: act.ticketPrice,
-                  travel_time_from_previous: act.travelTimeFromPrevious,
-                  food_suggestions: Array.isArray(act.foodSuggestions) ? act.foodSuggestions : [],
-                  hidden_gems: Array.isArray(act.hiddenGems) ? act.hiddenGems : [],
-                  photo_spots: Array.isArray(act.photoSpots) ? act.photoSpots : [],
-                  rest_stops: Array.isArray(act.restStops) ? act.restStops : [],
-                  sort_order: aIdx
-                });
-              });
-            }
-          });
-
-          if (activitiesToInsert.length > 0) {
-            await supabase.from('activities').insert(activitiesToInsert);
+        if (activitiesToInsert.length > 0) {
+          console.log("[PlanTrip] Attempting to insert enriched activities...");
+          const { error: actsError } = await supabase.from('activities').insert(activitiesToInsert);
+          
+          if (actsError) {
+             console.warn("[PlanTrip] Enriched insertion failed (possibly missing columns). Falling back to Minimal Insertion. Error:", actsError.message);
+             // Minimal Fallback: only use columns that are guaranteed by the initial schema
+             const minimalActivities = activitiesToInsert.map(a => ({
+               day_id: a.day_id,
+               name: a.name,
+               description: a.description,
+               duration: a.duration,
+               time_of_day: a.time_of_day,
+               sort_order: a.sort_order
+             }));
+             const { error: minError } = await supabase.from('activities').insert(minimalActivities);
+             if (minError) throw new Error(`Database Error (Activities-Minimal): ${minError.message}`);
+             
+             toast({ 
+               title: "Note: Basic Itinerary Created", 
+               description: "Your trip is ready, but some premium metadata (food, gems) couldn't be saved. Check SQL migrations.", 
+               variant: "default" 
+             });
           }
         }
-        
-        toast({ title: "✨ Trip Created!", description: `Your ${destinationStr} itinerary is ready.`, variant: "default" });
-        navigate(`/trip?id=${trip.id}`);
       }
+      
+      toast({ title: "✨ Trip Created!", description: `Your ${destinationStr} itinerary is ready.`, variant: "default" });
+      navigate(`/trip?id=${trip.id}`);
+
     } catch (err: any) {
-      console.error("[PlanTrip] Complete failure:", err);
+      console.error("[PlanTrip] Generation Error:", err);
       toast({ 
         title: "Generation Failed", 
-        description: err.name === 'AbortError' ? "The AI took too long. Please try again." : err.message || "Failed to generate your trip. Please try again.", 
+        description: err.name === 'AbortError' ? "The AI took too long. Please try again." : (err.message || "Failed to generate your trip. Please try again."), 
         variant: "destructive" 
       });
     } finally {

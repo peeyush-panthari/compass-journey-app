@@ -261,12 +261,31 @@ serve(async (req) => {
           });
 
           if (activitiesToInsert.length > 0) {
+            console.log("[generate-itinerary] Attempting to insert enriched activities...");
             const { error: actsError } = await supabaseClient
               .from('activities')
               .insert(activitiesToInsert);
+            
             if (actsError) {
-              console.error("[generate-itinerary] Error saving activities:", actsError);
-              throw new Error(`Database Error (Activities): ${actsError.message}`);
+              console.warn("[generate-itinerary] Enriched insertion failed (possibly missing columns). Falling back to Minimal Insertion. Error:", actsError.message);
+              // Minimal Fallback: only use columns that are guaranteed by the initial schema
+              const minimalActivities = activitiesToInsert.map(a => ({
+                day_id: a.day_id,
+                name: a.name,
+                description: a.description,
+                duration: a.duration,
+                time_of_day: a.time_of_day,
+                sort_order: a.sort_order
+              }));
+              
+              const { error: minError } = await supabaseClient
+                .from('activities')
+                .insert(minimalActivities);
+                
+              if (minError) {
+                console.error("[generate-itinerary] Critical: Minimal insertion also failed.", minError);
+                // We don't throw here so the user at least gets the response JSON to view transiently
+              }
             }
           }
         }
