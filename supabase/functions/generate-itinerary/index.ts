@@ -1,46 +1,90 @@
-import { GoogleGenerativeAI } from "npm:@google/generative-ai@0.21.0";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// --- HELPER: REST API GEMINI CALL ---
+async function callGemini(apiKey: string, prompt: string) {
+  const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      console.log(`[generate-itinerary] Attempting generation with model: ${model}...`);
+      
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 8192,
+            }
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        throw new Error(`Model ${model} failed with status ${response.status}: ${errBody.substring(0, 200)}`);
+      }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) throw new Error(`Model ${model} returned empty response.`);
+      
+      console.log(`[generate-itinerary] Successfully generated with model: ${model}`);
+      return text;
+
+    } catch (err) {
+      console.warn(`[generate-itinerary] Model ${model} error:`, err.message);
+      lastError = err;
+      continue;
+    }
+  }
+
+  throw lastError || new Error("All Gemini models failed.");
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    { auth: { persistSession: false } }
-  );
+  // --- CLIENT SETUP ---
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  
+  const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { persistSession: false }
+  });
 
   try {
     const body = await req.json();
-    console.log("[generate-itinerary] Received payload:", JSON.stringify(body));
+    const { destination, dates, companion, purpose, experiences, pace, budget, userId, startDate: rawStartDate } = body;
 
-    await supabaseClient.from('system_logs').insert([{
-      level: 'info',
-      source: 'edge-function: generate-itinerary',
-      message: 'Received payload for itinerary generation',
-      details: body
-    }]);
-
-    const {
-      destination, dates, companion, purpose, experiences, pace, budget
-    } = body;
-
-    const apiKey = Deno.env.get('GEMINI_API_KEY') || "";
-    if (!apiKey) {
-      console.error("GEMINI_API_KEY is not set in environment.");
-      throw new Error("Gemini API key is not configured. Please set GEMINI_API_KEY in Supabase secrets.");
+    // --- SAFE LOGGING ---
+    try {
+      await supabaseClient.from('system_logs').insert([{
+        level: 'info',
+        source: 'edge-function: generate-itinerary',
+        message: 'Received generation request',
+        details: { destination, dates, companion, userId }
+      }]);
+    } catch (logErr) {
+      console.error("[generate-itinerary] Non-fatal: Could not log to system_logs. Table might be missing.", logErr.message);
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!apiKey) throw new Error("GEMINI_API_KEY is not set in secrets.");
 
+    // --- PROMPT ---
     const prompt = `
       Generate a detailed travel itinerary for a trip to ${destination}.
       Trip Details:
@@ -52,28 +96,28 @@ Deno.serve(async (req) => {
       - Preferences: ${experiences.join(', ')}
 
       For every place in the itinerary MUST include:
-      - name: String (Specific name of the place, do NOT club places together. E.g. "Eiffel Tower" not "Eiffel Tower and Champ de Mars")
+      - name: String
       - description: Short description
       - whyVisit: Why it is worth visiting
-      - openTime: Specific opening time (e.g. "09:00"), strictly output "Not Available" if unknown.
-      - closeTime: Specific closing time (e.g. "18:00"), strictly output "Not Available" if unknown.
-      - duration: Estimated time needed (e.g. "2 hours")
-      - ticketPrice: Price if any (e.g. "$15" or "Free")
-      - bestTimeToVisit: Specific time (e.g. "Early morning" or "Sunset")
-      - travelTimeFromPrevious: Estimated travel time from previous location (e.g. "15 mins walk" or "10 mins taxi")
-      - foodSuggestions: Array of top 3 restaurants or local food to try nearby
-      - hiddenGems: Array of hidden gems or local experiences nearby
-      - photoSpots: Array of the best photo spots at or near this location
-      - restStops: Array of cafes or rest stops nearby
-      - timeOfDay: Strictly one of: 'morning', 'afternoon', 'evening'
-      - sortOrder: Chronological order of activity in the day
+      - openTime: Specific opening time (e.g. "09:00"), else "Not Available"
+      - closeTime: Specific closing time (e.g. "18:00"), else "Not Available"
+      - duration: (e.g. "2 hours")
+      - ticketPrice: (e.g. "$15" or "Free")
+      - bestTimeToVisit: (e.g. "Early morning")
+      - travelTimeFromPrevious: (e.g. "15 mins walk")
+      - foodSuggestions: Array of top 3 nearby
+      - hiddenGems: Array of nearby gems
+      - photoSpots: Array of photo spots
+      - restStops: Array of cafes/rest stops
+      - timeOfDay: 'morning', 'afternoon' or 'evening'
+      - sortOrder: number
       - googleMapsUrl: Google Maps link if known (else null)
 
-      Constraint 1 (CRITICAL): Ensure the itinerary is GEOGRAPHICALLY OPTIMIZED so that places visited within the same day are close to each other to minimize travel time.
-      Constraint 2 (CRITICAL): A single day MUST cover activities from a SINGLE CITY ONLY. Do not mix cities on the same day.
-      Constraint 3 (CRITICAL): DO NOT club or group 2 distinct places or activities together in a single entry. Each generated activity must be one single physical place.
+      Constraint 1 (CRITICAL): Ensure the itinerary is GEOGRAPHICALLY OPTIMIZED.
+      Constraint 2 (CRITICAL): A single day MUST cover activities from a SINGLE CITY ONLY.
+      Constraint 3 (CRITICAL): Response MUST be valid JSON.
 
-      Please respond with a valid JSON object matching this schema:
+      Respond ONLY with this JSON schema:
       {
         "days": [
           {
@@ -97,40 +141,18 @@ Deno.serve(async (req) => {
                 "restStops": ["string"],
                 "timeOfDay": "string",
                 "sortOrder": number,
-                "googleMapsUrl": "string"
+                "google_maps_url": "string"
               }
             ]
           }
         ]
       }
-
-      Respond ONLY with the JSON. Do not wrap the JSON in markdown code blocks.
     `;
 
-    console.log("[generate-itinerary] Starting Gemini generation...");
+    // --- GEMINI EXECUTION ---
+    const text = await callGemini(apiKey, prompt);
 
-    const geminiPromise = model.generateContent(prompt);
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("Gemini AI took too long to respond. Please try a shorter trip or try again.")),
-        50000
-      )
-    );
-
-    const result = await Promise.race([geminiPromise, timeoutPromise]);
-    const text = result.response.text();
-    console.log("[generate-itinerary] Gemini responded successfully.");
-
-    if (Deno.env.get('LOG_GEMINI') === '1') {
-      console.log("[generate-itinerary] Raw Gemini Response:", text);
-      await supabaseClient.from('system_logs').insert([{
-        level: 'debug',
-        source: 'edge-function: generate-itinerary',
-        message: 'Raw Gemini Response output',
-        details: { text }
-      }]);
-    }
-
+    // --- EXTRACTION & CLEANUP ---
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? jsonMatch[0] : text;
 
@@ -138,13 +160,13 @@ Deno.serve(async (req) => {
     try {
       itineraryData = JSON.parse(jsonStr);
     } catch (err) {
-      console.error("[generate-itinerary] JSON Parse Error. Raw string:", jsonStr.substring(0, 200));
       const cleanerStr = jsonStr.replace(/```json|```/g, "").trim();
       itineraryData = JSON.parse(cleanerStr);
     }
 
     const ensureArray = (val: any) => Array.isArray(val) ? val : [];
 
+    // ENHANCEMENT: Schema Resilience Truncation
     if (itineraryData.days && Array.isArray(itineraryData.days)) {
       itineraryData.days = itineraryData.days.map((day: any) => ({
         ...day,
@@ -170,7 +192,7 @@ Deno.serve(async (req) => {
       }));
     }
 
-    const { userId, startDate: rawStartDate } = body;
+    // --- PERSISTENCE ---
     const baseDate = rawStartDate ? new Date(rawStartDate) : new Date();
 
     if (userId) {
@@ -190,20 +212,17 @@ Deno.serve(async (req) => {
         status: 'published'
       }).select().single();
 
-      if (tripError) {
-        console.error("[generate-itinerary] Error saving trip:", tripError);
-        throw new Error(`Database Error (Trip): ${tripError.message}`);
-      }
+      if (tripError) throw new Error(`Database Error (Trip): ${tripError.message}`);
 
       itineraryData.tripId = trip.id;
 
       const daysToInsert = itineraryData.days.map((day: any, dayIdx: number) => {
-        const currentDayDate = new Date(baseDate);
-        currentDayDate.setDate(baseDate.getDate() + dayIdx);
+        const dDate = new Date(baseDate);
+        dDate.setDate(baseDate.getDate() + dayIdx);
         return {
           trip_id: trip.id,
           day_number: day.dayNumber || (dayIdx + 1),
-          date: currentDayDate.toISOString().split('T')[0],
+          date: dDate.toISOString().split('T')[0],
           city: day.city,
           country: day.country,
           sort_order: dayIdx
@@ -215,14 +234,10 @@ Deno.serve(async (req) => {
         .insert(daysToInsert)
         .select();
 
-      if (daysError) {
-        console.error("[generate-itinerary] Error saving days:", daysError);
-        throw new Error(`Database Error (Days): ${daysError.message}`);
-      }
+      if (daysError) throw new Error(`Database Error (Days): ${daysError.message}`);
 
       if (dayRecords) {
         const activitiesToInsert: any[] = [];
-
         itineraryData.days.forEach((day: any, dayIdx: number) => {
           const dayNum = day.dayNumber || (dayIdx + 1);
           const dayRecord = dayRecords.find((r: any) => r.day_number === dayNum);
@@ -244,7 +259,7 @@ Deno.serve(async (req) => {
                 hidden_gems: act.hiddenGems,
                 photo_spots: act.photoSpots,
                 rest_stops: act.restStops,
-                google_maps_url: act.googleMapsUrl,
+                google_maps_url: act.google_maps_url,
                 sort_order: actIdx
               });
             });
@@ -252,14 +267,11 @@ Deno.serve(async (req) => {
         });
 
         if (activitiesToInsert.length > 0) {
-          console.log("[generate-itinerary] Inserting", activitiesToInsert.length, "activities...");
-          const { error: actsError } = await supabaseClient
-            .from('activities')
-            .insert(activitiesToInsert);
-
+          const { error: actsError } = await supabaseClient.from('activities').insert(activitiesToInsert);
+          
           if (actsError) {
-            console.warn("[generate-itinerary] Enriched insert failed, trying minimal fallback. Error:", actsError.message);
-            const minimalActivities = activitiesToInsert.map(a => ({
+            console.warn("[generate-itinerary] Enriched insert failed, trying minimal fallback:", actsError.message);
+            const minActs = activitiesToInsert.map(a => ({
               day_id: a.day_id,
               name: a.name,
               description: a.description,
@@ -267,23 +279,12 @@ Deno.serve(async (req) => {
               time_of_day: a.time_of_day,
               sort_order: a.sort_order
             }));
-            const { error: minError } = await supabaseClient
-              .from('activities')
-              .insert(minimalActivities);
-            if (minError) {
-              console.error("[generate-itinerary] Critical: Minimal insertion also failed.", minError);
-            }
+            const { error: minError } = await supabaseClient.from('activities').insert(minActs);
+            if (minError) console.error("[generate-itinerary] Critical: Minimal insert also failed.", minError);
           }
         }
       }
     }
-
-    await supabaseClient.from('system_logs').insert([{
-      level: 'info',
-      source: 'edge-function: generate-itinerary',
-      message: 'Successfully generated and persisted itinerary',
-      details: { tripId: itineraryData.tripId, size: JSON.stringify(itineraryData).length }
-    }]);
 
     return new Response(JSON.stringify(itineraryData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -291,19 +292,8 @@ Deno.serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error("[generate-itinerary] Error:", error.message, error.stack);
-
-    try {
-      await supabaseClient.from('system_logs').insert([{
-        level: 'error',
-        source: 'edge-function: generate-itinerary',
-        message: error.message || 'Unknown error occurred',
-        details: { stack: error.stack }
-      }]);
-    } catch (logErr) {
-      console.error("Critical: Could not log error to database.", logErr);
-    }
-
+    console.error("[generate-itinerary] Error:", error.message);
+    
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
