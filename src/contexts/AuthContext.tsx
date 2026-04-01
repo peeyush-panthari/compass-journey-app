@@ -51,53 +51,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const isAuthCallback = window.location.hash.includes('access_token=') || 
                           window.location.search.includes('code=');
     
-    // Maintain a reference to whether onAuthStateChange has seen a definitive event.
-    let eventReceived = false;
+    // Track if we've already initialized the first session
+    let isInitialized = false;
 
+    // 1. Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[Auth] Auth Event Received:", event, session ? "Session Found" : "No Session");
       
       if (session) {
         await syncUser(session);
-        setLoading(false);
-        eventReceived = true;
+        // Only set loading false if we haven't already initialized
+        if (!isInitialized) {
+          setLoading(false);
+          isInitialized = true;
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setLoading(false);
-        eventReceived = true;
-      } else if (event === 'INITIAL_SESSION') {
-        // Only resolve loading if we didn't just get a session via getSession()
-        if (!session && !isAuthCallback) {
-          console.log("[Auth] No initial session found. Setting loading to false.");
+        isInitialized = true;
+      } else if (event === 'INITIAL_SESSION' && !session) {
+        // If INITIAL_SESSION fires with no session, and we aren't waiting for a callback
+        if (!isAuthCallback && !isInitialized) {
+          console.log("[Auth] No initial session found via event listener.");
           setUser(null);
           setLoading(false);
-          eventReceived = true;
+          isInitialized = true;
         }
       }
     });
 
-    // Fallback/Init: Explicitly get session once
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        console.log("[Auth] getSession found session. Syncing...");
-        syncUser(session).finally(() => {
+    // 2. Explicitly fetch current session on mount (Standard Supabase v2 pattern)
+    const initSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log("[Auth] getSession found session. Syncing...");
+          await syncUser(session);
+        } else if (!isAuthCallback) {
+          console.log("[Auth] getSession returned null.");
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("[Auth] Error during initSession:", err);
+      } finally {
+        // Only set loading to false here if we aren't in a callback flow
+        // and onAuthStateChange hasn't already handled it.
+        if (!isInitialized && !isAuthCallback) {
           setLoading(false);
-          eventReceived = true;
-        });
-      } else {
-        // If getSession returns null, we WAIT for onAuthStateChange to confirm INITIAL_SESSION
-        // which is safer than trusting getSession immediately on refresh.
-        console.log("[Auth] getSession returned null. Waiting for event listener...");
+          isInitialized = true;
+        }
       }
-    });
+    };
 
-    // Safety Timeout: Force loading to end after 2.5s if nothing else happens
+    initSession();
+
+    // 3. Safety Timeout: Force loading to end after 3s if nothing else happens
     const safetyTimeout = setTimeout(() => {
-      if (!eventReceived) {
+      if (!isInitialized) {
         console.warn("[Auth] Auth handshake timeout. Forcing app initialization.");
         setLoading(false);
+        isInitialized = true;
       }
-    }, 2500);
+    }, 3000);
 
     return () => {
       subscription.unsubscribe();
