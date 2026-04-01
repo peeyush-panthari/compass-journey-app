@@ -295,7 +295,9 @@ const TripPage = () => {
                   foodSuggestions: act.food_suggestions || [],
                   hiddenGems: act.hidden_gems || [],
                   photoSpots: act.photo_spots || [],
-                  restStops: act.rest_stops || []
+                  restStops: act.rest_stops || [],
+                  photos: act.photos || [],
+                  youtubeVideos: act.youtube_videos || []
                 }))
             }));
           
@@ -438,7 +440,11 @@ const TripPage = () => {
       <div className="md:hidden">
         {/* Hero */}
         <div className="relative h-48 overflow-hidden bg-muted pt-14">
-          <img src="https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&h=400&fit=crop" alt="Trip" className="w-full h-full object-cover" />
+          <img 
+            src={`https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&keyword=${encodeURIComponent(itinerary[0]?.city || "Travel")}`} 
+            alt="Trip" 
+            className="w-full h-full object-cover" 
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         </div>
         {/* Trip header card overlapping hero */}

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Calendar, Clock, Users, Share2, Search, ChevronLeft, ChevronRight, BedDouble, UserRound, Minus, Heart, Eye, Share, MoreHorizontal, Globe } from "lucide-react";
+import { Plus, Calendar, Clock, Users, Share2, Search, ChevronLeft, ChevronRight, BedDouble, UserRound, Minus, Heart, Eye, Share, MoreHorizontal, Globe, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,6 +10,8 @@ import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { Loader2 } from "lucide-react";
 
 const savedTrips = [
   { id: "1", destination: "Rome, Italy", dates: "Mar 15–17, 2026", days: 3, status: "Generated", image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&h=250&fit=crop" },
@@ -140,6 +142,9 @@ const HorizontalScroller = ({ children }: { children: React.ReactNode }) => {
 const Account = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [trips, setTrips] = useState<any[]>([]);
+  const [fetchingTrips, setFetchingTrips] = useState(true);
+  
   const [destination, setDestination] = useState("");
   const [checkIn, setCheckIn] = useState<Date | undefined>(addDays(new Date(), 14));
   const [checkOut, setCheckOut] = useState<Date | undefined>(addDays(new Date(), 15));
@@ -150,6 +155,48 @@ const Account = () => {
     const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
     if (!loading && !user && !isCallback) navigate("/login"); 
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      const fetchTrips = async () => {
+        setFetchingTrips(true);
+        const { data, error } = await supabase
+          .from('trips')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        if (!error && data) {
+          setTrips(data);
+        }
+        setFetchingTrips(false);
+      };
+      fetchTrips();
+    }
+  }, [user]);
+
+  const handleDeleteTrip = async (e: React.MouseEvent, tripId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!window.confirm("Are you sure you want to delete this trip? This action cannot be undone.")) return;
+
+    try {
+      const { error } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId)
+        .eq('user_id', user?.id); // Extra safety check
+
+      if (error) throw error;
+
+      setTrips(prev => prev.filter(t => t.id !== tripId));
+      // toast({ title: "Trip deleted successfully" });
+    } catch (err: any) {
+      console.error("Error deleting trip:", err);
+      // toast({ title: "Failed to delete trip", variant: "destructive" });
+    }
+  };
 
   if (loading || (!user && (window.location.hash.includes('access_token=') || window.location.search.includes('code=')))) return null;
   if (!user) return null;
@@ -249,23 +296,49 @@ const Account = () => {
         </div>
 
         <HorizontalScroller>
-          {savedTrips.map((trip, i) => (
-            <motion.div key={trip.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="min-w-[260px] max-w-[280px] flex-shrink-0">
-              <Link to="/trip" className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
-                <div className="h-36 overflow-hidden"><img src={trip.image} alt={trip.destination} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /></div>
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-display font-bold text-foreground text-sm">{trip.destination}</h3>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${trip.status === "Generated" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{trip.status}</span>
+          {fetchingTrips ? (
+            <div className="flex items-center justify-center p-12 min-w-[300px]">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : trips.length > 0 ? (
+            trips.map((trip, i) => (
+              <motion.div key={trip.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="min-w-[260px] max-w-[280px] flex-shrink-0 relative group/card">
+                <Link to={`/trip?id=${trip.id}`} className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
+                  <div className="h-36 overflow-hidden bg-muted relative">
+                    <img 
+                      src={`https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=250&fit=crop`} 
+                      alt={trip.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    />
+                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                      <button 
+                        onClick={(e) => handleDeleteTrip(e, trip.id)}
+                        className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
+                        title="Delete Trip"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {trip.dates}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {trip.days}d</span>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="font-display font-bold text-foreground text-sm truncate pr-2">{trip.title || trip.destination}</h3>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase`}>{trip.status}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {trip.start_date}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {trip.num_days}d</span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+                </Link>
+              </motion.div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 bg-muted/30 rounded-xl border-2 border-dashed border-border min-w-[260px]">
+               <p className="text-sm text-muted-foreground mb-1">No trips yet</p>
+               <Link to="/plan" className="text-primary text-xs font-bold hover:underline">Start Planning</Link>
+            </div>
+          )}
           <Link to="/plan" className="flex flex-col items-center justify-center bg-card rounded-xl border-2 border-dashed border-border hover:border-primary/40 transition-colors min-w-[200px] flex-shrink-0 text-muted-foreground hover:text-foreground">
             <Plus className="w-8 h-8 mb-2" /><span className="text-sm font-medium">Plan a New Trip</span>
           </Link>

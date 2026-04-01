@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let eventReceived = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth event:", event, !!session);
+      console.log("[Auth] Auth Event Received:", event, session ? "Session Found" : "No Session");
       
       if (session) {
         await syncUser(session);
@@ -66,9 +66,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
         eventReceived = true;
       } else if (event === 'INITIAL_SESSION') {
-        // Only finish loading on INITIAL_SESSION if there's no callback pending.
-        if (!isAuthCallback) {
-          await syncUser(session);
+        // Only resolve loading if we didn't just get a session via getSession()
+        if (!session && !isAuthCallback) {
+          console.log("[Auth] No initial session found. Setting loading to false.");
+          setUser(null);
           setLoading(false);
           eventReceived = true;
         }
@@ -78,24 +79,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Fallback/Init: Explicitly get session once
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
+        console.log("[Auth] getSession found session. Syncing...");
         syncUser(session).finally(() => {
           setLoading(false);
           eventReceived = true;
         });
-      } else if (!isAuthCallback && !eventReceived) {
-        // If no user and no callback is pending, we can stop loading.
-        setLoading(false);
-        eventReceived = true;
+      } else {
+        // If getSession returns null, we WAIT for onAuthStateChange to confirm INITIAL_SESSION
+        // which is safer than trusting getSession immediately on refresh.
+        console.log("[Auth] getSession returned null. Waiting for event listener...");
       }
     });
 
-    // Safety Timeout: If auth check takes too long (>1.5s), force render
+    // Safety Timeout: Force loading to end after 2.5s if nothing else happens
     const safetyTimeout = setTimeout(() => {
       if (!eventReceived) {
-        console.warn("Auth check timed out after 1.5s. Rendering app anyway.");
+        console.warn("[Auth] Auth handshake timeout. Forcing app initialization.");
         setLoading(false);
       }
-    }, 1500);
+    }, 2500);
 
     return () => {
       subscription.unsubscribe();

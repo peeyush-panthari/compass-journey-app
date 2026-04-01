@@ -14,7 +14,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { generateWithGeminiFallback } from "@/lib/gemini";
 import GeneratingItinerary from "@/components/GeneratingItinerary";
 
 const TOTAL_STEPS = 6;
@@ -67,7 +66,6 @@ const PlanTrip = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // ─── ALL HOOKS MUST BE DECLARED BEFORE ANY EARLY RETURNS ───────────────────
   const [step, setStep] = useState(1);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
@@ -92,7 +90,6 @@ const PlanTrip = () => {
     return selectedCountries.flatMap(country => countryCityData[country] || []);
   }, [selectedCountries]);
 
-  // ─── AUTH GUARD EFFECT ──────────────────────────────────────────────────────
   useEffect(() => {
     const isCallback =
       window.location.hash.includes("access_token=") ||
@@ -100,7 +97,6 @@ const PlanTrip = () => {
     if (!loading && !user && !isCallback) navigate("/login");
   }, [user, loading, navigate]);
 
-  // ─── EARLY RETURNS (safe now — all hooks already called above) ─────────────
   if (loading) {
     return (
       <div className="min-h-[100svh] bg-hero-gradient flex items-center justify-center">
@@ -115,7 +111,6 @@ const PlanTrip = () => {
   if (!user && isCallback) return null;
   if (!user) return null;
 
-  // ─── DERIVED STATE ──────────────────────────────────────────────────────────
   const allCountries = Object.keys(countryCityData);
   const filteredCountries = allCountries.filter(
     c =>
@@ -128,7 +123,6 @@ const PlanTrip = () => {
       !selectedCities.includes(c)
   );
 
-  // ─── HANDLERS ──────────────────────────────────────────────────────────────
   const toggleExperience = (id: string) => {
     setExperiences(prev =>
       prev.includes(id)
@@ -175,11 +169,16 @@ const PlanTrip = () => {
   const handleFinish = async () => {
     setIsGenerating(true);
 
-    // Emergency loading reset after 120 seconds to prevent the UI from being permanently stuck
     const emergencyReset = setTimeout(() => {
       setIsGenerating(false);
       console.warn("[PlanTrip] Emergency loading reset triggered.");
     }, 120000);
+
+    if (!user?.id) {
+      toast({ title: "Authentication Required", description: "You must be logged in to generate a trip.", variant: "destructive" });
+      setIsGenerating(false);
+      return;
+    }
 
     const destination = selectedCities.length > 0 ? selectedCities : selectedCountries;
     const destinationStr = Array.isArray(destination)
@@ -187,283 +186,49 @@ const PlanTrip = () => {
       : destination;
 
     try {
-      console.log("[PlanTrip] Attempting Edge Function generation...");
+      console.log("[PlanTrip] Attempting Local Backend generation...");
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-      try {
-        const { data: itineraryData, error: functionError } =
-          await supabase.functions.invoke("generate-itinerary", {
-            body: {
-              destination: destinationStr,
-              dates: `${format(startDate, "MMM d")} - ${format(
-                new Date(startDate.getTime() + (numDays - 1) * 86400000),
-                "MMM d, yyyy"
-              )} (${numDays} days)`,
-              startDate: startDate.toISOString(),
-              companion,
-              purpose,
-              experiences,
-              pace,
-              budget,
-              userId: user.id,
-            },
-            signal: controller.signal,
-          });
-
-        clearTimeout(timeoutId);
-
-        if (functionError) throw functionError;
-        if (!itineraryData?.tripId && !itineraryData?.days)
-          throw new Error("Incomplete data from Edge Function");
-
-        console.log("[PlanTrip] Edge Function success!");
-        if (itineraryData.tripId) {
-          toast({
-            title: "✨ Trip Created!",
-            description: `Your ${destinationStr} itinerary is ready.`,
-            variant: "default",
-          });
-          navigate(`/trip?id=${itineraryData.tripId}`);
-          return;
-        }
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        console.warn(
-          "[PlanTrip] Edge Function failed or timed out. Falling back to browser-mode Gemini. Error:",
-          err.message
-        );
-      }
-
-      // ── BROWSER FALLBACK MODE ─────────────────────────────────────────────
-      console.log("[PlanTrip] Starting Direct Browser Generation (GlobeGenie Mode)...");
-
-      const prompt = `
-      Generate a detailed travel itinerary for a trip to ${destinationStr}.
-      Trip Details:
-      - Duration: ${numDays} days
-      - Start Date: ${startDate.toISOString()}
-      - Traveling with: ${companion}
-      - Purpose: ${purpose}
-      - Pace: ${pace}
-      - Budget: ${budget}
-      - Preferences: ${experiences.join(", ")}
-
-      For every place in the itinerary MUST include:
-      - name: String (Specific name of the place, do NOT club places together. E.g. "Eiffel Tower" not "Eiffel Tower and Champ de Mars")
-      - description: Short description
-      - whyVisit: Why it is worth visiting
-      - openTime: Specific opening time (e.g. "09:00"), strictly output "Not Available" if unknown.
-      - closeTime: Specific closing time (e.g. "18:00"), strictly output "Not Available" if unknown.
-      - duration: Estimated time needed (e.g. "2 hours")
-      - ticketPrice: Price if any (e.g. "$15" or "Free")
-      - bestTimeToVisit: Specific time (e.g. "Early morning" or "Sunset")
-      - travelTimeFromPrevious: Estimated travel time from previous location (e.g. "15 mins walk" or "10 mins taxi")
-      - foodSuggestions: Array of top 3 restaurants or local food to try nearby
-      - hiddenGems: Array of hidden gems or local experiences nearby
-      - photoSpots: Array of the best photo spots at or near this location
-      - restStops: Array of cafes or rest stops nearby
-      - timeOfDay: Strictly one of: 'morning', 'afternoon', 'evening'
-      - sortOrder: Chronological order of activity in the day
-      - googleMapsUrl: Google Maps link if known (else null)
-
-      Constraint 1 (CRITICAL): Ensure the itinerary is GEOGRAPHICALLY OPTIMIZED so that places visited within the same day are close to each other to minimize travel time.
-      Constraint 2 (CRITICAL): A single day MUST cover activities from a SINGLE CITY ONLY. Do not mix cities on the same day.
-      Constraint 3 (CRITICAL): DO NOT club or group 2 distinct places or activities together in a single entry. Each generated activity must be one single physical place.
-
-      Please respond with a valid JSON object matching this schema:
-      {
-        "days": [
-          {
-            "dayNumber": number,
-            "city": "string",
-            "country": "string",
-            "activities": [
-              {
-                "name": "string",
-                "description": "string",
-                "whyVisit": "string",
-                "openTime": "string",
-                "closeTime": "string",
-                "duration": "string",
-                "ticketPrice": "string",
-                "bestTimeToVisit": "string",
-                "travelTimeFromPrevious": "string",
-                "foodSuggestions": ["string"],
-                "hiddenGems": ["string"],
-                "photoSpots": ["string"],
-                "restStops": ["string"],
-                "timeOfDay": "string",
-                "sortOrder": number,
-                "googleMapsUrl": "string"
-              }
-            ]
-          }
-        ]
-      }
-
-      Respond ONLY with the JSON. Do not wrap the JSON in markdown code blocks.
-      `;
-
-      const fallbackController = new AbortController();
-      const fallbackTimeout = setTimeout(
-        () => fallbackController.abort(),
-        90000
-      );
-
-      const rawText = await generateWithGeminiFallback(
-        prompt,
-        fallbackController.signal
-      );
-      clearTimeout(fallbackTimeout);
-
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      const jsonContent = jsonMatch ? jsonMatch[0] : rawText;
-      const itineraryData = JSON.parse(jsonContent);
-
-      if (!itineraryData?.days)
-        throw new Error("AI returned invalid data structure (missing 'days').");
-
-      // ── PERSISTENCE ───────────────────────────────────────────────────────
-      console.log("[PlanTrip] Persisting browser-generated trip...");
-      const { data: trip, error: tripError } = await supabase
-        .from("trips")
-        .insert({
-          user_id: user.id,
-          title: `Trip to ${destinationStr}`,
-          countries: Array.isArray(destination) ? destination : [destination],
-          start_date: startDate.toISOString().split("T")[0],
-          num_days: itineraryData.days.length,
+      const response = await fetch("http://localhost:3000/generate-itinerary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destination: destinationStr,
+          dates: `${format(startDate, "MMM d")} - ${format(
+            new Date(startDate.getTime() + (numDays - 1) * 86400000),
+            "MMM d, yyyy"
+          )} (${numDays} days)`,
+          startDate: startDate.toISOString(),
           companion,
           purpose,
           experiences,
           pace,
-          budget_tier: budget,
-          status: "published",
-        })
-        .select()
-        .single();
-
-      if (tripError) {
-        console.error(
-          "[PlanTrip] Database error saving trip:",
-          tripError.message
-        );
-        throw new Error(
-          `Database Error (Trip): ${tripError.message}. Make sure the 'trips' table is updated.`
-        );
-      }
-
-      // Bulk insert days
-      const daysToInsert = itineraryData.days.map((day: any, idx: number) => {
-        const dDate = new Date(startDate);
-        dDate.setDate(startDate.getDate() + idx);
-        return {
-          trip_id: trip.id,
-          day_number: day.dayNumber || idx + 1,
-          date: dDate.toISOString().split("T")[0],
-          city: day.city,
-          country: day.country,
-          sort_order: idx,
-        };
+          budget,
+          userId: user.id,
+        }),
       });
 
-      const { data: dayRecords, error: daysError } = await supabase
-        .from("itinerary_days")
-        .insert(daysToInsert)
-        .select();
-      if (daysError)
-        throw new Error(`Database Error (Days): ${daysError.message}`);
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || `Backend failed with status ${response.status}`);
+      }
 
-      if (dayRecords) {
-        const activitiesToInsert: any[] = [];
-        itineraryData.days.forEach((day: any, dIdx: number) => {
-          const dayRec = dayRecords.find(
-            (r: any) => r.day_number === (day.dayNumber || dIdx + 1)
-          );
-          if (dayRec && day.activities) {
-            day.activities.forEach((act: any, aIdx: number) => {
-              activitiesToInsert.push({
-                day_id: dayRec.id,
-                name: act.name?.substring(0, 255),
-                description: act.description?.substring(0, 1500),
-                why_visit: act.whyVisit?.substring(0, 1000),
-                duration: act.duration,
-                time_of_day: act.timeOfDay,
-                best_time_to_visit: act.bestTimeToVisit,
-                open_time: act.openTime,
-                close_time: act.closeTime,
-                ticket_price: act.ticketPrice,
-                travel_time_from_previous: act.travelTimeFromPrevious,
-                food_suggestions: Array.isArray(act.foodSuggestions)
-                  ? act.foodSuggestions
-                  : [],
-                hidden_gems: Array.isArray(act.hiddenGems)
-                  ? act.hiddenGems
-                  : [],
-                photo_spots: Array.isArray(act.photoSpots)
-                  ? act.photoSpots
-                  : [],
-                rest_stops: Array.isArray(act.restStops) ? act.restStops : [],
-                google_maps_url: act.googleMapsUrl,
-                sort_order: aIdx,
-              });
-            });
-          }
+      const itineraryData = await response.json();
+
+      if (itineraryData.tripId) {
+        console.log("[PlanTrip] Local Backend success!");
+        toast({
+          title: "✨ Trip Created!",
+          description: `Your ${destinationStr} itinerary is ready.`,
+          variant: "default",
         });
-
-        if (activitiesToInsert.length > 0) {
-          console.log("[PlanTrip] Attempting to insert enriched activities...");
-          const { error: actsError } = await supabase
-            .from("activities")
-            .insert(activitiesToInsert);
-
-          if (actsError) {
-            console.warn(
-              "[PlanTrip] Enriched insertion failed (possibly missing columns). Falling back to Minimal Insertion. Error:",
-              actsError.message
-            );
-            const minimalActivities = activitiesToInsert.map(a => ({
-              day_id: a.day_id,
-              name: a.name,
-              description: a.description,
-              duration: a.duration,
-              time_of_day: a.time_of_day,
-              sort_order: a.sort_order,
-            }));
-            const { error: minError } = await supabase
-              .from("activities")
-              .insert(minimalActivities);
-            if (minError)
-              throw new Error(
-                `Database Error (Activities-Minimal): ${minError.message}`
-              );
-
-            toast({
-              title: "Note: Basic Itinerary Created",
-              description:
-                "Your trip is ready, but some premium metadata (food, gems) couldn't be saved. Check SQL migrations.",
-              variant: "default",
-            });
-          }
-        }
+        navigate(`/trip?id=${itineraryData.tripId}`);
+        return;
       }
-
-      toast({
-        title: "✨ Trip Created!",
-        description: `Your ${destinationStr} itinerary is ready.`,
-        variant: "default",
-      });
-      navigate(`/trip?id=${trip.id}`);
     } catch (err: any) {
       console.error("[PlanTrip] Generation Error:", err);
       toast({
         title: "Generation Failed",
-        description:
-          err.name === "AbortError"
-            ? "The AI took too long. Please try again."
-            : err.message || "Failed to generate your trip. Please try again.",
+        description: err.message || "Failed to generate your trip. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -472,7 +237,6 @@ const PlanTrip = () => {
     }
   };
 
-  // ─── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-[100svh] bg-hero-gradient">
       <Navbar />
@@ -644,7 +408,7 @@ const PlanTrip = () => {
                             mode="single"
                             selected={startDate}
                             onSelect={date => {
-                              setStartDate(date);
+                              setStartDate(date || new Date());
                               setCalendarOpen(false);
                             }}
                             disabled={date => date < new Date()}
