@@ -1,6 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "http://127.0.0.1:54321";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... mock key";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+        "[Supabase] Missing environment variables. " +
+        "Please create a .env.local file in your project root with:\n" +
+        "  VITE_SUPABASE_URL=https://krgouvtjrnocpdswsjnq.supabase.co\n" +
+        "  VITE_SUPABASE_ANON_KEY=<your-anon-key-from-supabase-dashboard>"
+    );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
