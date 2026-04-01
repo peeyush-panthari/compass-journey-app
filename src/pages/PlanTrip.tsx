@@ -67,13 +67,7 @@ const PlanTrip = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => { 
-    const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
-    if (!loading && !user && !isCallback) navigate("/login"); 
-  }, [user, loading, navigate]);
-
-  if (loading || (!user && (window.location.hash.includes('access_token=') || window.location.search.includes('code=')))) return null;
-  if (!user) return null;
+  // ─── ALL HOOKS MUST BE DECLARED BEFORE ANY EARLY RETURNS ───────────────────
   const [step, setStep] = useState(1);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
@@ -84,7 +78,6 @@ const PlanTrip = () => {
     tomorrow.setDate(tomorrow.getDate() + 1);
     return tomorrow;
   });
-
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [numDays, setNumDays] = useState<number>(7);
   const [companion, setCompanion] = useState("");
@@ -94,33 +87,77 @@ const PlanTrip = () => {
   const [budget, setBudget] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const toggleExperience = (id: string) => {
-    setExperiences(prev => prev.includes(id) ? prev.filter(e => e !== id) : prev.length < 5 ? [...prev, id] : prev);
-  };
-
-  const allCountries = Object.keys(countryCityData);
-  const filteredCountries = allCountries.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase()) && !selectedCountries.includes(c));
-
   const availableCities = useMemo(() => {
     if (selectedCountries.length === 0) return [];
     return selectedCountries.flatMap(country => countryCityData[country] || []);
   }, [selectedCountries]);
 
-  const filteredCities = availableCities.filter(c => c.toLowerCase().includes(citySearch.toLowerCase()) && !selectedCities.includes(c));
+  // ─── AUTH GUARD EFFECT ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const isCallback =
+      window.location.hash.includes("access_token=") ||
+      window.location.search.includes("code=");
+    if (!loading && !user && !isCallback) navigate("/login");
+  }, [user, loading, navigate]);
+
+  // ─── EARLY RETURNS (safe now — all hooks already called above) ─────────────
+  if (loading) {
+    return (
+      <div className="min-h-[100svh] bg-hero-gradient flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  const isCallback =
+    window.location.hash.includes("access_token=") ||
+    window.location.search.includes("code=");
+  if (!user && isCallback) return null;
+  if (!user) return null;
+
+  // ─── DERIVED STATE ──────────────────────────────────────────────────────────
+  const allCountries = Object.keys(countryCityData);
+  const filteredCountries = allCountries.filter(
+    c =>
+      c.toLowerCase().includes(countrySearch.toLowerCase()) &&
+      !selectedCountries.includes(c)
+  );
+  const filteredCities = availableCities.filter(
+    c =>
+      c.toLowerCase().includes(citySearch.toLowerCase()) &&
+      !selectedCities.includes(c)
+  );
+
+  // ─── HANDLERS ──────────────────────────────────────────────────────────────
+  const toggleExperience = (id: string) => {
+    setExperiences(prev =>
+      prev.includes(id)
+        ? prev.filter(e => e !== id)
+        : prev.length < 5
+          ? [...prev, id]
+          : prev
+    );
+  };
 
   const toggleCountry = (country: string) => {
     setSelectedCountries(prev => {
-      const next = prev.includes(country) ? prev.filter(c => c !== country) : [...prev, country];
+      const next = prev.includes(country)
+        ? prev.filter(c => c !== country)
+        : [...prev, country];
       if (!next.includes(country)) {
         const citiesOfRemoved = countryCityData[country] || [];
-        setSelectedCities(prevCities => prevCities.filter(c => !citiesOfRemoved.includes(c)));
+        setSelectedCities(prevCities =>
+          prevCities.filter(c => !citiesOfRemoved.includes(c))
+        );
       }
       return next;
     });
   };
 
   const toggleCity = (city: string) => {
-    setSelectedCities(prev => prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]);
+    setSelectedCities(prev =>
+      prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]
+    );
   };
 
   const canProceed = () => {
@@ -134,9 +171,10 @@ const PlanTrip = () => {
       default: return false;
     }
   };
+
   const handleFinish = async () => {
     setIsGenerating(true);
-    
+
     // Emergency loading reset after 120 seconds to prevent the UI from being permanently stuck
     const emergencyReset = setTimeout(() => {
       setIsGenerating(false);
@@ -144,49 +182,63 @@ const PlanTrip = () => {
     }, 120000);
 
     const destination = selectedCities.length > 0 ? selectedCities : selectedCountries;
-    const destinationStr = Array.isArray(destination) ? destination.join(', ') : destination;
+    const destinationStr = Array.isArray(destination)
+      ? destination.join(", ")
+      : destination;
 
     try {
       console.log("[PlanTrip] Attempting Edge Function generation...");
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
 
       try {
-        const { data: itineraryData, error: functionError } = await supabase.functions.invoke('generate-itinerary', {
-          body: {
-            destination: destinationStr,
-            dates: `${format(startDate, "MMM d")} - ${format(new Date(startDate.getTime() + (numDays - 1) * 86400000), "MMM d, yyyy")} (${numDays} days)`,
-            startDate: startDate.toISOString(),
-            companion,
-            purpose,
-            experiences,
-            pace,
-            budget,
-            userId: user.id
-          },
-          signal: controller.signal
-        });
+        const { data: itineraryData, error: functionError } =
+          await supabase.functions.invoke("generate-itinerary", {
+            body: {
+              destination: destinationStr,
+              dates: `${format(startDate, "MMM d")} - ${format(
+                new Date(startDate.getTime() + (numDays - 1) * 86400000),
+                "MMM d, yyyy"
+              )} (${numDays} days)`,
+              startDate: startDate.toISOString(),
+              companion,
+              purpose,
+              experiences,
+              pace,
+              budget,
+              userId: user.id,
+            },
+            signal: controller.signal,
+          });
 
         clearTimeout(timeoutId);
 
         if (functionError) throw functionError;
-        if (!itineraryData?.tripId && !itineraryData?.days) throw new Error("Incomplete data from Edge Function");
+        if (!itineraryData?.tripId && !itineraryData?.days)
+          throw new Error("Incomplete data from Edge Function");
 
         console.log("[PlanTrip] Edge Function success!");
         if (itineraryData.tripId) {
-          toast({ title: "✨ Trip Created!", description: `Your ${destinationStr} itinerary is ready.`, variant: "default" });
+          toast({
+            title: "✨ Trip Created!",
+            description: `Your ${destinationStr} itinerary is ready.`,
+            variant: "default",
+          });
           navigate(`/trip?id=${itineraryData.tripId}`);
           return;
         }
       } catch (err: any) {
         clearTimeout(timeoutId);
-        console.warn("[PlanTrip] Edge Function failed or timed out. Falling back to browser-mode Gemini. Error:", err.message);
+        console.warn(
+          "[PlanTrip] Edge Function failed or timed out. Falling back to browser-mode Gemini. Error:",
+          err.message
+        );
       }
 
-      // --- BROWSER FALLBACK MODE (GLOBEGENIE SYNC) ---
+      // ── BROWSER FALLBACK MODE ─────────────────────────────────────────────
       console.log("[PlanTrip] Starting Direct Browser Generation (GlobeGenie Mode)...");
-      
+
       const prompt = `
       Generate a detailed travel itinerary for a trip to ${destinationStr}.
       Trip Details:
@@ -196,7 +248,7 @@ const PlanTrip = () => {
       - Purpose: ${purpose}
       - Pace: ${pace}
       - Budget: ${budget}
-      - Preferences: ${experiences.join(', ')}
+      - Preferences: ${experiences.join(", ")}
 
       For every place in the itinerary MUST include:
       - name: String (Specific name of the place, do NOT club places together. E.g. "Eiffel Tower" not "Eiffel Tower and Champ de Mars")
@@ -255,37 +307,52 @@ const PlanTrip = () => {
       `;
 
       const fallbackController = new AbortController();
-      const fallbackTimeout = setTimeout(() => fallbackController.abort(), 90000);
-      
-      const rawText = await generateWithGeminiFallback(prompt, fallbackController.signal);
+      const fallbackTimeout = setTimeout(
+        () => fallbackController.abort(),
+        90000
+      );
+
+      const rawText = await generateWithGeminiFallback(
+        prompt,
+        fallbackController.signal
+      );
       clearTimeout(fallbackTimeout);
 
-      // GLOBEGENIE-STYLE JSON EXTRACTION
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       const jsonContent = jsonMatch ? jsonMatch[0] : rawText;
       const itineraryData = JSON.parse(jsonContent);
 
-      if (!itineraryData?.days) throw new Error("AI returned invalid data structure (missing 'days').");
+      if (!itineraryData?.days)
+        throw new Error("AI returned invalid data structure (missing 'days').");
 
-      // PERSISTENCE (Browser Handled)
+      // ── PERSISTENCE ───────────────────────────────────────────────────────
       console.log("[PlanTrip] Persisting browser-generated trip...");
-      const { data: trip, error: tripError } = await supabase.from('trips').insert({
-        user_id: user.id,
-        title: `Trip to ${destinationStr}`,
-        countries: Array.isArray(destination) ? destination : [destination],
-        start_date: startDate.toISOString().split('T')[0],
-        num_days: itineraryData.days.length,
-        companion,
-        purpose,
-        experiences,
-        pace,
-        budget_tier: budget,
-        status: 'published'
-      }).select().single();
+      const { data: trip, error: tripError } = await supabase
+        .from("trips")
+        .insert({
+          user_id: user.id,
+          title: `Trip to ${destinationStr}`,
+          countries: Array.isArray(destination) ? destination : [destination],
+          start_date: startDate.toISOString().split("T")[0],
+          num_days: itineraryData.days.length,
+          companion,
+          purpose,
+          experiences,
+          pace,
+          budget_tier: budget,
+          status: "published",
+        })
+        .select()
+        .single();
 
       if (tripError) {
-        console.error("[PlanTrip] Database error saving trip:", tripError.message);
-        throw new Error(`Database Error (Trip): ${tripError.message}. Make sure the 'trips' table is updated.`);
+        console.error(
+          "[PlanTrip] Database error saving trip:",
+          tripError.message
+        );
+        throw new Error(
+          `Database Error (Trip): ${tripError.message}. Make sure the 'trips' table is updated.`
+        );
       }
 
       // Bulk insert days
@@ -294,22 +361,27 @@ const PlanTrip = () => {
         dDate.setDate(startDate.getDate() + idx);
         return {
           trip_id: trip.id,
-          day_number: day.dayNumber || (idx + 1),
-          date: dDate.toISOString().split('T')[0],
+          day_number: day.dayNumber || idx + 1,
+          date: dDate.toISOString().split("T")[0],
           city: day.city,
           country: day.country,
-          sort_order: idx
+          sort_order: idx,
         };
       });
 
-      const { data: dayRecords, error: daysError } = await supabase.from('itinerary_days').insert(daysToInsert).select();
-      if (daysError) throw new Error(`Database Error (Days): ${daysError.message}`);
+      const { data: dayRecords, error: daysError } = await supabase
+        .from("itinerary_days")
+        .insert(daysToInsert)
+        .select();
+      if (daysError)
+        throw new Error(`Database Error (Days): ${daysError.message}`);
 
       if (dayRecords) {
-        // Prepare activities
         const activitiesToInsert: any[] = [];
         itineraryData.days.forEach((day: any, dIdx: number) => {
-          const dayRec = dayRecords.find((r: any) => r.day_number === (day.dayNumber || dIdx + 1));
+          const dayRec = dayRecords.find(
+            (r: any) => r.day_number === (day.dayNumber || dIdx + 1)
+          );
           if (dayRec && day.activities) {
             day.activities.forEach((act: any, aIdx: number) => {
               activitiesToInsert.push({
@@ -324,12 +396,18 @@ const PlanTrip = () => {
                 close_time: act.closeTime,
                 ticket_price: act.ticketPrice,
                 travel_time_from_previous: act.travelTimeFromPrevious,
-                food_suggestions: Array.isArray(act.foodSuggestions) ? act.foodSuggestions : [],
-                hidden_gems: Array.isArray(act.hiddenGems) ? act.hiddenGems : [],
-                photo_spots: Array.isArray(act.photoSpots) ? act.photoSpots : [],
+                food_suggestions: Array.isArray(act.foodSuggestions)
+                  ? act.foodSuggestions
+                  : [],
+                hidden_gems: Array.isArray(act.hiddenGems)
+                  ? act.hiddenGems
+                  : [],
+                photo_spots: Array.isArray(act.photoSpots)
+                  ? act.photoSpots
+                  : [],
                 rest_stops: Array.isArray(act.restStops) ? act.restStops : [],
                 google_maps_url: act.googleMapsUrl,
-                sort_order: aIdx
+                sort_order: aIdx,
               });
             });
           }
@@ -337,40 +415,56 @@ const PlanTrip = () => {
 
         if (activitiesToInsert.length > 0) {
           console.log("[PlanTrip] Attempting to insert enriched activities...");
-          const { error: actsError } = await supabase.from('activities').insert(activitiesToInsert);
-          
+          const { error: actsError } = await supabase
+            .from("activities")
+            .insert(activitiesToInsert);
+
           if (actsError) {
-             console.warn("[PlanTrip] Enriched insertion failed (possibly missing columns). Falling back to Minimal Insertion. Error:", actsError.message);
-             // Minimal Fallback: only use columns that are guaranteed by the initial schema
-             const minimalActivities = activitiesToInsert.map(a => ({
-               day_id: a.day_id,
-               name: a.name,
-               description: a.description,
-               duration: a.duration,
-               time_of_day: a.time_of_day,
-               sort_order: a.sort_order
-             }));
-             const { error: minError } = await supabase.from('activities').insert(minimalActivities);
-             if (minError) throw new Error(`Database Error (Activities-Minimal): ${minError.message}`);
-             
-             toast({ 
-               title: "Note: Basic Itinerary Created", 
-               description: "Your trip is ready, but some premium metadata (food, gems) couldn't be saved. Check SQL migrations.", 
-               variant: "default" 
-             });
+            console.warn(
+              "[PlanTrip] Enriched insertion failed (possibly missing columns). Falling back to Minimal Insertion. Error:",
+              actsError.message
+            );
+            const minimalActivities = activitiesToInsert.map(a => ({
+              day_id: a.day_id,
+              name: a.name,
+              description: a.description,
+              duration: a.duration,
+              time_of_day: a.time_of_day,
+              sort_order: a.sort_order,
+            }));
+            const { error: minError } = await supabase
+              .from("activities")
+              .insert(minimalActivities);
+            if (minError)
+              throw new Error(
+                `Database Error (Activities-Minimal): ${minError.message}`
+              );
+
+            toast({
+              title: "Note: Basic Itinerary Created",
+              description:
+                "Your trip is ready, but some premium metadata (food, gems) couldn't be saved. Check SQL migrations.",
+              variant: "default",
+            });
           }
         }
       }
-      
-      toast({ title: "✨ Trip Created!", description: `Your ${destinationStr} itinerary is ready.`, variant: "default" });
-      navigate(`/trip?id=${trip.id}`);
 
+      toast({
+        title: "✨ Trip Created!",
+        description: `Your ${destinationStr} itinerary is ready.`,
+        variant: "default",
+      });
+      navigate(`/trip?id=${trip.id}`);
     } catch (err: any) {
       console.error("[PlanTrip] Generation Error:", err);
-      toast({ 
-        title: "Generation Failed", 
-        description: err.name === 'AbortError' ? "The AI took too long. Please try again." : (err.message || "Failed to generate your trip. Please try again."), 
-        variant: "destructive" 
+      toast({
+        title: "Generation Failed",
+        description:
+          err.name === "AbortError"
+            ? "The AI took too long. Please try again."
+            : err.message || "Failed to generate your trip. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsGenerating(false);
@@ -378,64 +472,138 @@ const PlanTrip = () => {
     }
   };
 
-
+  // ─── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-[100svh] bg-hero-gradient">
       <Navbar />
       <div className="pt-18 sm:pt-24 pb-24 md:pb-12 px-4 safe-top safe-bottom">
         <div className="max-w-2xl mx-auto">
+          {/* Progress Bar */}
           <div className="flex items-center gap-1.5 mb-8">
             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-              <div key={i} className={cn("h-1.5 flex-1 rounded-full transition-all duration-500", i < step ? "bg-primary" : "bg-border")} />
+              <div
+                key={i}
+                className={cn(
+                  "h-1.5 flex-1 rounded-full transition-all duration-500",
+                  i < step ? "bg-primary" : "bg-border"
+                )}
+              />
             ))}
           </div>
 
-          <p className="text-sm text-muted-foreground mb-2 font-medium compact-touch">Step {step} of {TOTAL_STEPS}</p>
+          <p className="text-sm text-muted-foreground mb-2 font-medium compact-touch">
+            Step {step} of {TOTAL_STEPS}
+          </p>
 
           <AnimatePresence mode="wait">
-            <motion.div key={step} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -40 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* ── STEP 1: Destination ── */}
               {step === 1 && (
                 <div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">Where are you traveling?</h1>
-                  <p className="text-muted-foreground mb-8">Select countries and cities</p>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
+                    Where are you traveling?
+                  </h1>
+                  <p className="text-muted-foreground mb-8">
+                    Select countries and cities
+                  </p>
                   <div className="mb-6">
-                    <label className="text-sm font-medium text-foreground mb-2 block">Countries</label>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      Countries
+                    </label>
                     {selectedCountries.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-3">
                         {selectedCountries.map(country => (
-                          <span key={country} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-medium compact-touch">
+                          <span
+                            key={country}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-medium compact-touch"
+                          >
                             {country}
-                            <button onClick={() => toggleCountry(country)} className="hover:text-destructive transition-colors compact-touch"><X className="w-3.5 h-3.5" /></button>
+                            <button
+                              onClick={() => toggleCountry(country)}
+                              className="hover:text-destructive transition-colors compact-touch"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
                           </span>
                         ))}
                       </div>
                     )}
-                    <div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input value={countrySearch} onChange={e => setCountrySearch(e.target.value)} placeholder="Search countries..." className="pl-11 h-12 rounded-xl bg-card border-border shadow-card" autoFocus /></div>
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        value={countrySearch}
+                        onChange={e => setCountrySearch(e.target.value)}
+                        placeholder="Search countries..."
+                        className="pl-11 h-12 rounded-xl bg-card border-border shadow-card"
+                        autoFocus
+                      />
+                    </div>
                     {countrySearch && filteredCountries.length > 0 && (
                       <div className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-border bg-card shadow-card">
                         {filteredCountries.slice(0, 8).map(country => (
-                          <button key={country} onClick={() => { toggleCountry(country); setCountrySearch(""); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-foreground">{country}</button>
+                          <button
+                            key={country}
+                            onClick={() => {
+                              toggleCountry(country);
+                              setCountrySearch("");
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors text-foreground"
+                          >
+                            {country}
+                          </button>
                         ))}
                       </div>
                     )}
                   </div>
+
                   {selectedCountries.length > 0 && (
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Cities</label>
+                      <label className="text-sm font-medium text-foreground mb-2 block">
+                        Cities
+                      </label>
                       {selectedCities.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-3">
                           {selectedCities.map(city => (
-                            <span key={city} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-sm font-medium compact-touch">
-                              {city}<button onClick={() => toggleCity(city)} className="hover:text-destructive compact-touch"><X className="w-3.5 h-3.5" /></button>
+                            <span
+                              key={city}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-sm font-medium compact-touch"
+                            >
+                              {city}
+                              <button
+                                onClick={() => toggleCity(city)}
+                                className="hover:text-destructive compact-touch"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
                             </span>
                           ))}
                         </div>
                       )}
-                      <div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input value={citySearch} onChange={e => setCitySearch(e.target.value)} placeholder="Search cities..." className="pl-11 h-12 rounded-xl bg-card border-border shadow-card" /></div>
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          value={citySearch}
+                          onChange={e => setCitySearch(e.target.value)}
+                          placeholder="Search cities..."
+                          className="pl-11 h-12 rounded-xl bg-card border-border shadow-card"
+                        />
+                      </div>
                       {filteredCities.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {filteredCities.slice(0, 12).map(city => (
-                            <button key={city} onClick={() => toggleCity(city)} className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted/50 text-sm text-foreground transition-colors compact-touch">+ {city}</button>
+                            <button
+                              key={city}
+                              onClick={() => toggleCity(city)}
+                              className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted/50 text-sm text-foreground transition-colors compact-touch"
+                            >
+                              + {city}
+                            </button>
                           ))}
                         </div>
                       )}
@@ -444,106 +612,235 @@ const PlanTrip = () => {
                 </div>
               )}
 
+              {/* ── STEP 2: Dates ── */}
               {step === 2 && (
                 <div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">When and for how long?</h1>
-                  <p className="text-muted-foreground mb-8">Pick your start date and duration</p>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
+                    When and for how long?
+                  </h1>
+                  <p className="text-muted-foreground mb-8">
+                    Pick your start date and duration
+                  </p>
                   <div className="space-y-6">
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Start Date</label>
+                      <label className="text-sm font-medium text-foreground mb-2 block">
+                        Start Date
+                      </label>
                       <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                         <PopoverTrigger asChild>
-                          <Button variant="outline" className={cn("w-full h-14 justify-start text-left text-lg rounded-xl bg-card shadow-card", !startDate && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-3 h-5 w-5" />{startDate ? format(startDate, "PPP") : "Select a date"}
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full h-14 justify-start text-left text-lg rounded-xl bg-card shadow-card",
+                              !startDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-3 h-5 w-5" />
+                            {startDate ? format(startDate, "PPP") : "Select a date"}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={startDate} onSelect={date => { setStartDate(date); setCalendarOpen(false); }} disabled={date => date < new Date()} initialFocus className="p-3 pointer-events-auto" />
+                          <Calendar
+                            mode="single"
+                            selected={startDate}
+                            onSelect={date => {
+                              setStartDate(date);
+                              setCalendarOpen(false);
+                            }}
+                            disabled={date => date < new Date()}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
                         </PopoverContent>
                       </Popover>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-3 block">Number of Days</label>
+                      <label className="text-sm font-medium text-foreground mb-3 block">
+                        Number of Days
+                      </label>
                       <div className="flex items-center gap-3">
-                        <button type="button" onClick={() => setNumDays(d => Math.max(1, d - 1))} className="w-12 h-12 rounded-xl border border-border bg-card hover:bg-muted flex items-center justify-center text-foreground"><Minus className="w-5 h-5" /></button>
-                        <Input type="number" min={1} max={90} value={numDays} onChange={e => { const v = parseInt(e.target.value); if (!isNaN(v) && v >= 1 && v <= 90) setNumDays(v); }} className="w-24 h-12 text-center text-lg font-semibold rounded-xl bg-card border-border shadow-card [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                        <button type="button" onClick={() => setNumDays(d => Math.min(90, d + 1))} className="w-12 h-12 rounded-xl border border-border bg-card hover:bg-muted flex items-center justify-center text-foreground"><Plus className="w-5 h-5" /></button>
-                        <span className="text-sm text-muted-foreground ml-1">days</span>
+                        <button
+                          type="button"
+                          onClick={() => setNumDays(d => Math.max(1, d - 1))}
+                          className="w-12 h-12 rounded-xl border border-border bg-card hover:bg-muted flex items-center justify-center text-foreground"
+                        >
+                          <Minus className="w-5 h-5" />
+                        </button>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={90}
+                          value={numDays}
+                          onChange={e => {
+                            const v = parseInt(e.target.value);
+                            if (!isNaN(v) && v >= 1 && v <= 90) setNumDays(v);
+                          }}
+                          className="w-24 h-12 text-center text-lg font-semibold rounded-xl bg-card border-border shadow-card [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNumDays(d => Math.min(90, d + 1))}
+                          className="w-12 h-12 rounded-xl border border-border bg-card hover:bg-muted flex items-center justify-center text-foreground"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                        <span className="text-sm text-muted-foreground ml-1">
+                          days
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* ── STEP 3: Companion ── */}
               {step === 3 && (
                 <div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">Who are you traveling with?</h1>
-                  <p className="text-muted-foreground mb-8">This helps us tailor activities</p>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
+                    Who are you traveling with?
+                  </h1>
+                  <p className="text-muted-foreground mb-8">
+                    This helps us tailor activities
+                  </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {companionOptions.map(opt => (
-                      <button key={opt.id} onClick={() => setCompanion(opt.id)} className={cn("flex flex-col items-center gap-2 p-5 rounded-xl border transition-all text-center", companion === opt.id ? "bg-primary/10 border-primary shadow-md ring-2 ring-primary/20" : "bg-card border-border hover:border-primary/40")}>
+                      <button
+                        key={opt.id}
+                        onClick={() => setCompanion(opt.id)}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-5 rounded-xl border transition-all text-center",
+                          companion === opt.id
+                            ? "bg-primary/10 border-primary shadow-md ring-2 ring-primary/20"
+                            : "bg-card border-border hover:border-primary/40"
+                        )}
+                      >
                         <span className="text-3xl">{opt.emoji}</span>
-                        <span className="text-sm font-semibold text-foreground">{opt.label}</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {opt.label}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* ── STEP 4: Purpose ── */}
               {step === 4 && (
                 <div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">What is the purpose?</h1>
-                  <p className="text-muted-foreground mb-8">Choose the main theme</p>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
+                    What is the purpose?
+                  </h1>
+                  <p className="text-muted-foreground mb-8">
+                    Choose the main theme
+                  </p>
                   <div className="grid grid-cols-2 gap-3">
                     {purposeOptions.map(opt => (
-                      <button key={opt.id} onClick={() => setPurpose(opt.id)} className={cn("flex flex-col items-center gap-2 p-5 rounded-xl border transition-all text-center", purpose === opt.id ? "bg-primary/10 border-primary shadow-md ring-2 ring-primary/20" : "bg-card border-border hover:border-primary/40")}>
+                      <button
+                        key={opt.id}
+                        onClick={() => setPurpose(opt.id)}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-5 rounded-xl border transition-all text-center",
+                          purpose === opt.id
+                            ? "bg-primary/10 border-primary shadow-md ring-2 ring-primary/20"
+                            : "bg-card border-border hover:border-primary/40"
+                        )}
+                      >
                         <span className="text-3xl">{opt.emoji}</span>
-                        <span className="text-sm font-semibold text-foreground">{opt.label}</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {opt.label}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* ── STEP 5: Experiences ── */}
               {step === 5 && (
                 <div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">What experiences excite you?</h1>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
+                    What experiences excite you?
+                  </h1>
                   <p className="text-muted-foreground mb-8">Pick up to 5</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {experienceOptions.map(opt => (
-                      <button key={opt.id} onClick={() => toggleExperience(opt.id)} className={cn("flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-center", experiences.includes(opt.id) ? "bg-primary/10 border-primary ring-2 ring-primary/20" : "bg-card border-border hover:border-primary/40")}>
+                      <button
+                        key={opt.id}
+                        onClick={() => toggleExperience(opt.id)}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-4 rounded-xl border transition-all text-center",
+                          experiences.includes(opt.id)
+                            ? "bg-primary/10 border-primary ring-2 ring-primary/20"
+                            : "bg-card border-border hover:border-primary/40"
+                        )}
+                      >
                         <span className="text-2xl">{opt.emoji}</span>
-                        <span className="text-xs font-semibold text-foreground">{opt.label}</span>
+                        <span className="text-xs font-semibold text-foreground">
+                          {opt.label}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* ── STEP 6: Pace & Budget ── */}
               {step === 6 && (
                 <div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">Almost done!</h1>
-                  <p className="text-muted-foreground mb-8">Pick your pace and budget</p>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground mb-2">
+                    Almost done!
+                  </h1>
+                  <p className="text-muted-foreground mb-8">
+                    Pick your pace and budget
+                  </p>
                   <div className="space-y-8">
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-3 block">Travel Pace</label>
+                      <label className="text-sm font-medium text-foreground mb-3 block">
+                        Travel Pace
+                      </label>
                       <div className="grid grid-cols-3 gap-3">
                         {paceOptions.map(opt => (
-                          <button key={opt.id} onClick={() => setPace(opt.id)} className={cn("flex flex-col items-center gap-1.5 p-4 rounded-xl border transition-all text-center", pace === opt.id ? "bg-primary/10 border-primary ring-2 ring-primary/20" : "bg-card border-border hover:border-primary/40")}>
+                          <button
+                            key={opt.id}
+                            onClick={() => setPace(opt.id)}
+                            className={cn(
+                              "flex flex-col items-center gap-1.5 p-4 rounded-xl border transition-all text-center",
+                              pace === opt.id
+                                ? "bg-primary/10 border-primary ring-2 ring-primary/20"
+                                : "bg-card border-border hover:border-primary/40"
+                            )}
+                          >
                             <span className="text-2xl">{opt.emoji}</span>
-                            <span className="text-xs font-semibold text-foreground">{opt.label}</span>
-                            <span className="text-[10px] text-muted-foreground compact-touch">{opt.description}</span>
+                            <span className="text-xs font-semibold text-foreground">
+                              {opt.label}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground compact-touch">
+                              {opt.description}
+                            </span>
                           </button>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-3 block">Budget</label>
+                      <label className="text-sm font-medium text-foreground mb-3 block">
+                        Budget
+                      </label>
                       <div className="grid grid-cols-3 gap-3">
                         {budgetOptions.map(opt => (
-                          <button key={opt.id} onClick={() => setBudget(opt.id)} className={cn("flex flex-col items-center gap-1.5 p-4 rounded-xl border transition-all text-center", budget === opt.id ? "bg-primary/10 border-primary ring-2 ring-primary/20" : "bg-card border-border hover:border-primary/40")}>
+                          <button
+                            key={opt.id}
+                            onClick={() => setBudget(opt.id)}
+                            className={cn(
+                              "flex flex-col items-center gap-1.5 p-4 rounded-xl border transition-all text-center",
+                              budget === opt.id
+                                ? "bg-primary/10 border-primary ring-2 ring-primary/20"
+                                : "bg-card border-border hover:border-primary/40"
+                            )}
+                          >
                             <span className="text-2xl">{opt.emoji}</span>
-                            <span className="text-xs font-semibold text-foreground">{opt.label}</span>
+                            <span className="text-xs font-semibold text-foreground">
+                              {opt.label}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -554,15 +851,35 @@ const PlanTrip = () => {
             </motion.div>
           </AnimatePresence>
 
+          {/* Navigation Buttons */}
           <div className="flex gap-3 mt-10">
             {step > 1 && (
-              <Button variant="outline" size="lg" className="rounded-xl" onClick={() => setStep(s => s - 1)}>
+              <Button
+                variant="outline"
+                size="lg"
+                className="rounded-xl"
+                onClick={() => setStep(s => s - 1)}
+              >
                 <ArrowLeft className="w-4 h-4 mr-2" /> Back
               </Button>
             )}
-            <Button size="lg" className="flex-1 bg-ocean-gradient text-primary-foreground font-semibold rounded-xl h-12 text-base" disabled={!canProceed()}
-              onClick={() => step < TOTAL_STEPS ? setStep(s => s + 1) : handleFinish()}>
-              {step < TOTAL_STEPS ? (<>Continue <ArrowRight className="w-4 h-4 ml-2" /></>) : (<><Sparkles className="w-4 h-4 mr-2" /> Generate Trip</>)}
+            <Button
+              size="lg"
+              className="flex-1 bg-ocean-gradient text-primary-foreground font-semibold rounded-xl h-12 text-base"
+              disabled={!canProceed()}
+              onClick={() =>
+                step < TOTAL_STEPS ? setStep(s => s + 1) : handleFinish()
+              }
+            >
+              {step < TOTAL_STEPS ? (
+                <>
+                  Continue <ArrowRight className="w-4 h-4 ml-2" />
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" /> Generate Trip
+                </>
+              )}
             </Button>
           </div>
         </div>

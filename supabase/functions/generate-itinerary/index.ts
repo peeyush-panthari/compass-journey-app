@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.1.1";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -11,7 +11,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
-  
+
   // Set up secured Service Role client for bypassing RLS to write to 'system_logs'
   const supabaseClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -30,15 +30,20 @@ serve(async (req) => {
       details: body
     }]);
 
-    const { 
-      destination, dates, companion, purpose, experiences, pace, budget 
+    const {
+      destination, dates, companion, purpose, experiences, pace, budget
     } = body;
 
     const apiKey = Deno.env.get('GEMINI_API_KEY') || "";
-    if (!apiKey) console.error("GEMINI_API_KEY is not set in environment.");
+    if (!apiKey) {
+      console.error("GEMINI_API_KEY is not set in environment.");
+      throw new Error("Gemini API key is not configured. Please set GEMINI_API_KEY in Supabase secrets.");
+    }
 
+    // ── FIX Bug 4: Updated SDK from @0.1.1 to @0.21.0 (import at top) ────────
+    // ── and updated model to gemini-2.0-flash ────────────────────────────────
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `
       Generate a detailed travel itinerary for a trip to ${destination}.
@@ -107,26 +112,22 @@ serve(async (req) => {
     `;
 
     console.time("[generate-itinerary] Gemini Generation");
-    
-    // Internal timeout for Gemini API call
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 50000);
 
-    let result;
-    try {
-      result = await model.generateContent(prompt, { signal: controller.signal });
-      clearTimeout(timeoutId);
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
-        throw new Error("Gemini AI took too long to respond. Please try a shorter trip or try again.");
-      }
-      throw err;
-    }
-    
+    // ── FIX Bug 5: Replaced broken AbortController signal pattern ────────────
+    // ── with Promise.race — generateContent() does not accept a signal param ─
+    const geminiPromise = model.generateContent(prompt);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Gemini AI took too long to respond. Please try a shorter trip or try again.")),
+        50000
+      )
+    );
+
+    const result = await Promise.race([geminiPromise, timeoutPromise]);
+
     console.timeEnd("[generate-itinerary] Gemini Generation");
     const text = result.response.text();
-    
+
     if (Deno.env.get('LOG_GEMINI') === '1') {
       console.log("[generate-itinerary] Raw Gemini Response:", text);
       await supabaseClient.from('system_logs').insert([{
@@ -153,7 +154,7 @@ serve(async (req) => {
 
     const ensureArray = (val: any) => Array.isArray(val) ? val : [];
 
-    // ENHANCEMENT: Truncate strings to prevent database schema insertion errors 
+    // ENHANCEMENT: Truncate strings to prevent database schema insertion errors
     if (itineraryData.days && Array.isArray(itineraryData.days)) {
       itineraryData.days = itineraryData.days.map((day: any) => ({
         ...day,
@@ -185,7 +186,7 @@ serve(async (req) => {
 
     if (userId) {
       console.log("[generate-itinerary] Persisting trip for user:", userId);
-      
+
       const { data: trip, error: tripError } = await supabaseClient.from('trips').insert({
         user_id: userId,
         title: `Trip to ${destination}`,
@@ -205,12 +206,12 @@ serve(async (req) => {
         throw new Error(`Database Error (Trip): ${tripError.message}`);
       } else {
         itineraryData.tripId = trip.id;
-        
+
         // Step 1: Bulk insert all days
         const daysToInsert = itineraryData.days.map((day: any, dayIdx: number) => {
           const currentDayDate = new Date(baseDate);
           currentDayDate.setDate(baseDate.getDate() + dayIdx);
-          
+
           return {
             trip_id: trip.id,
             day_number: day.dayNumber || (dayIdx + 1),
@@ -232,7 +233,7 @@ serve(async (req) => {
         } else if (dayRecords) {
           // Step 2: Prepare and bulk insert all activities
           const activitiesToInsert: any[] = [];
-          
+
           itineraryData.days.forEach((day: any, dayIdx: number) => {
             const dayNum = day.dayNumber || (dayIdx + 1);
             const dayRecord = dayRecords.find((r: any) => r.day_number === dayNum);
@@ -265,7 +266,7 @@ serve(async (req) => {
             const { error: actsError } = await supabaseClient
               .from('activities')
               .insert(activitiesToInsert);
-            
+
             if (actsError) {
               console.warn("[generate-itinerary] Enriched insertion failed (possibly missing columns). Falling back to Minimal Insertion. Error:", actsError.message);
               // Minimal Fallback: only use columns that are guaranteed by the initial schema
@@ -277,14 +278,14 @@ serve(async (req) => {
                 time_of_day: a.time_of_day,
                 sort_order: a.sort_order
               }));
-              
+
               const { error: minError } = await supabaseClient
                 .from('activities')
                 .insert(minimalActivities);
-                
+
               if (minError) {
                 console.error("[generate-itinerary] Critical: Minimal insertion also failed.", minError);
-                // We don't throw here so the user at least gets the response JSON to view transiently
+                // We don't throw here so the user at least gets the tripId to navigate
               }
             }
           }
@@ -305,7 +306,7 @@ serve(async (req) => {
     })
   } catch (error: any) {
     console.error(`[generate-itinerary] Error generating itinerary:`, error.message, error.stack);
-    
+
     // Attempt to log the error to system_logs if possible
     try {
       await supabaseClient.from('system_logs').insert([{
