@@ -1,4 +1,4 @@
-import { Clock, MapPin, Ticket, Star, ExternalLink, Navigation, Sun, Camera, Play, X, ChevronLeft, ChevronRight, UtensilsCrossed, Gem, Quote } from "lucide-react";
+import { Clock, MapPin, Ticket, Star, ExternalLink, Navigation, Sun, Camera, Play, X, ChevronLeft, ChevronRight, UtensilsCrossed, Gem } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -32,7 +32,7 @@ export interface ActivityDetail {
   travelTimeFromPrevious?: string;
   googleMapsUrl?: string;
   photos?: string[];
-  youtubeVideos?: { title: string; videoUrl?: string; url?: string; thumbnailUrl: string }[];
+  youtubeVideos?: { title: string; videoUrl: string; thumbnailUrl: string }[];
   whyVisit?: string;
   foodSuggestions?: string[];
   hiddenGems?: string[];
@@ -55,18 +55,6 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
 
   if (!activity) return null;
 
-  // Intelligent Media Fallback Engine (Maintains globegenie parity while ensuring content)
-  const finalPhotos = (activity.photos && activity.photos.length > 0) 
-    ? activity.photos 
-    : [
-        `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800`,
-        `https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800`
-      ];
-
-  const finalVideos = (activity.youtubeVideos && activity.youtubeVideos.length > 0)
-    ? activity.youtubeVideos
-    : [];
-
   const getYoutubeEmbedUrl = (url: string) => {
     const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
     return match ? `https://www.youtube.com/embed/${match[1]}` : null;
@@ -75,88 +63,76 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] sm:max-h-[90vh] p-0 rounded-2xl border-border/60 overflow-hidden w-[calc(100%-2rem)] mx-auto font-sans">
-          {/* Hero Image (Exact Globegenie Mapping) */}
-          <div className="relative w-full h-48 overflow-hidden">
-            <img
-              src={activity.photoUrl || finalPhotos[0]}
-              alt={activity.name}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-            <div className="absolute bottom-3 left-4 right-4">
-              <h2 className="text-xl font-display font-bold text-foreground drop-shadow-sm leading-tight">{activity.name}</h2>
-              <div className="flex items-center gap-2 mt-1.5">
-                <Badge variant="secondary" className="text-[10px] sm:text-xs font-bold gap-1 px-2">
-                  <Star className="w-3 h-3 text-[#F59E0B] fill-[#F59E0B]" /> {activity.rating || 4.8}
+        <DialogContent className="sm:max-w-lg max-h-[85vh] sm:max-h-[90vh] p-0 rounded-3xl border-border/60 overflow-hidden w-[calc(100%-2rem)] mx-auto font-sans shadow-2xl">
+          {/* Hero Image (Exact Globegenie Design) */}
+          <div className="relative w-full h-52 overflow-hidden">
+            <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover shadow-inner hover:scale-110 transition-transform duration-1000" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/20 to-transparent" />
+            <div className="absolute bottom-4 left-5 right-5">
+              <h2 className="text-2xl font-display font-bold text-foreground drop-shadow-sm tracking-tight">{activity.name}</h2>
+              <div className="flex items-center gap-3 mt-2">
+                <Badge variant="secondary" className="text-[10px] font-bold gap-1 px-2.5 py-1 bg-white/20 backdrop-blur-md">
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> {activity.rating}
                 </Badge>
-                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-medium text-muted-foreground truncate">
-                  <MapPin className="w-3 h-3" /> 
-                  <span className="truncate max-w-[200px]">{activity.address}</span>
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground truncate opacity-80">
+                  <MapPin className="w-3.5 h-3.5" /> <span className="truncate max-w-[220px]">{activity.address}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="overflow-y-auto overflow-x-hidden max-h-[calc(90vh-12rem)] w-full scrollbar-hide">
-            <div className="px-5 pb-6 space-y-5 w-full min-w-0">
-              
+          <div className="overflow-y-auto overflow-x-hidden max-h-[calc(90vh-14rem)] w-full scrollbar-hide px-5 pb-8">
+            <div className="space-y-6 pt-5">
               {/* About Section */}
-              <div className="pt-4">
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-widest mb-1.5">About</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{activity.description}</p>
+              <div>
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-[0.1em] mb-2">Editor's Summary</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed leading-7">{activity.description}</p>
               </div>
 
               {activity.whyVisit && (
-                 <div className="bg-primary/5 border-l-[3px] border-primary p-3.5 rounded-r-xl">
-                   <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Insider Insight</h4>
-                   <p className="text-sm text-foreground/90 italic">"{activity.whyVisit}"</p>
+                 <div className="bg-primary/5 border-l-4 border-primary p-4 rounded-xl shadow-sm italic">
+                   <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Gem className="w-3 h-3" /> Why we love it</h4>
+                   <p className="text-sm text-foreground/90 leading-6">"{activity.whyVisit}"</p>
                  </div>
               )}
 
-              <Separator className="opacity-60" />
+              <Separator className="opacity-50" />
 
-              {/* Details Grid (Exact DetailItem Mapping) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Details Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(() => {
-                  const formattedOpen = formatTime(activity.openTime);
-                  const formattedClose = formatTime(activity.closeTime);
-                  let hoursDisplay = "Morning \u2013 Evening";
-                  if (formattedOpen !== "Not Available" && formattedClose !== "Not Available") {
-                    hoursDisplay = `${formattedOpen} \u2013 ${formattedClose}`;
-                  }
-                  return <DetailItem icon={<Clock className="w-4 h-4 text-primary" />} label="Opening Hours" value={hoursDisplay} />;
+                  const hours = formatTime(activity.openTime) + " – " + formatTime(activity.closeTime);
+                  return <DetailItem icon={<Clock className="w-4 h-4 text-primary" />} label="Operating Hours" value={hours} />;
                 })()}
-                
-                <DetailItem icon={<Clock className="w-4 h-4 text-accent" />} label="Est. Time Needed" value={activity.duration || "2-3 hours"} />
-                <DetailItem icon={<Ticket className="w-4 h-4 text-[#FF5A5F]" />} label="Ticket Price" value={activity.ticketPrice || "Free Entry"} />
-                <DetailItem icon={<Sun className="w-4 h-4 text-[#F59E0B]" />} label="Best Time to Visit" value={activity.bestTimeToVisit || "Morning"} />
+                <DetailItem icon={<Clock className="w-4 h-4 text-emerald-500" />} label="Time Investment" value={activity.duration} />
+                <DetailItem icon={<Ticket className="w-4 h-4 text-rose-500" />} label="Journey Cost" value={activity.ticketPrice} />
+                <DetailItem icon={<Sun className="w-4 h-4 text-amber-500" />} label="Prime Visiting Time" value={activity.bestTimeToVisit || "Early Morning"} />
               </div>
 
-              {/* Recommendation Sections (Rich Metadata) */}
+              {/* Recommendations Mapping */}
               {(activity.foodSuggestions?.length! > 0 || activity.hiddenGems?.length! > 0) && (
                 <>
-                  <Separator className="opacity-60" />
+                  <Separator className="opacity-50" />
                   <div className="grid grid-cols-1 gap-4">
                     {activity.foodSuggestions && activity.foodSuggestions.length > 0 && (
-                      <div className="bg-muted/30 p-3.5 rounded-xl border border-border/20">
-                        <div className="flex items-center gap-2 mb-2">
+                      <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100/50">
+                        <div className="flex items-center gap-2 mb-2.5">
                            <UtensilsCrossed className="w-4 h-4 text-orange-500" />
-                           <h4 className="text-[10px] font-bold text-foreground uppercase tracking-widest">Food \u0026 Coffee</h4>
+                           <h4 className="text-[10px] font-bold text-orange-800 uppercase tracking-widest">Gastronomy & Sips</h4>
                         </div>
-                        <ul className="space-y-1.5 pl-5 list-disc text-sm text-muted-foreground">
-                          {activity.foodSuggestions.map((item, i) => <li key={i}>{item}</li>)}
+                        <ul className="space-y-1.5 pl-2 text-sm text-muted-foreground">
+                          {activity.foodSuggestions.map((item, i) => <li key={i} className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-orange-200 mt-2 shrink-0" /> {item}</li>)}
                         </ul>
                       </div>
                     )}
                     {activity.hiddenGems && activity.hiddenGems.length > 0 && (
-                      <div className="bg-muted/30 p-3.5 rounded-xl border border-border/20">
-                        <div className="flex items-center gap-2 mb-2">
-                           <Gem className="w-4 h-4 text-purple-500" />
-                           <h4 className="text-[10px] font-bold text-foreground uppercase tracking-widest">Hidden Gems</h4>
+                      <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100/50">
+                        <div className="flex items-center gap-2 mb-2.5">
+                           <Gem className="w-4 h-4 text-purple-600" />
+                           <h4 className="text-[10px] font-bold text-purple-800 uppercase tracking-widest">Insider Secrets</h4>
                         </div>
-                        <ul className="space-y-1.5 pl-5 list-disc text-sm text-muted-foreground">
-                          {activity.hiddenGems.map((item, i) => <li key={i}>{item}</li>)}
+                        <ul className="space-y-1.5 pl-2 text-sm text-muted-foreground">
+                          {activity.hiddenGems.map((item, i) => <li key={i} className="flex gap-2"><div className="w-1.5 h-1.5 rounded-full bg-purple-200 mt-2 shrink-0" /> {item}</li>)}
                         </ul>
                       </div>
                     )}
@@ -164,22 +140,18 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
                 </>
               )}
 
-              {/* Media Layer: Photo Gallery */}
-              {finalPhotos.length > 1 && (
+              {/* Discovery Gallery */}
+              {activity.photos && activity.photos.length > 0 && (
                 <>
-                  <Separator className="opacity-60" />
+                  <Separator className="opacity-50" />
                   <div>
-                    <h3 className="text-xs font-bold text-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-primary" /> Photo Gallery
+                    <h3 className="text-xs font-bold text-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                       <Camera className="w-4 h-4 text-primary" /> Visual Journey Gallery
                     </h3>
-                    <div className="flex w-full overflow-x-auto gap-3 pb-2 snap-x snap-mandatory scrollbar-hide">
-                      {finalPhotos.map((photo, i) => (
-                        <div
-                          key={i}
-                          className="w-24 h-24 sm:w-32 sm:h-32 flex-none rounded-xl overflow-hidden snap-center cursor-pointer border border-border/20 shadow-sm"
-                          onClick={() => setFullScreenPhotoIndex(i)}
-                        >
-                          <img src={photo} alt={`${activity.name} ${i}`} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                    <div className="flex w-full overflow-x-auto gap-4 pb-3 snap-x snap-mandatory scrollbar-hide">
+                      {activity.photos.map((photo, i) => (
+                        <div key={i} className="w-28 h-28 sm:w-36 sm:h-36 flex-none rounded-2xl overflow-hidden snap-center cursor-pointer border-2 border-transparent hover:border-primary transition-all shadow-md group" onClick={() => setFullScreenPhotoIndex(i)}>
+                          <img src={photo} alt={`${activity.name} gallery ${i}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         </div>
                       ))}
                     </div>
@@ -187,31 +159,29 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
                 </>
               )}
 
-              {/* YouTube Vlogs \u0026 Shorts */}
-              {finalVideos.length > 0 && (
+              {/* Visual Guides */}
+              {activity.youtubeVideos && activity.youtubeVideos.length > 0 && (
                 <>
-                  <Separator className="opacity-60" />
+                  <Separator className="opacity-50" />
                   <div>
-                    <h3 className="text-xs font-bold text-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <Play className="w-4 h-4 text-destructive" /> Visual Guides \u0026 Shorts
+                    <h3 className="text-xs font-bold text-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Play className="w-4 h-4 text-destructive" /> Immersive Visual Guides
                     </h3>
-                    <div className="space-y-4">
-                      {finalVideos.map((video, i) => {
-                        const videoUrl = video.videoUrl || video.url;
-                        if (!videoUrl) return null;
-                        const embedUrl = getYoutubeEmbedUrl(videoUrl);
+                    <div className="space-y-5">
+                      {activity.youtubeVideos.map((video, i) => {
+                        const embedUrl = getYoutubeEmbedUrl(video.videoUrl);
                         return (
-                          <div key={i} className="rounded-xl overflow-hidden border border-border bg-card shadow-sm">
+                          <div key={i} className="rounded-2xl overflow-hidden border border-border/80 bg-background shadow-xl">
                             {embedUrl && (
-                              <div className="relative w-full aspect-video bg-muted">
+                              <div className="relative w-full aspect-video bg-muted shadow-inner">
                                 <iframe src={embedUrl} title={video.title} className="absolute inset-0 w-full h-full border-0" allowFullScreen />
                               </div>
                             )}
-                            <div className="px-3.5 py-3 flex items-center justify-between">
-                              <span className="text-xs font-bold text-foreground truncate pr-4">{video.title}</span>
-                              <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-primary">
-                                <a href={videoUrl} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> YouTube
+                            <div className="px-4 py-3.5 flex items-center justify-between bg-muted/20">
+                              <span className="text-xs font-bold text-foreground truncate pr-6">{video.title}</span>
+                              <Button asChild variant="ghost" size="sm" className="h-8 text-[11px] font-bold text-primary hover:bg-primary/5">
+                                <a href={video.videoUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-4 h-4 mr-1.5" /> Watch on YT
                                 </a>
                               </Button>
                             </div>
@@ -226,43 +196,25 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Pro Photo Viewer (Radix Dialog Based) */}
+      
+      {/* Full Resolution Viewer (Radix Dialog) */}
       <Dialog open={fullScreenPhotoIndex !== null} onOpenChange={(iso) => !iso && setFullScreenPhotoIndex(null)}>
-        <DialogContent className="max-w-[100vw] w-screen h-screen max-h-[100vh] p-0 m-0 rounded-none border-none bg-black/95 flex items-center justify-center shadow-none [&>button]:hidden z-[200]">
-          <DialogTitle className="sr-only">Viewer</DialogTitle>
-          {fullScreenPhotoIndex !== null && (
-            <div className="relative w-full h-full flex items-center justify-center p-4">
-              <button
-                className="absolute top-6 right-6 text-white p-3 hover:bg-white/10 rounded-full transition-all z-[210]"
-                onClick={() => setFullScreenPhotoIndex(null)}
-              >
-                <X className="w-7 h-7" />
+        <DialogContent className="max-w-[100vw] w-screen h-screen max-h-[100vh] p-0 m-0 rounded-none border-none bg-black/98 flex items-center justify-center [&>button]:hidden z-[200]">
+          <DialogTitle className="sr-only">Photo Details</DialogTitle>
+          {fullScreenPhotoIndex !== null && activity.photos && (
+            <div className="relative w-full h-full flex items-center justify-center p-6">
+              <button className="absolute top-8 right-8 text-white/50 hover:text-white p-3 hover:bg-white/10 rounded-full transition-all z-[210]" onClick={() => setFullScreenPhotoIndex(null)}>
+                <X className="w-8 h-8" />
               </button>
-
-              {finalPhotos.length > 1 && (
-                <button
-                  className="absolute left-4 text-white p-3 bg-black/40 hover:bg-white/10 rounded-full transition-all z-[210]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFullScreenPhotoIndex((prev) => prev! === 0 ? finalPhotos.length - 1 : prev! - 1);
-                  }}
-                >
-                  <ChevronLeft className="w-8 h-8" />
+              {activity.photos.length > 1 && (
+                <button className="absolute left-6 text-white/50 hover:text-white p-4 h-24 bg-white/5 hover:bg-white/10 rounded-2xl transition-all z-[210]" onClick={(e) => { e.stopPropagation(); setFullScreenPhotoIndex((prev) => prev! === 0 ? activity.photos!.length - 1 : prev! - 1); }}>
+                  <ChevronLeft className="w-10 h-10" />
                 </button>
               )}
-
-              <img src={finalPhotos[fullScreenPhotoIndex]} className="max-w-full max-h-[90vh] object-contain shadow-2xl transition-all duration-300" />
-
-              {finalPhotos.length > 1 && (
-                <button
-                  className="absolute right-4 text-white p-3 bg-black/40 hover:bg-white/10 rounded-full transition-all z-[210]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFullScreenPhotoIndex((prev) => prev! === finalPhotos.length - 1 ? 0 : prev! + 1);
-                  }}
-                >
-                  <ChevronRight className="w-8 h-8" />
+              <img src={activity.photos[fullScreenPhotoIndex]} className="max-w-[95%] max-h-[92vh] object-contain shadow-2xl rounded-sm" />
+              {activity.photos.length > 1 && (
+                <button className="absolute right-6 text-white/50 hover:text-white p-4 h-24 bg-white/5 hover:bg-white/10 rounded-2xl transition-all z-[210]" onClick={(e) => { e.stopPropagation(); setFullScreenPhotoIndex((prev) => prev! === activity.photos!.length - 1 ? 0 : prev! + 1); }}>
+                  <ChevronRight className="w-10 h-10" />
                 </button>
               )}
             </div>
@@ -274,10 +226,10 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
 };
 
 const DetailItem = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
-  <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/40 border border-border/10">
-    <div className="mt-0.5 shrink-0">{icon}</div>
+  <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-muted/30 border border-border/10 shadow-sm">
+    <div className="mt-1 shrink-0">{icon}</div>
     <div className="min-w-0">
-      <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold leading-none mb-1.5">{label}</p>
+      <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5 leading-none">{label}</p>
       <p className="text-sm font-semibold text-foreground truncate leading-none">{value}</p>
     </div>
   </div>

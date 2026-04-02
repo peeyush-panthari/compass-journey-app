@@ -7,7 +7,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   const requestId = Math.random().toString(36).substring(7);
-  console.log(`[GLOBEGENIE_LOG] [${requestId}] Incoming ${req.method} request to search-hotels`);
+  console.log(`[GLOBEGENIE_LOG] [${requestId}] Incoming ${req.method} request to enrich-activity`);
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -22,8 +22,8 @@ serve(async (req) => {
       throw new Error("Invalid JSON body");
     }
 
-    const { destination, checkIn, checkOut, rooms, guests, filters } = body;
-    console.log(`[GLOBEGENIE_LOG] [${requestId}] Searching boutique hotels in: ${destination}`);
+    const { name, location } = body;
+    console.log(`[GLOBEGENIE_LOG] [${requestId}] Enriching activity "${name}" at "${location}"`);
 
     const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
     if (!apiKey) {
@@ -31,9 +31,11 @@ serve(async (req) => {
       throw new Error("API key not configured");
     }
     
-    const endpoint = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent("boutique hotels in " + destination)}&type=lodging&key=${apiKey}`;
+    // Enrichment of manually added activities with Google Places richness
+    const query = encodeURIComponent(`${name} in ${location}`);
+    const endpoint = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${query}&inputtype=textquery&fields=place_id,rating,photos,formatted_address,geometry&key=${apiKey}`;
     
-    console.log(`[GLOBEGENIE_LOG] [${requestId}] Calling Google Places API...`);
+    console.log(`[GLOBEGENIE_LOG] [${requestId}] Calling Google Places API for enrichment...`);
     const response = await fetch(endpoint);
     
     if (!response.ok) {
@@ -43,9 +45,23 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log(`[GLOBEGENIE_LOG] [${requestId}] Found ${data.results?.length || 0} hotels.`);
 
-    return new Response(JSON.stringify({ results: data.results }), {
+    if (data.candidates?.[0]) {
+      const p = data.candidates[0];
+      console.log(`[GLOBEGENIE_LOG] [${requestId}] ✨ Activity successfully enriched with Place ID: ${p.place_id}`);
+      return new Response(JSON.stringify({ 
+         placeId: p.place_id,
+         rating: p.rating,
+         address: p.formatted_address,
+         photoReference: p.photos?.[0]?.photo_reference
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    console.log(`[GLOBEGENIE_LOG] [${requestId}] ⚠️ No Places candidates found for activity enrichment.`);
+    return new Response(JSON.stringify({ message: "No results matched this activity." }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

@@ -186,12 +186,10 @@ const PlanTrip = () => {
       : destination;
 
     try {
-      console.log("[PlanTrip] Attempting Local Backend generation...");
+      console.log("[PlanTrip] Invoking Edge Function curation...");
 
-      const response = await fetch("http://localhost:3000/generate-itinerary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { data: itineraryData, error } = await supabase.functions.invoke("generate-itinerary", {
+        body: {
           destination: destinationStr,
           dates: `${format(startDate, "MMM d")} - ${format(
             new Date(startDate.getTime() + (numDays - 1) * 86400000),
@@ -203,16 +201,11 @@ const PlanTrip = () => {
           experiences,
           pace,
           budget,
-          userId: user.id,
-        }),
+          userId: user.id
+        },
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || `Backend failed with status ${response.status}`);
-      }
-
-      const itineraryData = await response.json();
+      if (error) throw error;
 
       if (itineraryData.tripId) {
         console.log("[PlanTrip] Local Backend success!");
