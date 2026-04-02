@@ -1,0 +1,2 @@
+-- Remote-only migration found during audit. 
+-- Marking as applied locally to fix migration history sync.

@@ -86,63 +86,66 @@ serve(async (req) => {
       throw new Error("JSON parsing failed for AI response");
     }
 
-    // 2. Parallel Enrichment Pipeline
-    console.log(`[GLOBEGENIE_LOG] [${requestId}] 🔍 Beginning Deep Enrichment...`);
-    const startObj = startDate ? new Date(startDate) : new Date()
-    const enrichmentQueue: Promise<void>[] = []
-
+    // 2. Controlled Enrichment Pipeline (Batching to prevent timeouts/limits)
+    console.log(`[GLOBEGENIE_LOG] [${requestId}] 🔍 Beginning Deep Enrichment (Parallel Batches)...`);
+    const startObj = startDate ? new Date(startDate) : new Date();
+    
+    // Flatten activities for batch processing
+    const allActivities: any[] = [];
     itinerary.forEach((day: any, dIdx: number) => {
-      const d = new Date(startObj)
-      d.setDate(startObj.getDate() + dIdx)
-      day.date = d.toISOString().split('T')[0]
-
+      const d = new Date(startObj);
+      d.setDate(startObj.getDate() + dIdx);
+      day.date = d.toISOString().split('T')[0];
       day.activities?.forEach((act: any) => {
-        enrichmentQueue.push((async () => {
-          // Google Places Enrichment
-          if (placesKey) {
-            try {
-              const query = encodeURIComponent(`${act.name} in ${day.city}`)
-              const placesUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${query}&inputtype=textquery&fields=place_id,rating,formatted_address&key=${placesKey}`
-              const pRes = await fetch(placesUrl)
-              const pData = await pRes.json()
-              if (pData.candidates?.[0]) {
-                console.log(`[GLOBEGENIE_LOG] [${requestId}] 📍 Places match for "${act.name}"`);
-                act.googlePlaceId = pData.candidates[0].place_id
-                act.rating = pData.candidates[0].rating || 4.8
-                act.address = pData.candidates[0].formatted_address
-              } else {
-                console.log(`[GLOBEGENIE_LOG] [${requestId}] ❓ No Places match for "${act.name}"`);
-              }
-            } catch (e) {
-              console.error(`[GLOBEGENIE_LOG] [${requestId}] ❌ Places enrichment failed for "${act.name}":`, e);
-            }
-          }
-          
-          // YouTube Enrichment
-          if (youtubeKey) {
-            try {
-              const ytQuery = encodeURIComponent(`${act.name} ${day.city} guide`)
-              const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=2&q=${ytQuery}&type=video&key=${youtubeKey}`
-              const yRes = await fetch(ytUrl)
-              const yData = await yRes.json()
-              act.youtubeVideos = yData.items?.map((item: any) => ({
-                title: item.snippet.title,
-                videoUrl: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-                thumbnailUrl: item.snippet.thumbnails?.high?.url
-              })) || []
-              console.log(`[GLOBEGENIE_LOG] [${requestId}] 📺 Found ${act.youtubeVideos.length} videos for "${act.name}"`);
-            } catch (e) {
-              console.error(`[GLOBEGENIE_LOG] [${requestId}] ❌ YouTube enrichment failed for "${act.name}":`, e);
-            }
-          }
+        allActivities.push({ act, city: day.city });
+      });
+    });
 
-          act.photoUrl = `https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800`
-          act.photos = [act.photoUrl]
-        })())
-      })
-    })
+    const BATCH_SIZE = 5; // Process 5 activities at a time
+    for (let i = 0; i < allActivities.length; i += BATCH_SIZE) {
+      const batch = allActivities.slice(i, i + BATCH_SIZE);
+      console.log(`[GLOBEGENIE_LOG] [${requestId}] 📦 Processing Enrichment Batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(allActivities.length/BATCH_SIZE)}`);
+      
+      await Promise.all(batch.map(async ({ act, city }) => {
+        // Google Places Enrichment
+        if (placesKey) {
+          try {
+            const query = encodeURIComponent(`${act.name} in ${city}`);
+            const placesUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${query}&inputtype=textquery&fields=place_id,rating,formatted_address&key=${placesKey}`;
+            const pRes = await fetch(placesUrl);
+            const pData = await pRes.json();
+            if (pData.candidates?.[0]) {
+              console.log(`[GLOBEGENIE_LOG] [${requestId}] 📍 Places matched: "${act.name}"`);
+              act.googlePlaceId = pData.candidates[0].place_id;
+              act.rating = pData.candidates[0].rating || 4.8;
+              act.address = pData.candidates[0].formatted_address;
+            }
+          } catch (e: any) {
+            console.warn(`[GLOBEGENIE_LOG] [${requestId}] ⚠️ Places enrichment failed for "${act.name}":`, e.message);
+          }
+        }
+        
+        // YouTube Enrichment
+        if (youtubeKey) {
+          try {
+            const ytQuery = encodeURIComponent(`${act.name} ${city} travel guide`);
+            const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=2&q=${ytQuery}&type=video&key=${youtubeKey}`;
+            const yRes = await fetch(ytUrl);
+            const yData = await yRes.json();
+            act.youtubeVideos = yData.items?.map((item: any) => ({
+              title: item.snippet.title,
+              videoUrl: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+              thumbnailUrl: item.snippet.thumbnails?.high?.url
+            })) || [];
+          } catch (e: any) {
+            console.warn(`[GLOBEGENIE_LOG] [${requestId}] ⚠️ YouTube enrichment failed for "${act.name}":`, e.message);
+          }
+        }
 
-    await Promise.all(enrichmentQueue)
+        act.photoUrl = `https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800`;
+        act.photos = [act.photoUrl];
+      }));
+    }
 
     // 3. Persist Trip to Database
     console.log(`[GLOBEGENIE_LOG] [${requestId}] 💾 Persisting itinerary to database...`);

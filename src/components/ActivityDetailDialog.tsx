@@ -56,9 +56,12 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
   if (!activity) return null;
 
   const getYoutubeEmbedUrl = (url: string) => {
-    const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-    return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+    // Robust regex to capture video ID from standard watch links, shorts, and shortened youtu.be links
+    const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+    return match ? `https://www.youtube.com/embed/${match[1]}?modestbranding=1&rel=0` : null;
   };
+
+  const isShorts = (url: string) => url.includes('/shorts/');
 
   return (
     <>
@@ -167,21 +170,43 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
                     <h3 className="text-xs font-bold text-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
                       <Play className="w-4 h-4 text-destructive" /> Immersive Visual Guides
                     </h3>
-                    <div className="space-y-5">
+                    <div className="space-y-6">
                       {activity.youtubeVideos.map((video, i) => {
                         const embedUrl = getYoutubeEmbedUrl(video.videoUrl);
+                        const shortsMode = isShorts(video.videoUrl);
+                        
                         return (
-                          <div key={i} className="rounded-2xl overflow-hidden border border-border/80 bg-background shadow-xl">
-                            {embedUrl && (
-                              <div className="relative w-full aspect-video bg-muted shadow-inner">
-                                <iframe src={embedUrl} title={video.title} className="absolute inset-0 w-full h-full border-0" allowFullScreen />
+                          <div key={i} className="rounded-3xl overflow-hidden border border-border/80 bg-card shadow-2xl transition-all hover:shadow-primary/5">
+                            {embedUrl ? (
+                              <div className={cn(
+                                "relative w-full bg-black shadow-inner overflow-hidden",
+                                shortsMode ? "aspect-[9/16] max-w-[280px] mx-auto" : "aspect-video"
+                              )}>
+                                <iframe 
+                                  src={embedUrl} 
+                                  title={video.title} 
+                                  className="absolute inset-0 w-full h-full border-0" 
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  allowFullScreen 
+                                />
+                              </div>
+                            ) : (
+                              <div className="aspect-video bg-muted flex items-center justify-center p-8 text-center text-xs text-muted-foreground">
+                                Visual guide currently being optimized for playback.
                               </div>
                             )}
-                            <div className="px-4 py-3.5 flex items-center justify-between bg-muted/20">
-                              <span className="text-xs font-bold text-foreground truncate pr-6">{video.title}</span>
-                              <Button asChild variant="ghost" size="sm" className="h-8 text-[11px] font-bold text-primary hover:bg-primary/5">
-                                <a href={video.videoUrl} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="w-4 h-4 mr-1.5" /> Watch on YT
+                            <div className="px-5 py-4 flex items-center justify-between bg-muted/30">
+                              <div className="min-w-0 pr-4">
+                                <p className="text-xs font-bold text-foreground truncate">{video.title}</p>
+                                {shortsMode && (
+                                  <Badge variant="outline" className="mt-1.5 text-[9px] h-4 font-bold border-rose-200 text-rose-500 bg-rose-50/50">
+                                    <Sparkles className="w-2.5 h-2.5 mr-1" /> Immersive Short
+                                  </Badge>
+                                )}
+                              </div>
+                              <Button asChild variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-full bg-white shadow-sm hover:bg-white/90">
+                                <a href={video.videoUrl} target="_blank" rel="noopener noreferrer" title="Watch on YouTube">
+                                  <ExternalLink className="w-3.5 h-3.5 text-primary" />
                                 </a>
                               </Button>
                             </div>
