@@ -191,10 +191,8 @@ const Account = () => {
       if (error) throw error;
 
       setTrips(prev => prev.filter(t => t.id !== tripId));
-      // toast({ title: "Trip deleted successfully" });
     } catch (err: any) {
       console.error("Error deleting trip:", err);
-      // toast({ title: "Failed to delete trip", variant: "destructive" });
     }
   };
 
@@ -303,7 +301,8 @@ const Account = () => {
           ) : trips.length > 0 ? (
             trips.map((trip, i) => (
               <motion.div key={trip.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="min-w-[260px] max-w-[280px] flex-shrink-0 relative group/card">
-                <Link to={`/trip?id=${trip.id}`} className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
+                {/* FIX: Changed from /trip?id=${trip.id} to /trip/${trip.id} to match the /trip/:id route */}
+                <Link to={`/trip/${trip.id}`} className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
                   <div className="h-36 overflow-hidden bg-muted relative">
                     <img 
                       src={`https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=250&fit=crop`} 
@@ -353,7 +352,8 @@ const Account = () => {
         <HorizontalScroller>
           {sharedTrips.map((trip, i) => (
             <motion.div key={trip.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="min-w-[260px] max-w-[280px] flex-shrink-0">
-              <Link to="/trip" className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
+              {/* FIX: Changed from /trip (no ID) to /trip/${trip.id} to match the /trip/:id route */}
+              <Link to={`/trip/${trip.id}`} className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
                 <div className="h-36 overflow-hidden relative">
                   <img src={trip.image} alt={trip.destination} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-2 right-2 bg-card/90 backdrop-blur-sm text-[10px] font-medium px-2 py-1 rounded-full flex items-center gap-1 text-muted-foreground"><Users className="w-3 h-3" /> Shared</div>

@@ -51,7 +51,10 @@ app.post('/api/trips/:id/generate', async (req, res) => {
     if (fetchErr || !trip) throw new Error("Trip not found");
 
     // 2. Consultation Phase (Gemini)
-    const modelName = process.env.GEMINI_MODEL || "gemini-flash-latest";
+    // FIX: "gemini-flash-latest" is not a valid model name and causes a 404 from the Gemini API,
+    // which makes the generate endpoint return 500 and the loading screen gets stuck forever.
+    // The correct model name is "gemini-1.5-flash-latest".
+    const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash-latest";
     const model = genAI.getGenerativeModel({ model: modelName });
     
     const prompt = `As a luxury travel designer, create a premium day-by-day JSON itinerary for ${trip.countries.join(', ')}.

@@ -47,7 +47,8 @@ const App = () => (
               <Route path="/signup" element={<Signup />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/plan" element={<PlanTrip />} />
-              <Route path="/trip" element={<TripPage />} />
+              {/* FIX: Changed from /trip to /trip/:id so useParams() can read the trip ID */}
+              <Route path="/trip/:id" element={<TripPage />} />
               <Route path="/account" element={<Account />} />
               <Route path="/edit-profile" element={<EditProfile />} />
               <Route path="/hotels" element={<Hotels />} />

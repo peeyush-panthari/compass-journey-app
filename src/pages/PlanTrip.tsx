@@ -209,7 +209,9 @@ const PlanTrip = () => {
       }
 
       toast({ title: "Success!", description: "Your journey has been curated flawlessly." });
-      navigate(`/trip?id=${trip.id}`);
+      // FIX: Changed from /trip?id=${trip.id} to /trip/${trip.id}
+      // This matches the updated route /trip/:id in App.tsx so useParams() can read the ID
+      navigate(`/trip/${trip.id}`);
 
     } catch (error: any) {
       console.error("Trip creation failed", error);
