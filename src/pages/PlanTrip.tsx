@@ -171,8 +171,13 @@ const PlanTrip = () => {
 
     const emergencyReset = setTimeout(() => {
       setIsGenerating(false);
-      console.warn("[PlanTrip] Emergency loading reset triggered.");
-    }, 120000);
+      console.warn("[PlanTrip] Emergency loading reset triggered after 180s timeout.");
+      toast({
+        title: "Generation Taking Longer Than Usual",
+        description: "Your trip is still being curated in the background. Check your trips in a moment.",
+        variant: "default",
+      });
+    }, 180000);
 
     if (!user?.id) {
       toast({ title: "Authentication Required", description: "You must be logged in to generate a trip.", variant: "destructive" });
