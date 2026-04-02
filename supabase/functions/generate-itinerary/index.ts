@@ -47,8 +47,8 @@ serve(async (req) => {
 
     if (!geminiKey) throw new Error("GEMINI_API_KEY NOT SET in Edge secrets")
 
-    // 1. Call Gemini AI (Native Fetch)
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiKey}`
+    // 1. Call Gemini AI (Stable Flask Model)
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
     
     const prompt = `
       As a luxury travel designer, create a premium day-by-day JSON itinerary for ${destination}.
@@ -76,14 +76,18 @@ serve(async (req) => {
     
     console.log(`[GLOBEGENIE_LOG] [${requestId}] 📝 Raw Gemini text length: ${text.length}`);
     
-    const jsonStr = text.match(/\[[\s\S]*\]/)?.[0] || text
+    const dataText = text.trim()
+    const jsonMatch = dataText.match(/\[[\s\S]*\]/)
+    const jsonStrClean = jsonMatch ? jsonMatch[0] : dataText.replace(/```json|```/g, "").trim()
+    
     let itinerary;
     try {
-      itinerary = JSON.parse(jsonStr.replace(/```json|```/g, "").trim())
+      itinerary = JSON.parse(jsonStrClean)
       console.log(`[GLOBEGENIE_LOG] [${requestId}] ✨ Gemini success! Generated ${itinerary.length} days.`);
-    } catch (e) {
-      console.error(`[GLOBEGENIE_LOG] [${requestId}] ❌ Failed to parse Gemini response as JSON:`, text);
-      throw new Error("JSON parsing failed for AI response");
+      if (!Array.isArray(itinerary) || itinerary.length === 0) throw new Error("AI returned empty itinerary");
+    } catch (e: any) {
+      console.error(`[GLOBEGENIE_LOG] [${requestId}] ❌ Failed to parse Gemini response: ${e.message}`, text);
+      throw new Error(`AI generated invalid data structure: ${e.message}`);
     }
 
     // 2. Controlled Enrichment Pipeline (Batching to prevent timeouts/limits)
@@ -152,17 +156,21 @@ serve(async (req) => {
     if (userId && supabaseUrl && supabaseServiceKey) {
       const supabase = createClient(supabaseUrl, supabaseServiceKey)
       
+      if (!userId || userId === "00000000-0000-0000-0000-000000000000") {
+        console.warn(`[GLOBEGENIE_LOG] [${requestId}] ⚠️ Using placeholder userId for persistence - ensure user exists in auth.users!`);
+      }
+
       const { data: trip, error: tripErr } = await supabase.from('trips').insert({
         user_id: userId,
-        title: `Curated Voyage: ${destination}`,
-        countries: [destination],
+        title: `Curated Voyage: ${destination || 'Untitled Journey'}`,
+        countries: Array.isArray(destination) ? destination : [destination || 'Worldwide'],
         start_date: startObj.toISOString().split('T')[0],
         num_days: itinerary.length,
-        companion,
-        purpose,
-        experiences: Array.isArray(experiences) ? experiences : [experiences],
-        pace,
-        budget_tier: budget,
+        companion: companion || 'Solo',
+        purpose: purpose || 'Leisure',
+        experiences: Array.isArray(experiences) ? experiences : [experiences || 'Cultural'],
+        pace: pace || 'Moderate',
+        budget_tier: budget || 'Mid-range',
         status: 'published'
       }).select().single()
 
@@ -242,9 +250,14 @@ serve(async (req) => {
 
   } catch (err: any) {
     console.error(`[GLOBEGENIE_LOG] [${requestId}] 🚨 CRITICAL ERROR:`, err)
-    return new Response(JSON.stringify({ error: err.message }), {
+    // Return 200 with error field so frontend doesn't throw a generic non-2xx status code
+    return new Response(JSON.stringify({ 
+      error: true, 
+      message: err.message || "An unexpected error occurred during generation",
+      trace: requestId 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400
+      status: 200
     })
   }
 })

@@ -207,6 +207,10 @@ const PlanTrip = () => {
 
       if (error) throw error;
 
+      if (itineraryData.error) {
+        throw new Error(`${itineraryData.message} [GGENIE-TRACE: ${itineraryData.trace}]`);
+      }
+
       if (itineraryData.tripId) {
         console.log("[PlanTrip] Local Backend success!");
         toast({
