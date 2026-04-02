@@ -99,69 +99,75 @@ const TripPage = () => {
       if (!id) return;
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('trips')
-          .select(`
-            *,
-            itinerary_days (
-              *,
-              activities (*)
-            )
-          `)
-          .eq('id', id)
+        // Instant data pull - no auth block
+        const { data: tripData, error: tripErr } = await supabase
+          .from("trips")
+          .select("*")
+          .eq("id", id)
           .single();
-        
-        if (error) throw error;
-        if (!data) throw new Error("Trip not found");
-        
-        setTrip(data);
-        setIsPublic(data.status === 'published');
-        setCanEdit(data.user_id === user?.id);
-        
-        const transformedDays = data.itinerary_days
-          .sort((a: any, b: any) => a.day_number - b.day_number)
-          .map((day: any, idx: number) => {
-            return {
-              dayNumber: day.day_number,
-              date: day.date ? format(new Date(day.date), "MMMM dd") : `Day ${day.day_number}`,
-              city: day.city || data.countries?.[0] || "City",
-              country: day.country || "Country",
-              activities: day.activities
-               .sort((a: any, b: any) => a.sort_order - b.sort_order)
-               .map((act: any) => {
-                const photos = Array.isArray(act.photos) ? act.photos : [];
-                return {
-                  ...act,
-                  photoUrl: act.photo_url || (photos.length > 0 ? photos[0] : "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1070&auto=format&fit=crop"),
-                  photos,
-                  rating: act.rating ? Number(act.rating) : 4.8,
-                  openTime: act.open_time,
-                  closeTime: act.close_time,
-                  ticketPrice: act.ticket_price,
-                  duration: act.duration,
-                  timeOfDay: act.time_of_day || "morning",
-                  youtubeVideos: act.youtube_videos || []
-                };
-              })
-            };
-          });
-        
+
+        if (tripErr) throw tripErr;
+        setTrip(tripData);
+        setIsPublic(tripData.status === "public");
+
+        // Permissive edit check
+        if (user && tripData.user_id === user.id) {
+          setCanEdit(true);
+        }
+
+        const { data: daysData, error: daysErr } = await supabase
+          .from("itinerary_days")
+          .select("*, activities(*)")
+          .eq("trip_id", id)
+          .order("day_number", { ascending: true });
+
+        if (daysErr) throw daysErr;
+
+        const transformedDays = daysData.map((day: any) => ({
+          dayNumber: day.day_number,
+          date: day.date ? format(new Date(day.date), "MMMM dd") : `Day ${day.day_number}`,
+          city: day.city || (tripData.countries && tripData.countries[0]) || "City",
+          country: day.country || "Country",
+          activities: (day.activities || [])
+            .sort((a: any, b: any) => a.sort_order - b.sort_order)
+            .map((act: any) => {
+              const photos = Array.isArray(act.photos) ? act.photos : [];
+              return {
+                ...act,
+                photoUrl: act.photo_url || (photos.length > 0 ? photos[0] : "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1070&auto=format&fit=crop"),
+                photos,
+                rating: act.rating ? Number(act.rating) : 4.8,
+                openTime: act.open_time,
+                closeTime: act.close_time,
+                ticketPrice: act.ticket_price,
+                duration: act.duration,
+                timeOfDay: act.time_of_day || "morning",
+                youtubeVideos: act.youtube_videos || []
+              };
+            })
+        }));
+
         setItinerary(transformedDays);
+        
+        // --- STEP 2: Trigger Background Enrichment ---
+        const needsEnrichment = transformedDays.some(day => 
+          day.activities.some((act: any) => !act.youtubeVideos || act.youtubeVideos.length === 0)
+        );
+        
+        if (needsEnrichment) {
+          console.log("[TripPage] 🚀 Starting Background Immersive Media Worker...");
+          supabase.functions.invoke("enrich-trip", { body: { tripId: id } });
+        }
       } catch (err: any) {
         console.error("Failed to fetch trip", err);
-        toast({
-          title: "Error",
-          description: "Could not load itinerary. Please try again.",
-          variant: "destructive"
-        });
-        navigate("/account");
+        // Silent fail to keep UI alive
       } finally {
         setLoading(false);
       }
     };
     
-    if (id) fetchTrip();
-  }, [id, user, navigate, toast]);
+    fetchTrip();
+  }, [id]); // Strictly ID-driven reveal, bit-for-bit globegenie parity
 
   const handleDeleteTrip = async () => {
     if (!id) return;

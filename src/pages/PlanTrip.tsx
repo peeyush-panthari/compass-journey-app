@@ -167,75 +167,59 @@ const PlanTrip = () => {
   };
 
   const handleFinish = async () => {
-    setIsGenerating(true);
-
-    const emergencyReset = setTimeout(() => {
-      setIsGenerating(false);
-      console.warn("[PlanTrip] Emergency loading reset triggered after 180s timeout.");
-      toast({
-        title: "Generation Taking Longer Than Usual",
-        description: "Your trip is still being curated in the background. Check your trips in a moment.",
-        variant: "default",
-      });
-    }, 180000);
-
     if (!user?.id) {
-      toast({ title: "Authentication Required", description: "You must be logged in to generate a trip.", variant: "destructive" });
-      setIsGenerating(false);
-      return;
+       toast({ title: "Authorization needed", description: "Please sign in to generate a trip.", variant: "destructive" });
+       return;
     }
 
-    const destination = selectedCities.length > 0 ? selectedCities : selectedCountries;
-    const destinationStr = Array.isArray(destination)
-      ? destination.join(", ")
-      : destination;
-
     try {
-      console.log("[PlanTrip] Invoking Edge Function curation...");
+      setIsGenerating(true);
+      const destination = selectedCities.length > 0 ? `${selectedCities.join(", ")}, ${selectedCountries.join(", ")}` : selectedCountries.join(", ");
+      
+      const tripRequest = {
+        destination,
+        startDate: startDate?.toISOString(),
+        numDays,
+        companions: companion,
+        purpose, pace, budget,
+        experiences,
+        userId: user.id
+      };
 
-      const { data: itineraryData, error } = await supabase.functions.invoke("generate-itinerary", {
-        body: {
-          destination: destinationStr,
-          dates: `${format(startDate, "MMM d")} - ${format(
-            new Date(startDate.getTime() + (numDays - 1) * 86400000),
-            "MMM d, yyyy"
-          )} (${numDays} days)`,
-          startDate: startDate.toISOString(),
-          companion,
-          purpose,
-          experiences,
-          pace,
-          budget,
-          userId: user.id
-        },
+      // 1. Create Trip Shell (Instant)
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+      const createRes = await fetch(`${BACKEND_URL}/api/trips`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tripRequest)
+      });
+      const trip = await createRes.json();
+      if (!trip.id) throw new Error("Failed to create trip ID");
+
+      // 2. Start AI Curation (High-Stability window)
+      console.log(`[GENIE] Initiating AI Curation for identity: ${trip.id}`);
+      const genRes = await fetch(`${BACKEND_URL}/api/trips/${trip.id}/generate`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' }
       });
 
-      if (error) throw error;
-
-      if (itineraryData.error) {
-        throw new Error(`${itineraryData.message} [GGENIE-TRACE: ${itineraryData.trace}]`);
+      if (!genRes.ok) {
+        const err = await genRes.json();
+        throw new Error(err.error || "Generation failed");
       }
 
-      if (itineraryData.tripId) {
-        console.log("[PlanTrip] Local Backend success!");
-        toast({
-          title: "✨ Trip Created!",
-          description: `Your ${destinationStr} itinerary is ready.`,
-          variant: "default",
-        });
-        navigate(`/trip?id=${itineraryData.tripId}`);
-        return;
-      }
-    } catch (err: any) {
-      console.error("[PlanTrip] Generation Error:", err);
-      toast({
-        title: "Generation Failed",
-        description: err.message || "Failed to generate your trip. Please try again.",
-        variant: "destructive",
+      toast({ title: "Success!", description: "Your journey has been curated flawlessly." });
+      navigate(`/trip?id=${trip.id}`);
+
+    } catch (error: any) {
+      console.error("Trip creation failed", error);
+      toast({ 
+        title: "Generation failed", 
+        description: error.message || "There was an error generating your trip. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
-      clearTimeout(emergencyReset);
     }
   };
 
