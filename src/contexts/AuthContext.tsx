@@ -230,7 +230,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ user, loading, login, signup, updateProfile, logout, signInWithGoogle, signInWithPhone, verifyOtp }}>
-      {!loading && children}
+      {/* FIX: Was "{!loading && children}" which blocked the ENTIRE app from rendering
+          while auth was resolving. This caused TripPage's fetchTrip() useEffect to either
+          not fire at all, or fire after a 2.5s timeout, making the loading spinner stuck.
+          Each page already handles its own auth/loading state individually, so the
+          AuthProvider does NOT need to gate rendering here. */}
+      {children}
     </AuthContext.Provider>
   );
 };
