@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AuthDialog from "@/components/AuthDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import PWAMultimediaHero from "@/components/PWAMultimediaHero";
 
 const features = [
   { icon: Sparkles, title: "AI-Powered Trips", description: "Chat with our AI to generate a personalized day-by-day travel plan optimized for your interests and budget.", iconBg: "bg-primary/10 text-primary" },
@@ -39,8 +40,13 @@ const Index = () => {
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative min-h-[100svh] flex items-center bg-hero-gradient overflow-x-hidden">
+      {/* Mobile PWA Hero (Globe & Animation) */}
+      <div className="block md:hidden">
+        <PWAMultimediaHero onAuthOpen={() => setAuthOpen(true)} />
+      </div>
+
+      {/* Desktop Hero */}
+      <section className="relative min-h-[100svh] hidden md:flex items-center bg-hero-gradient overflow-x-hidden">
         <div className="absolute top-20 right-[30%] w-72 h-72 rounded-full bg-primary/5 blur-3xl animate-drift" />
         <div className="absolute bottom-20 left-20 w-96 h-96 rounded-full bg-accent/5 blur-3xl animate-drift" style={{ animationDelay: "5s" }} />
 
