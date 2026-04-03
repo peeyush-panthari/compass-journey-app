@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -6,8 +6,10 @@ import {
   ChevronDown, ChevronRight, MoreHorizontal, StickyNote, MapPinned, Compass, FileText,
   Hotel, Car, UtensilsCrossed, Paperclip, DollarSign, Navigation, ThumbsUp, ThumbsDown,
   Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar, Pencil, List,
-  Settings, Users, BarChart3, TrainFront, Bus, Ship, Anchor, Globe, Wallet, Info, Map as MapIcon
+  Settings, Users, BarChart3, TrainFront, Bus, Ship, Anchor, Globe, Wallet, Info, Map as MapIcon,
+  ReceiptText, Sparkles
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import AddActivityDialog, { type PlaceResult } from "@/components/AddActivityDialog";
 import ActivityDetailDialog, { type ActivityDetail } from "@/components/ActivityDetailDialog";
@@ -117,6 +119,29 @@ const TripPage = () => {
   const [mobileTab, setMobileTab] = useState<"overview" | "itinerary" | "explore" | "budget" | "journal">("overview");
   const [mobileSelectedDay, setMobileSelectedDay] = useState(0);
   const isMobile = useIsMobile();
+
+  // Group Itinerary by City
+  const cityGroups = useMemo(() => {
+    if (!itinerary.length) return [];
+    const groups: any[] = [];
+    let currentGroup: any = null;
+
+    itinerary.forEach((day) => {
+      if (!currentGroup || currentGroup.city !== day.city) {
+        currentGroup = {
+          city: day.city,
+          country: day.country,
+          days: [],
+          totalDays: 0
+        };
+        groups.push(currentGroup);
+      }
+      currentGroup.days.push(day);
+      currentGroup.totalDays++;
+    });
+
+    return groups;
+  }, [itinerary]);
 
   // Fetch Live Data
   useEffect(() => {
@@ -389,13 +414,13 @@ const TripPage = () => {
           <aside className="w-[240px] shrink-0 border-r border-border bg-card overflow-y-auto h-full">
             <div className="p-4">
               <Collapsible defaultOpen>
-                <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left mb-1">
-                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-sm font-bold text-foreground">Overview</span>
+                <CollapsibleTrigger className="group flex items-center gap-1.5 w-full text-left mb-1 px-2 py-2 rounded-lg data-[state=open]:bg-[#1D212B] data-[state=open]:text-white transition-colors">
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-data-[state=open]:text-white/70" />
+                  <span className="text-sm font-bold text-foreground group-data-[state=open]:text-white">Overview</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="ml-5 space-y-0.5">
-                    {["Explore", "Budget", "Notes", "Places to visit"].map((item) => (
+                  <div className="ml-5 space-y-0.5 mt-2">
+                    {["Explore", "Notes", "Flights", "Places to visit", "Untitled"].map((item) => (
                       <button key={item} onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, "-"))} className={`block w-full text-left text-sm py-1.5 px-2 rounded-md transition-colors ${activeSection === item.toLowerCase().replace(/ /g, "-") ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
                         {item}
                       </button>
@@ -404,19 +429,33 @@ const TripPage = () => {
                 </CollapsibleContent>
               </Collapsible>
 
-              <Collapsible defaultOpen className="mt-4">
-                <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left mb-1">
-                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-sm font-bold text-foreground">Itinerary</span>
+              <Collapsible defaultOpen className="mt-2">
+                <CollapsibleTrigger className="group flex items-center gap-1.5 w-full text-left mb-1 px-2 py-2 rounded-lg data-[state=open]:bg-[#1D212B] data-[state=open]:text-white transition-colors">
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-data-[state=open]:text-white/70" />
+                  <span className="text-sm font-bold text-foreground group-data-[state=open]:text-white">Itinerary</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="ml-5 space-y-1">
+                  <div className="ml-5 space-y-1 mt-2">
                     {itinerary.map((day, i) => (
                       <button key={i} onClick={() => { scrollToSection(`day-${i}`); setExpandedDays(prev => new Set(prev).add(i)); }} className={`block w-full text-left py-1.5 px-2 rounded-md transition-colors ${activeSection === `day-${i}` ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
                         <span className="text-xs font-medium">{day.date}</span>
                         <p className="text-[10px] truncate">{day.activities.map(a => a.name).join(" • ")}</p>
                       </button>
                     ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Collapsible defaultOpen className="mt-2">
+                <CollapsibleTrigger className="group flex items-center gap-1.5 w-full text-left mb-1 px-2 py-2 rounded-lg data-[state=open]:bg-[#1D212B] data-[state=open]:text-white transition-colors">
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-data-[state=open]:text-white/70" />
+                  <span className="text-sm font-bold text-foreground group-data-[state=open]:text-white">Budget</span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="ml-5 space-y-0.5 mt-2">
+                    <button onClick={() => scrollToSection("budget")} className={`block w-full text-left text-sm py-1.5 px-2 rounded-md transition-colors ${activeSection === "budget" ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+                      View
+                    </button>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -472,71 +511,198 @@ const TripPage = () => {
                <Textarea placeholder="Share details or tips..." value={notes} onChange={e => setNotes(e.target.value)} className="min-h-[80px] rounded-xl" />
             </section>
 
-            <section id="section-budget" className="mb-8 scroll-mt-20">
-               <h2 className="text-xl font-display font-bold mb-4">Budget</h2>
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6">
-                  <p className="text-xs text-primary font-bold uppercase tracking-wider mb-1">Total Spending</p>
-                  <h4 className="text-3xl font-display font-bold text-foreground">$0.00 <span className="text-sm text-muted-foreground font-normal">/ ${budget || 0}</span></h4>
-                  <Button onClick={() => setSetBudgetOpen(true)} variant="link" size="sm" className="p-0 h-auto text-primary mt-2">Adjust Budget</Button>
-                </div>
-                <div className="bg-card border border-border rounded-2xl p-6 flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-foreground">Track Expenses</h4>
-                    <p className="text-xs text-muted-foreground">Log your costs as you go</p>
-                  </div>
-                  <Button size="sm" className="rounded-xl"><Plus className="w-4 h-4 mr-1" /> Add</Button>
-                </div>
-               </div>
-               
-               <div className="bg-card border border-border rounded-2xl p-12 flex flex-col items-center justify-center text-center">
-                  <Wallet className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
-                  <h4 className="text-lg font-display font-bold mb-1">No expenses recorded</h4>
-                  <p className="text-muted-foreground text-sm max-w-xs mb-6">Start tracking your spending to stay within your trip budget.</p>
-               </div>
-            </section>
+
 
             <div className="border-t border-border my-8" />
 
             <DragDropContext onDragEnd={onDragEnd}>
-              <div className="space-y-4">
-                {itinerary.map((day, dayIndex) => (
-                  <div key={day.dayNumber} id={`section-day-${dayIndex}`} className="scroll-mt-20">
-                    <button onClick={() => toggleDay(dayIndex)} className="flex items-center gap-2 w-full text-left py-3 border-b">
-                      <ChevronRight className={`w-4 h-4 transition-transform ${expandedDays.has(dayIndex) ? "rotate-90" : ""}`} />
-                      <h3 className="text-lg font-display font-bold">{day.fullDate}</h3>
-                    </button>
+               <div className="space-y-12">
+                 {cityGroups.map((group, groupIdx) => (
+                   <div key={groupIdx} className="space-y-8">
+                     {/* City Header Card */}
+                     <div className="bg-card border-2 border-primary/10 rounded-[2rem] p-8 shadow-sm relative overflow-hidden">
+                       <div className="absolute top-0 left-0 w-2 h-full bg-primary" />
+                       <div className="flex items-start gap-4">
+                         <div className="w-3 h-3 rounded-full bg-primary mt-2.5" />
+                         <div>
+                           <h2 className="text-3xl font-display font-bold text-[#1e293b]">{group.city}, {group.country}</h2>
+                           <p className="text-sm text-muted-foreground mt-1">{group.totalDays} {group.totalDays === 1 ? 'Day' : 'Days'}</p>
+                         </div>
+                       </div>
+                     </div>
 
-                    {expandedDays.has(dayIndex) && (
-                      <Droppable droppableId={String(dayIndex)}>
-                        {(provided) => (
-                          <div ref={provided.innerRef} {...provided.droppableProps} className="py-3 pl-4 border-l-2 border-primary/30 ml-2 space-y-2">
-                            {day.activities.map((activity, actIdx) => (
-                              <Draggable key={activity.id} draggableId={activity.id} index={actIdx}>
-                                {(prov, snap) => (
-                                  <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps} className={`flex items-start gap-4 p-4 bg-card border rounded-xl hover:shadow-card transition-shadow ${snap.isDragging ? "shadow-elevated ring-2 ring-primary/30" : ""}`}>
-                                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold shrink-0">{actIdx+1}</div>
-                                    <div className="flex-1 cursor-pointer" onClick={() => setSelectedActivity(activity)}>
-                                      <h4 className="font-bold">{activity.name}</h4>
-                                      <p className="text-sm text-muted-foreground line-clamp-2">{activity.description}</p>
-                                    </div>
-                                    {activity.photoUrl && <img src={activity.photoUrl} className="w-20 h-20 rounded-lg object-cover" />}
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))}
-                            {provided.placeholder}
-                            <Button variant="outline" className="w-full rounded-xl border-dashed" onClick={() => setAddActivityDayIndex(dayIndex)}>
-                              <Plus className="w-4 h-4 mr-1" /> Add Activity
-                            </Button>
-                          </div>
-                        )}
-                      </Droppable>
-                    )}
-                  </div>
-                ))}
-              </div>
+                     {group.days.map((day : any) => {
+                       const dayIdx = itinerary.findIndex(d => d.id === day.id);
+                       return (
+                         <div key={day.id} id={`section-day-${dayIdx}`} className="scroll-mt-20 ml-4 border-l-2 border-border/40 pl-8 relative pb-8 last:pb-0">
+                           <div className="absolute top-0 -left-[9px] w-4 h-4 rounded-full bg-card border-2 border-primary" />
+                           <div className="flex items-center justify-between mb-8">
+                             <h3 className="text-xl font-bold text-[#1e293b]">Day {day.dayNumber} — <span className="text-muted-foreground font-normal">{day.date}</span></h3>
+                             <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-red-500 transition-colors">
+                               <Trash2 className="w-4 h-4" /> Remove
+                             </button>
+                           </div>
+
+                           <Droppable droppableId={String(dayIdx)}>
+                             {(provided) => (
+                               <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-8">
+                                 {["morning", "afternoon", "evening"].map((time) => {
+                                   const timeActivities = day.activities.filter((a: any) => a.timeOfDay === time);
+                                   if (timeActivities.length === 0) return null;
+
+                                   return (
+                                     <div key={time} className="space-y-4">
+                                       <span className={cn(
+                                         "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                         time === "morning" ? "bg-orange-100 text-orange-600" :
+                                         time === "afternoon" ? "bg-blue-100 text-blue-600" :
+                                         "bg-red-100 text-red-600"
+                                       )}>
+                                         {time}
+                                       </span>
+                                       <div className="space-y-4">
+                                         {timeActivities.map((activity: any, actInTimeIdx: number) => {
+                                           const actIdx = day.activities.findIndex((a: any) => a.id === activity.id);
+                                           return (
+                                             <div key={activity.id}>
+                                               <Draggable draggableId={activity.id} index={actIdx}>
+                                                 {(prov, snap) => (
+                                                   <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps} className={`group relative flex items-center gap-4 p-3 bg-card border border-border/60 rounded-2xl hover:shadow-md transition-all ${snap.isDragging ? "shadow-elevated ring-2 ring-primary/30 z-50 scale-[1.02]" : ""}`}>
+                                                     <div className="shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing">
+                                                       <GripVertical className="w-4 h-4 opacity-40 group-hover:opacity-100" />
+                                                     </div>
+                                                     {activity.photoUrl && (
+                                                       <div className="w-16 h-16 shrink-0 overflow-hidden rounded-xl bg-muted">
+                                                         <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover" />
+                                                       </div>
+                                                     )}
+                                                     <div className="flex-1 min-w-0 cursor-pointer py-1" onClick={() => setSelectedActivity(activity)}>
+                                                       <h4 className="font-bold text-foreground text-sm mb-1 truncate">{activity.name}</h4>
+                                                       <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium">
+                                                         <div className="flex items-center gap-1">
+                                                           <Star className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
+                                                           <span>4.6</span>
+                                                         </div>
+                                                         <div className="flex items-center gap-1">
+                                                           <Clock className="w-3.5 h-3.5" />
+                                                           <span>2.5 hours</span>
+                                                         </div>
+                                                         <div className="flex items-center gap-1">
+                                                           <Ticket className="w-3.5 h-3.5" />
+                                                           <span>$15</span>
+                                                         </div>
+                                                         <MapPin className="w-3.5 h-3.5 opacity-60" />
+                                                       </div>
+                                                     </div>
+                                                     <button className="opacity-0 group-hover:opacity-60 hover:!opacity-100 p-2 transition-opacity" onClick={(e) => { e.stopPropagation(); /* handle delete */ }}>
+                                                       <Trash2 className="w-4 h-4 text-muted-foreground" />
+                                                     </button>
+                                                   </div>
+                                                 )}
+                                               </Draggable>
+
+                                               {actIdx < day.activities.length - 1 && (
+                                                 <div className="flex items-center gap-3 px-10 py-2">
+                                                   <div className="flex items-center gap-2 text-muted-foreground">
+                                                     <Car className="w-4 h-4" />
+                                                     <span className="text-[12px] font-medium opacity-70">8 min · 2.3 mi</span>
+                                                   </div>
+                                                   <button className="flex items-center gap-1 text-[12px] font-bold text-muted-foreground/60 hover:text-foreground transition-colors ml-1">
+                                                     <ChevronDown className="w-4 h-4 -rotate-90" strokeWidth={2.5} />
+                                                     Directions
+                                                   </button>
+                                                 </div>
+                                               )}
+                                             </div>
+                                           );
+                                         })}
+                                       </div>
+                                     </div>
+                                   );
+                                 })}
+                                 {provided.placeholder}
+                                 <button
+                                   onClick={() => setAddActivityDayIndex(dayIdx)}
+                                   className="w-full py-4 border-2 border-dashed border-border/60 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground hover:border-primary/40 hover:text-primary transition-all group"
+                                 >
+                                   <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" strokeWidth={3} /> Add Activity
+                                 </button>
+                               </div>
+                             )}
+                           </Droppable>
+                         </div>
+                       );
+                     })}
+
+                     {/* Inter-city Travel Divider */}
+                     {groupIdx < cityGroups.length - 1 && (
+                       <div className="flex items-center gap-3 py-4 opacity-50 justify-center">
+                         <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-border" />
+                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            <Plane className="w-4 h-4 rotate-45" /> Travel to {cityGroups[groupIdx+1].city}
+                         </div>
+                         <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent to-border" />
+                       </div>
+                     )}
+                   </div>
+                 ))}
+               </div>
             </DragDropContext>
+
+            <div className="border-t border-border my-12" />
+
+            <section id="section-budget" className="mb-20 scroll-mt-20">
+               <div className="flex items-center justify-between mb-6">
+                 <h2 className="text-4xl font-display font-bold text-foreground">Budgeting</h2>
+                 <Button className="rounded-full bg-[#ff5a3f] hover:bg-[#ff5a3f]/90 text-white font-bold px-6 h-11 border-none">
+                    <Plus className="w-4 h-4 mr-1.5" strokeWidth={3} /> Add expense
+                 </Button>
+               </div>
+
+               <div className="bg-[#f3f4f6]/60 rounded-3xl p-8 flex flex-col md:flex-row justify-between gap-8 mb-10">
+                 <div className="flex-1">
+                   <h4 className="text-5xl font-display font-bold text-foreground mb-8">₹0.00</h4>
+                   <div className="flex flex-wrap gap-3">
+                     <Button onClick={() => setSetBudgetOpen(true)} variant="secondary" className="rounded-2xl bg-[#e5e7eb] hover:bg-[#d1d5db] text-foreground font-bold px-5 h-12 flex gap-2">
+                        <Pencil className="w-4 h-4" /> Set budget
+                     </Button>
+                     <Button variant="secondary" className="rounded-2xl bg-[#e5e7eb] hover:bg-[#d1d5db] text-foreground font-bold px-5 h-12 flex gap-2">
+                        <ReceiptText className="w-4 h-4" /> Group balances
+                     </Button>
+                   </div>
+                 </div>
+
+                 <div className="flex flex-col gap-5 pr-4 justify-center">
+                   <button className="flex items-center gap-3 text-[#4b5563] hover:text-foreground font-bold text-sm transition-colors group">
+                     <BarChart3 className="w-5 h-5 opacity-70 group-hover:opacity-100" /> View breakdown
+                   </button>
+                   <button className="flex items-center gap-3 text-[#4b5563] hover:text-foreground font-bold text-sm transition-colors group">
+                     <UserPlus className="w-5 h-5 opacity-70 group-hover:opacity-100" /> Add tripmate
+                   </button>
+                   <button className="flex items-center gap-3 text-[#4b5563] hover:text-foreground font-bold text-sm transition-colors group">
+                     <Settings className="w-5 h-5 opacity-70 group-hover:opacity-100" /> Settings
+                   </button>
+                 </div>
+               </div>
+
+               <Collapsible defaultOpen>
+                 <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
+                   <CollapsibleTrigger className="flex items-center gap-2 group">
+                     <ChevronDown className="w-5 h-5 text-foreground transition-transform duration-200 group-data-[state=closed]:-rotate-90" strokeWidth={2.5} />
+                     <h3 className="text-2xl font-bold text-foreground">Expenses</h3>
+                   </CollapsibleTrigger>
+                   <div className="flex items-center gap-1 text-sm font-bold text-[#111827]">
+                     <span>Sort:</span>
+                     <button className="flex items-center gap-1 hover:underline decoration-2">
+                       Date (newest first) <ChevronDown className="w-4 h-4" strokeWidth={2.5} />
+                     </button>
+                   </div>
+                 </div>
+                 <CollapsibleContent>
+                   <p className="text-[#4b5563] text-base mt-2">You haven't added any expenses yet.</p>
+                 </CollapsibleContent>
+               </Collapsible>
+            </section>
           </div>
         </main>
       </div>
