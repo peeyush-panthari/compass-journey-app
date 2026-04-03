@@ -38,6 +38,30 @@ interface Day {
   activities: Activity[]; 
 }
 
+const CITY_PALETTE = [
+  { bg: "bg-primary/8", border: "border-primary/25", text: "text-primary", dot: "bg-primary" },
+  { bg: "bg-accent/8", border: "border-accent/25", text: "text-accent-foreground", dot: "bg-accent" },
+  { bg: "bg-sea-foam/8", border: "border-sea-foam/25", text: "text-foreground", dot: "bg-sea-foam" },
+  { bg: "bg-coral/8", border: "border-coral/25", text: "text-foreground", dot: "bg-coral" },
+  { bg: "bg-gold/8", border: "border-gold/25", text: "text-foreground", dot: "bg-gold" },
+];
+
+const cityColorMap: Record<string, typeof CITY_PALETTE[0]> = {};
+let colorIndex = 0;
+const getCityColor = (city: string) => {
+  if (!cityColorMap[city]) {
+    cityColorMap[city] = CITY_PALETTE[colorIndex % CITY_PALETTE.length];
+    colorIndex++;
+  }
+  return cityColorMap[city];
+};
+
+const TIME_LABELS = {
+  morning: { label: "Morning", color: "bg-gold-light/20 text-gold-dark", border: "border-gold/20" },
+  afternoon: { label: "Afternoon", color: "bg-primary/10 text-primary", border: "border-primary/20" },
+  evening: { label: "Evening", color: "bg-coral/10 text-coral", border: "border-coral/20" },
+};
+
 const tripPlaces = [
   { name: "Paris", exploreLink: "/explore" },
   { name: "London", exploreLink: "/explore" },
@@ -516,136 +540,174 @@ const TripPage = () => {
             <div className="border-t border-border my-8" />
 
             <DragDropContext onDragEnd={onDragEnd}>
-               <div className="space-y-12">
-                 {cityGroups.map((group, groupIdx) => (
-                   <div key={groupIdx} className="space-y-8">
-                     {/* City Header Card */}
-                     <div className="bg-card border-2 border-primary/10 rounded-[2rem] p-8 shadow-sm relative overflow-hidden">
-                       <div className="absolute top-0 left-0 w-2 h-full bg-primary" />
-                       <div className="flex items-start gap-4">
-                         <div className="w-3 h-3 rounded-full bg-primary mt-2.5" />
-                         <div>
-                           <h2 className="text-3xl font-display font-bold text-[#1e293b]">{group.city}, {group.country}</h2>
-                           <p className="text-sm text-muted-foreground mt-1">{group.totalDays} {group.totalDays === 1 ? 'Day' : 'Days'}</p>
+               <div className="space-y-2">
+                 {cityGroups.map((group, groupIdx) => {
+                   const cityColor = getCityColor(group.city);
+                   return (
+                     <div key={groupIdx}>
+                       {/* City Header Card */}
+                       <div className={cn("rounded-2xl border p-6 mb-6 mt-10 transition-all", cityColor.bg, cityColor.border)}>
+                         <div className="flex items-center gap-3">
+                           <div className={cn("w-3 h-3 rounded-full shrink-0", cityColor.dot)} />
+                           <div>
+                             <h2 className="text-2xl font-display font-bold text-foreground">{group.city}, {group.country}</h2>
+                             <p className="text-xs text-muted-foreground">{group.totalDays} {group.totalDays === 1 ? 'Day' : 'Days'}</p>
+                           </div>
                          </div>
                        </div>
-                     </div>
 
-                     {group.days.map((day : any) => {
-                       const dayIdx = itinerary.findIndex(d => d.id === day.id);
-                       return (
-                         <div key={day.id} id={`section-day-${dayIdx}`} className="scroll-mt-20 ml-4 border-l-2 border-border/40 pl-8 relative pb-8 last:pb-0">
-                           <div className="absolute top-0 -left-[9px] w-4 h-4 rounded-full bg-card border-2 border-primary" />
-                           <div className="flex items-center justify-between mb-8">
-                             <h3 className="text-xl font-bold text-[#1e293b]">Day {day.dayNumber} — <span className="text-muted-foreground font-normal">{day.date}</span></h3>
-                             <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-red-500 transition-colors">
-                               <Trash2 className="w-4 h-4" /> Remove
-                             </button>
-                           </div>
-
-                           <Droppable droppableId={String(dayIdx)}>
-                             {(provided) => (
-                               <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-8">
-                                 {["morning", "afternoon", "evening"].map((time) => {
-                                   const timeActivities = day.activities.filter((a: any) => a.timeOfDay === time);
-                                   if (timeActivities.length === 0) return null;
-
-                                   return (
-                                     <div key={time} className="space-y-4">
-                                       <span className={cn(
-                                         "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                         time === "morning" ? "bg-orange-100 text-orange-600" :
-                                         time === "afternoon" ? "bg-blue-100 text-blue-600" :
-                                         "bg-red-100 text-red-600"
-                                       )}>
-                                         {time}
-                                       </span>
-                                       <div className="space-y-4">
-                                         {timeActivities.map((activity: any, actInTimeIdx: number) => {
-                                           const actIdx = day.activities.findIndex((a: any) => a.id === activity.id);
-                                           return (
-                                             <div key={activity.id}>
-                                               <Draggable draggableId={activity.id} index={actIdx}>
-                                                 {(prov, snap) => (
-                                                   <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps} className={`group relative flex items-center gap-4 p-3 bg-card border border-border/60 rounded-2xl hover:shadow-md transition-all ${snap.isDragging ? "shadow-elevated ring-2 ring-primary/30 z-50 scale-[1.02]" : ""}`}>
-                                                     <div className="shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing">
-                                                       <GripVertical className="w-4 h-4 opacity-40 group-hover:opacity-100" />
-                                                     </div>
-                                                     {activity.photoUrl && (
-                                                       <div className="w-16 h-16 shrink-0 overflow-hidden rounded-xl bg-muted">
-                                                         <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover" />
-                                                       </div>
-                                                     )}
-                                                     <div className="flex-1 min-w-0 cursor-pointer py-1" onClick={() => setSelectedActivity(activity)}>
-                                                       <h4 className="font-bold text-foreground text-sm mb-1 truncate">{activity.name}</h4>
-                                                       <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium">
-                                                         <div className="flex items-center gap-1">
-                                                           <Star className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
-                                                           <span>4.6</span>
-                                                         </div>
-                                                         <div className="flex items-center gap-1">
-                                                           <Clock className="w-3.5 h-3.5" />
-                                                           <span>2.5 hours</span>
-                                                         </div>
-                                                         <div className="flex items-center gap-1">
-                                                           <Ticket className="w-3.5 h-3.5" />
-                                                           <span>$15</span>
-                                                         </div>
-                                                         <MapPin className="w-3.5 h-3.5 opacity-60" />
-                                                       </div>
-                                                     </div>
-                                                     <button className="opacity-0 group-hover:opacity-60 hover:!opacity-100 p-2 transition-opacity" onClick={(e) => { e.stopPropagation(); /* handle delete */ }}>
-                                                       <Trash2 className="w-4 h-4 text-muted-foreground" />
-                                                     </button>
-                                                   </div>
-                                                 )}
-                                               </Draggable>
-
-                                               {actIdx < day.activities.length - 1 && (
-                                                 <div className="flex items-center gap-3 px-10 py-2">
-                                                   <div className="flex items-center gap-2 text-muted-foreground">
-                                                     <Car className="w-4 h-4" />
-                                                     <span className="text-[12px] font-medium opacity-70">8 min · 2.3 mi</span>
-                                                   </div>
-                                                   <button className="flex items-center gap-1 text-[12px] font-bold text-muted-foreground/60 hover:text-foreground transition-colors ml-1">
-                                                     <ChevronDown className="w-4 h-4 -rotate-90" strokeWidth={2.5} />
-                                                     Directions
-                                                   </button>
-                                                 </div>
-                                               )}
-                                             </div>
-                                           );
-                                         })}
-                                       </div>
-                                     </div>
-                                   );
-                                 })}
-                                 {provided.placeholder}
-                                 <button
-                                   onClick={() => setAddActivityDayIndex(dayIdx)}
-                                   className="w-full py-4 border-2 border-dashed border-border/60 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground hover:border-primary/40 hover:text-primary transition-all group"
-                                 >
-                                   <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" strokeWidth={3} /> Add Activity
+                       <div className={cn("ml-4 border-l-2 pl-8 space-y-12", cityColor.border)}>
+                         {group.days.map((day : any) => {
+                           const dayIdx = itinerary.findIndex(d => d.id === day.id);
+                           return (
+                             <div key={day.id} id={`section-day-${dayIdx}`} className="scroll-mt-24 relative pb-2 last:pb-0">
+                               {/* Day Dot */}
+                               <div className={cn("absolute top-2 -left-[41px] w-4 h-4 rounded-full bg-background border-2 z-10", cityColor.border)} />
+                               
+                               {/* Sticky Day Header */}
+                               <div className="flex items-center justify-between mb-8 sticky top-16 z-30 bg-background/95 backdrop-blur-sm py-3 -mx-4 px-4 border-b border-border/50 rounded-b-xl">
+                                 <h3 className="text-xl font-display font-bold text-foreground">
+                                   Day {day.dayNumber} <span className="text-muted-foreground font-normal text-sm ml-2">— {day.date}</span>
+                                 </h3>
+                                 <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors font-medium">
+                                   <Trash2 className="w-3.5 h-3.5" /> Remove
                                  </button>
                                </div>
-                             )}
-                           </Droppable>
-                         </div>
-                       );
-                     })}
 
-                     {/* Inter-city Travel Divider */}
-                     {groupIdx < cityGroups.length - 1 && (
-                       <div className="flex items-center gap-3 py-4 opacity-50 justify-center">
-                         <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-border" />
-                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                            <Plane className="w-4 h-4 rotate-45" /> Travel to {cityGroups[groupIdx+1].city}
-                         </div>
-                         <div className="h-[1px] flex-1 bg-gradient-to-l from-transparent to-border" />
+                               <Droppable droppableId={String(dayIdx)}>
+                                 {(provided, snapshot) => (
+                                   <div 
+                                     ref={provided.innerRef} 
+                                     {...provided.droppableProps} 
+                                     className={cn(
+                                       "space-y-8 rounded-2xl transition-colors p-2 -m-2",
+                                       snapshot.isDraggingOver ? "bg-muted/30" : ""
+                                     )}
+                                   >
+                                     {["morning", "afternoon", "evening"].map((time) => {
+                                       const timeActivities = day.activities.filter((a: any) => a.timeOfDay === time);
+                                       const label = TIME_LABELS[time as keyof typeof TIME_LABELS];
+
+                                       return (
+                                         <div key={time} className="space-y-4">
+                                           <div className="flex items-center gap-3">
+                                             <span className={cn(
+                                               "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                                               label.color,
+                                               label.border
+                                             )}>
+                                               {label.label}
+                                             </span>
+                                             {timeActivities.length === 0 && (
+                                               <span className="text-[10px] text-muted-foreground italic opacity-60">Drop activities here</span>
+                                             )}
+                                           </div>
+                                           
+                                           <div className="space-y-4">
+                                             {timeActivities.map((activity: any, actInTimeIdx: number) => {
+                                               const actIdx = day.activities.findIndex((a: any) => a.id === activity.id);
+                                               return (
+                                                 <div key={activity.id}>
+                                                   <Draggable draggableId={activity.id} index={actIdx}>
+                                                     {(prov, snap) => (
+                                                       <div 
+                                                         ref={prov.innerRef} 
+                                                         {...prov.draggableProps} 
+                                                         className={cn(
+                                                           "group relative flex items-center gap-4 p-3 bg-card border border-border/60 rounded-2xl transition-all",
+                                                           snap.isDragging ? "shadow-elevated ring-2 ring-primary/20 z-50 scale-[1.02]" : "shadow-card hover:shadow-md"
+                                                         )}
+                                                       >
+                                                         {/* Drag handle */}
+                                                         <div {...prov.dragHandleProps} className="shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing opacity-30 group-hover:opacity-100 transition-opacity p-1">
+                                                           <GripVertical className="w-4 h-4" />
+                                                         </div>
+
+                                                         {/* Photo */}
+                                                         <div className="w-16 h-16 shrink-0 overflow-hidden rounded-xl bg-muted border border-border/10">
+                                                           <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover" />
+                                                         </div>
+
+                                                         {/* Content */}
+                                                         <div className="flex-1 min-w-0 cursor-pointer py-1" onClick={() => setSelectedActivity(activity)}>
+                                                           <h4 className="font-bold text-foreground text-sm mb-1 truncate group-hover:text-primary transition-colors">{activity.name}</h4>
+                                                           <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
+                                                             <div className="flex items-center gap-1">
+                                                               <Star className="w-3 h-3 text-gold fill-gold" />
+                                                               <span>{activity.rating || "4.8"}</span>
+                                                             </div>
+                                                             <div className="flex items-center gap-1">
+                                                               <Clock className="w-3 h-3" />
+                                                               <span>{activity.duration || "2h"}</span>
+                                                             </div>
+                                                             <div className="flex items-center gap-1">
+                                                               <Ticket className="w-3 h-3" />
+                                                               <span>{activity.ticketPrice || "Free"}</span>
+                                                             </div>
+                                                             <MapPin className="w-3 h-3 opacity-60 hidden sm:block" />
+                                                           </div>
+                                                         </div>
+
+                                                         {/* Actions */}
+                                                         <button className="opacity-0 group-hover:opacity-40 hover:!opacity-100 p-2 transition-all hover:bg-destructive/10 hover:text-destructive rounded-lg" onClick={(e) => { e.stopPropagation(); deleteActivity(dayIdx, activity.id); }}>
+                                                           <Trash2 className="w-4 h-4" />
+                                                         </button>
+                                                       </div>
+                                                     )}
+                                                   </Draggable>
+
+                                                   {/* Transport Divider */}
+                                                   {actInTimeIdx < timeActivities.length - 1 && (
+                                                     <div className="flex items-center gap-3 px-10 py-3">
+                                                       <div className="flex items-center gap-2 text-muted-foreground/60 transition-colors hover:text-muted-foreground">
+                                                         <Car className="w-4 h-4" />
+                                                         <span className="text-[11px] font-medium">8 min · 2.3 mi</span>
+                                                       </div>
+                                                       <div className="h-px flex-1 bg-border/40" />
+                                                       <button className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground/40 hover:text-primary transition-colors ml-1">
+                                                         <Navigation className="w-3.5 h-3.5" />
+                                                         Directions
+                                                       </button>
+                                                     </div>
+                                                   )}
+                                                 </div>
+                                               );
+                                             })}
+                                           </div>
+                                         </div>
+                                       );
+                                     })}
+                                     {provided.placeholder}
+                                     
+                                     {/* Add Activity Button */}
+                                     <button
+                                       onClick={() => setAddActivityDayIndex(dayIdx)}
+                                       className="w-full py-4 border-2 border-dashed border-border/40 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all group"
+                                     >
+                                       <Plus className="w-4 h-4 group-hover:scale-120 transition-transform" strokeWidth={3} /> Add Activity
+                                     </button>
+                                   </div>
+                                 )}
+                               </Droppable>
+                             </div>
+                           );
+                         })}
                        </div>
-                     )}
-                   </div>
-                 ))}
+
+                       {/* Inter-city Travel Divider */}
+                       {groupIdx < cityGroups.length - 1 && (
+                         <div className="flex items-center gap-4 py-8 justify-center max-w-lg mx-auto">
+                           <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border/60 to-border" />
+                           <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-border bg-muted/30 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground transition-all hover:bg-muted/50">
+                              <Plane className="w-3.5 h-3.5 rotate-45 text-primary" /> 
+                              <span>Travel to {cityGroups[groupIdx+1].city}</span>
+                           </div>
+                           <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border/60 to-border" />
+                         </div>
+                       )}
+                     </div>
+                   );
+                 })}
                </div>
             </DragDropContext>
 
