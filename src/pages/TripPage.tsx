@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronRight, MoreHorizontal, StickyNote, MapPinned, Compass, FileText,
   Hotel, Car, UtensilsCrossed, Paperclip, DollarSign, Navigation, ThumbsUp, ThumbsDown,
   Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar, Pencil, List,
-  Settings, Users, BarChart3, TrainFront, Bus, Ship, Anchor, Globe
+  Settings, Users, BarChart3, TrainFront, Bus, Ship, Anchor, Globe, Wallet, Info, Map as MapIcon
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import AddActivityDialog, { type PlaceResult } from "@/components/AddActivityDialog";
@@ -252,11 +252,11 @@ const TripPage = () => {
   const dateRange = itinerary.length > 0 ? `${itinerary[0].date} - ${itinerary[itinerary.length-1].date}` : "Curation in progress";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       <Navbar />
       
       {/* MOBILE TAB BAR (< md) */}
-      <div className="md:hidden">
+      <div className="md:hidden flex-1 overflow-y-auto">
         <div className="relative h-48 overflow-hidden bg-muted pt-14">
           {itinerary[0]?.activities[0]?.photoUrl ? (
             <img src={itinerary[0].activities[0].photoUrl} alt="Trip" className="w-full h-full object-cover" />
@@ -365,13 +365,28 @@ const TripPage = () => {
               )}
             </div>
           )}
+          {mobileTab === "budget" && (
+            <div className="space-y-6">
+              <div className="bg-primary/5 rounded-2xl p-6 flex flex-col items-center text-center">
+                <p className="text-xs text-primary font-bold uppercase tracking-wider mb-1">Total Budget Spending</p>
+                <h4 className="text-3xl font-display font-bold text-foreground">$0.00 <span className="text-sm text-muted-foreground font-normal">/ ${budget || 0}</span></h4>
+                <Button onClick={() => setSetBudgetOpen(true)} variant="outline" size="sm" className="mt-4 rounded-xl border-primary/20">Set Budget</Button>
+              </div>
+              <div className="bg-card border border-border/60 rounded-2xl p-8 flex flex-col items-center justify-center text-center py-12">
+                <Wallet className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
+                <h4 className="font-display font-bold mb-1">No expenses yet</h4>
+                <p className="text-muted-foreground text-xs max-w-[200px] mb-6">Track your travel costs and split bills with friends.</p>
+                <Button size="sm" className="rounded-xl px-6"><Plus className="w-4 h-4 mr-1" /> Add Expense</Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* DESKTOP LAYOUT (md+) */}
-      <div className="hidden md:flex pt-14 sm:pt-16 safe-top" style={{ minHeight: "calc(100vh - 0px)" }}>
+      <div className="hidden md:flex flex-1 overflow-hidden">
         {sidebarOpen && (
-          <aside className="w-[220px] shrink-0 border-r border-border bg-card overflow-y-auto sticky top-14 sm:top-16" style={{ height: "calc(100vh - 56px)" }}>
+          <aside className="w-[240px] shrink-0 border-r border-border bg-card overflow-y-auto h-full">
             <div className="p-4">
               <Collapsible defaultOpen>
                 <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left mb-1">
@@ -380,7 +395,7 @@ const TripPage = () => {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="ml-5 space-y-0.5">
-                    {["Explore", "Notes", "Places to visit"].map((item) => (
+                    {["Explore", "Budget", "Notes", "Places to visit"].map((item) => (
                       <button key={item} onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, "-"))} className={`block w-full text-left text-sm py-1.5 px-2 rounded-md transition-colors ${activeSection === item.toLowerCase().replace(/ /g, "-") ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
                         {item}
                       </button>
@@ -413,7 +428,7 @@ const TripPage = () => {
           </aside>
         )}
 
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-16">
+        <main ref={mainRef} className="flex-1 overflow-y-auto pb-24 h-full scroll-smooth pt-14 sm:pt-16">
           {!sidebarOpen && (
             <button onClick={() => setSidebarOpen(true)} className="fixed left-2 top-20 z-40 flex items-center gap-1 text-xs bg-card border border-border rounded-lg px-2 py-1.5 text-muted-foreground hover:text-foreground shadow-sm">
               <PanelLeft className="w-3.5 h-3.5" />
@@ -455,6 +470,30 @@ const TripPage = () => {
             <section id="section-notes" className="mb-8 scroll-mt-20">
                <h2 className="text-xl font-display font-bold mb-3">Notes</h2>
                <Textarea placeholder="Share details or tips..." value={notes} onChange={e => setNotes(e.target.value)} className="min-h-[80px] rounded-xl" />
+            </section>
+
+            <section id="section-budget" className="mb-8 scroll-mt-20">
+               <h2 className="text-xl font-display font-bold mb-4">Budget</h2>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6">
+                  <p className="text-xs text-primary font-bold uppercase tracking-wider mb-1">Total Spending</p>
+                  <h4 className="text-3xl font-display font-bold text-foreground">$0.00 <span className="text-sm text-muted-foreground font-normal">/ ${budget || 0}</span></h4>
+                  <Button onClick={() => setSetBudgetOpen(true)} variant="link" size="sm" className="p-0 h-auto text-primary mt-2">Adjust Budget</Button>
+                </div>
+                <div className="bg-card border border-border rounded-2xl p-6 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground">Track Expenses</h4>
+                    <p className="text-xs text-muted-foreground">Log your costs as you go</p>
+                  </div>
+                  <Button size="sm" className="rounded-xl"><Plus className="w-4 h-4 mr-1" /> Add</Button>
+                </div>
+               </div>
+               
+               <div className="bg-card border border-border rounded-2xl p-12 flex flex-col items-center justify-center text-center">
+                  <Wallet className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
+                  <h4 className="text-lg font-display font-bold mb-1">No expenses recorded</h4>
+                  <p className="text-muted-foreground text-sm max-w-xs mb-6">Start tracking your spending to stay within your trip budget.</p>
+               </div>
             </section>
 
             <div className="border-t border-border my-8" />
@@ -504,6 +543,20 @@ const TripPage = () => {
 
       <AddActivityDialog open={addActivityDayIndex !== null} onOpenChange={open => !open && setAddActivityDayIndex(null)} onSelect={addActivityFromSearch} />
       <ActivityDetailDialog activity={selectedActivity} open={!!selectedActivity} onOpenChange={open => !open && setSelectedActivity(null)} />
+
+      {/* Set Budget Dialog */}
+      <Dialog open={setBudgetOpen} onOpenChange={setSetBudgetOpen}>
+        <DialogContent className="sm:max-w-sm rounded-3xl border-none shadow-2xl p-8">
+          <DialogHeader><DialogTitle className="text-2xl font-display font-bold text-center">Set Budget</DialogTitle></DialogHeader>
+          <form className="space-y-6 mt-4" onSubmit={(e) => { e.preventDefault(); toast({ title: "Budget updated" }); setSetBudgetOpen(false); }}>
+            <div className="relative">
+              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input type="number" step="0.01" defaultValue={budget || 0} placeholder="0.00" className="pl-12 h-14 rounded-2xl bg-muted border-none text-xl font-semibold" />
+            </div>
+            <Button type="submit" className="w-full rounded-2xl h-14 font-bold text-base">Save Budget</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

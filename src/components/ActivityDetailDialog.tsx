@@ -1,4 +1,5 @@
-import { Clock, MapPin, Ticket, Star, ExternalLink, Navigation, Sun, Camera, Play, X, ChevronLeft, ChevronRight, UtensilsCrossed, Gem } from "lucide-react";
+import { Clock, MapPin, Ticket, Star, ExternalLink, Navigation, Sun, Camera, Play, X, ChevronLeft, ChevronRight, UtensilsCrossed, Gem, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -38,6 +39,7 @@ export interface ActivityDetail {
   hiddenGems?: string[];
   photoSpots?: string[];
   restStops?: string[];
+  sortOrder: number;
 }
 
 interface ActivityDetailDialogProps {
