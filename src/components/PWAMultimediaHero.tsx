@@ -137,7 +137,7 @@ export default function PWAMultimediaHero({ onAuthOpen }: { onAuthOpen: () => vo
   }, []);
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-gradient-to-b from-[#f7fbff] via-[#eef5ff] to-white flex flex-col items-center justify-start pt-24 px-6">
+    <div className="relative h-screen w-full overflow-hidden bg-gradient-to-b from-[#f7fbff] via-[#eef5ff] to-white flex flex-col items-center justify-end pb-24 px-6">
       
       {/* ✨ Animated Background */}
       <canvas
@@ -145,7 +145,32 @@ export default function PWAMultimediaHero({ onAuthOpen }: { onAuthOpen: () => vo
         className="absolute inset-0 z-0 pointer-events-none"
       />
 
-      {/* 📝 Content Overlay (Functional Parity) */}
+      {/* 🌍 Ultra Minimal Globe (Positioned at the TOP part) */}
+      <div className="absolute inset-x-0 top-0 h-[45svh] z-10 flex items-start justify-center pointer-events-none overflow-hidden">
+        <div className="translate-y-[-10%] scale-110 sm:scale-100">
+           <Globe
+            ref={globeRef}
+            backgroundColor="rgba(0,0,0,0)"
+            globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+            bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+            atmosphereColor="#a8c5ff"
+            atmosphereAltitude={0.15}
+            arcsData={arcs}
+            arcColor={() => ["#7aa2ff", "#4facfe"]}
+            arcDashLength={0.4}
+            arcDashGap={0.2}
+            arcDashAnimateTime={1800}
+            pointsData={points}
+            pointColor={() => "#ff6b6b"}
+            pointAltitude={0.02}
+            pointRadius={1.2}
+            width={dimensions.width}
+            height={dimensions.height * 0.5} // Shrink height to top half
+          />
+        </div>
+      </div>
+
+      {/* 📝 Content Overlay (Moved LOWER on screen) */}
       <div className="relative z-20 text-center w-full max-w-sm pointer-events-none">
         <motion.div 
           initial={{ opacity: 0, y: 10 }} 
@@ -201,40 +226,11 @@ export default function PWAMultimediaHero({ onAuthOpen }: { onAuthOpen: () => vo
         </motion.div>
       </div>
 
-      {/* 🌍 Ultra Minimal Globe (Positioned in bottom half) */}
-      <div className="absolute inset-x-0 bottom-0 top-1/3 z-10 flex items-end justify-center pointer-events-none overflow-hidden">
-        <div className="translate-y-1/4 scale-150 sm:scale-100">
-           <Globe
-            ref={globeRef}
-            backgroundColor="rgba(0,0,0,0)"
-            globeImageUrl={null}
-            globeMaterial={{
-              color: "#eaf2ff",
-              emissive: "#cfe0ff",
-              emissiveIntensity: 0.4,
-            }}
-            atmosphereColor="#a8c5ff"
-            atmosphereAltitude={0.15}
-            arcsData={arcs}
-            arcColor={() => ["#7aa2ff", "#4facfe"]}
-            arcDashLength={0.4}
-            arcDashGap={0.2}
-            arcDashAnimateTime={1800}
-            pointsData={points}
-            pointColor={() => "#ff6b6b"}
-            pointAltitude={0.02}
-            pointRadius={1.2}
-            width={dimensions.width}
-            height={dimensions.height * 0.8}
-          />
-        </div>
-      </div>
-
-      {/* 🏙️ City Hint Icon */}
+      {/* 🏙️ City Hint Icon (Keep near bottom) */}
       <motion.div 
         animate={{ y: [0, -10, 0] }} 
         transition={{ duration: 3, repeat: Infinity }}
-        className="absolute bottom-10 z-30"
+        className="absolute bottom-6 z-30"
       >
         <div className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-border/50 flex items-center justify-center shadow-sm">
           <Sparkles className="w-5 h-5 text-primary" />
