@@ -385,33 +385,64 @@ const TripPage = () => {
 
           {mobileTab === "itinerary" && (
             <div>
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-4 -mx-1 px-1">
+              {/* Day selector pills */}
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-3 -mx-1 px-1">
                 {itinerary.map((day, i) => (
-                  <button key={i} onClick={() => setMobileSelectedDay(i)} className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${mobileSelectedDay === i ? "bg-foreground text-background" : "bg-muted text-foreground"}`}>
-                    {day.date}
+                  <button key={i} onClick={() => setMobileSelectedDay(i)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${mobileSelectedDay === i ? "bg-foreground text-background" : "bg-muted text-foreground"}`}>
+                    Day {day.dayNumber}
                   </button>
                 ))}
               </div>
-              {itinerary[mobileSelectedDay] && (
-                <div>
-                  <h2 className="text-2xl font-display font-bold text-foreground mb-4">{itinerary[mobileSelectedDay].date}</h2>
-                  <div className="space-y-1">
-                    {itinerary[mobileSelectedDay].activities.map((activity, actIdx) => (
-                      <div key={activity.id} className="flex items-start gap-3 p-3 bg-card border border-border/60 rounded-xl mb-1" onClick={() => setSelectedActivity(activity)}>
-                        <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0 mt-0.5">{actIdx+1}</div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-foreground text-sm">{activity.name}</h4>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{activity.description}</p>
+
+              {itinerary[mobileSelectedDay] && (() => {
+                const day = itinerary[mobileSelectedDay];
+                const cityColor = getCityColor(day.city);
+                return (
+                  <div>
+                    {/* City sub-header for current day */}
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className={cn("w-2 h-2 rounded-full shrink-0", cityColor.dot)} />
+                      <span className="text-xs font-semibold text-foreground">
+                        {day.city}{day.country && day.country !== "Country" ? `, ${day.country}` : ""}
+                      </span>
+                    </div>
+                    <h2 className="text-base font-display font-bold text-foreground mb-2.5">
+                      Day {day.dayNumber} — {day.date}
+                    </h2>
+                    {/* Compact numbered activity list — no time-of-day grouping */}
+                    <div className="space-y-1.5">
+                      {day.activities.length === 0 && (
+                        <p className="text-xs text-muted-foreground italic py-1">No activities yet</p>
+                      )}
+                      {day.activities.map((activity, actIdx) => (
+                        <div
+                          key={activity.id}
+                          className="flex items-center gap-2.5 px-2.5 py-2 bg-card border border-border/60 rounded-xl cursor-pointer"
+                          onClick={() => setSelectedActivity(activity)}
+                        >
+                          <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                            {actIdx + 1}
+                          </div>
+                          <div className="w-10 h-10 shrink-0 overflow-hidden rounded-lg bg-muted">
+                            <img src={activity.photoUrl} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-foreground text-sm leading-tight truncate">{activity.name}</h4>
+                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                              {activity.rating && <span className="flex items-center gap-0.5"><Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />{activity.rating}</span>}
+                              {activity.duration && <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{activity.duration}</span>}
+                              {activity.ticketPrice && <span className="flex items-center gap-0.5"><Ticket className="w-2.5 h-2.5" />{activity.ticketPrice}</span>}
+                            </div>
+                          </div>
                         </div>
-                        {activity.photoUrl && <img src={activity.photoUrl} className="w-16 h-16 rounded-lg object-cover shrink-0" />}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    <Button variant="ghost" size="sm" className="w-full h-8 text-xs text-muted-foreground border border-dashed border-border/50 rounded-xl mt-2 hover:border-primary/40 hover:text-primary" onClick={() => setAddActivityDayIndex(mobileSelectedDay)}>
+                      <Plus className="w-3 h-3 mr-1" strokeWidth={2.5} /> Add Activity
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" className="w-full rounded-xl border-dashed text-muted-foreground mt-4" onClick={() => setAddActivityDayIndex(mobileSelectedDay)}>
-                    <Plus className="w-4 h-4 mr-1" /> Add Activity
-                  </Button>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
           {mobileTab === "budget" && (
@@ -545,146 +576,143 @@ const TripPage = () => {
                    const cityColor = getCityColor(group.city);
                    return (
                      <div key={groupIdx}>
-                       {/* City Header Card */}
-                       <div className={cn("rounded-2xl border p-6 mb-6 mt-10 transition-all", cityColor.bg, cityColor.border)}>
-                         <div className="flex items-center gap-3">
-                           <div className={cn("w-3 h-3 rounded-full shrink-0", cityColor.dot)} />
-                           <div>
-                             <h2 className="text-2xl font-display font-bold text-foreground">{group.city}, {group.country}</h2>
-                             <p className="text-xs text-muted-foreground">{group.totalDays} {group.totalDays === 1 ? 'Day' : 'Days'}</p>
-                           </div>
-                         </div>
+
+                       {/* Change 1 & 2: Replaced the large colored city header card with a
+                           slim inline sub-header that just shows city name + day count.
+                           The header is visually lightweight — an accent dot, bold city name,
+                           muted day count, and a hairline rule — matching the screenshot style. */}
+                       <div className="flex items-center gap-2.5 mt-8 mb-3 first:mt-0">
+                         <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", cityColor.dot)} />
+                         <h2 className="text-base font-display font-bold text-foreground leading-none">
+                           {group.city}{group.country && group.country !== "Country" ? `, ${group.country}` : ""}
+                         </h2>
+                         <span className="text-xs text-muted-foreground font-medium">
+                           {group.totalDays} {group.totalDays === 1 ? "Day" : "Days"}
+                         </span>
+                         <div className="flex-1 h-px bg-border" />
                        </div>
 
-                       <div className={cn("ml-4 border-l-2 pl-8 space-y-12", cityColor.border)}>
-                         {group.days.map((day : any) => {
+                       <div className={cn("ml-3 border-l-2 pl-5 space-y-4", cityColor.border)}>
+                         {group.days.map((day: any) => {
                            const dayIdx = itinerary.findIndex(d => d.id === day.id);
                            return (
-                             <div key={day.id} id={`section-day-${dayIdx}`} className="scroll-mt-24 relative pb-2 last:pb-0">
-                               {/* Day Dot */}
-                               <div className={cn("absolute top-2 -left-[41px] w-4 h-4 rounded-full bg-background border-2 z-10", cityColor.border)} />
-                               
-                               {/* Sticky Day Header */}
-                               <div className="flex items-center justify-between mb-8 sticky top-16 z-30 bg-background/95 backdrop-blur-sm py-3 -mx-4 px-4 border-b border-border/50 rounded-b-xl">
-                                 <h3 className="text-xl font-display font-bold text-foreground">
-                                   Day {day.dayNumber} <span className="text-muted-foreground font-normal text-sm ml-2">— {day.date}</span>
+                             <div key={day.id} id={`section-day-${dayIdx}`} className="scroll-mt-24 relative">
+                               {/* Timeline dot */}
+                               <div className={cn("absolute top-2.5 -left-[29px] w-3 h-3 rounded-full bg-background border-2 z-10", cityColor.border)} />
+
+                               {/* Change 4: Reduced day header — smaller text, less vertical padding,
+                                   tighter sticky bar so it consumes less screen real estate */}
+                               <div className="flex items-center justify-between mb-2 sticky top-16 z-30 bg-background/95 backdrop-blur-sm py-2 -mx-2 px-2 border-b border-border/40">
+                                 <h3 className="text-sm font-display font-bold text-foreground">
+                                   Day {day.dayNumber}
+                                   <span className="text-muted-foreground font-normal ml-2">— {day.date}</span>
                                  </h3>
-                                 <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors font-medium">
-                                   <Trash2 className="w-3.5 h-3.5" /> Remove
+                                 <button
+                                   className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive transition-colors"
+                                   onClick={() => {
+                                     setItinerary(prev => prev.filter((_, i) => i !== dayIdx));
+                                     toast({ title: "Day removed" });
+                                   }}
+                                 >
+                                   <Trash2 className="w-3 h-3" /> Remove
                                  </button>
                                </div>
 
                                <Droppable droppableId={String(dayIdx)}>
                                  {(provided, snapshot) => (
-                                   <div 
-                                     ref={provided.innerRef} 
-                                     {...provided.droppableProps} 
+                                   <div
+                                     ref={provided.innerRef}
+                                     {...provided.droppableProps}
                                      className={cn(
-                                       "space-y-8 rounded-2xl transition-colors p-2 -m-2",
-                                       snapshot.isDraggingOver ? "bg-muted/30" : ""
+                                       "space-y-1.5 rounded-xl transition-colors",
+                                       snapshot.isDraggingOver ? "bg-muted/20" : ""
                                      )}
                                    >
-                                     {["morning", "afternoon", "evening"].map((time) => {
-                                       const timeActivities = day.activities.filter((a: any) => a.timeOfDay === time);
-                                       const label = TIME_LABELS[time as keyof typeof TIME_LABELS];
+                                     {/* Change 3: Removed Morning/Afternoon/Evening grouping.
+                                         Activities are now rendered as a flat numbered list.
+                                         The number badge replaces the time-of-day label. */}
+                                     {day.activities.length === 0 && (
+                                       <p className="text-xs text-muted-foreground italic py-1.5 px-1 opacity-60">No activities yet — add one below</p>
+                                     )}
 
-                                       return (
-                                         <div key={time} className="space-y-4">
-                                           <div className="flex items-center gap-3">
-                                             <span className={cn(
-                                               "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                                               label.color,
-                                               label.border
-                                             )}>
-                                               {label.label}
-                                             </span>
-                                             {timeActivities.length === 0 && (
-                                               <span className="text-[10px] text-muted-foreground italic opacity-60">Drop activities here</span>
+                                     {day.activities.map((activity: any, actIdx: number) => (
+                                       <Draggable key={activity.id} draggableId={activity.id} index={actIdx}>
+                                         {(prov, snap) => (
+                                           // Change 4: Compact card — p-2.5 instead of p-3,
+                                           // smaller photo (w-12 h-12 vs w-16 h-16),
+                                           // tighter gap, no transport divider between items
+                                           <div
+                                             ref={prov.innerRef}
+                                             {...prov.draggableProps}
+                                             className={cn(
+                                               "group relative flex items-center gap-2.5 px-2.5 py-2 bg-card border border-border/60 rounded-xl transition-all",
+                                               snap.isDragging ? "shadow-elevated ring-2 ring-primary/20 z-50 scale-[1.01]" : "hover:shadow-sm hover:border-border"
                                              )}
+                                           >
+                                             {/* Drag handle */}
+                                             <div {...prov.dragHandleProps} className="shrink-0 text-muted-foreground/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/60 transition-opacity">
+                                               <GripVertical className="w-3.5 h-3.5" />
+                                             </div>
+
+                                             {/* Number badge — replaces time-of-day label */}
+                                             <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                               {actIdx + 1}
+                                             </div>
+
+                                             {/* Thumbnail — smaller than before */}
+                                             <div className="w-11 h-11 shrink-0 overflow-hidden rounded-lg bg-muted border border-border/10">
+                                               <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover" />
+                                             </div>
+
+                                             {/* Content */}
+                                             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedActivity(activity)}>
+                                               <h4 className="font-semibold text-foreground text-sm leading-tight truncate group-hover:text-primary transition-colors">
+                                                 {activity.name}
+                                               </h4>
+                                               <div className="flex items-center gap-2.5 mt-0.5 text-[11px] text-muted-foreground font-medium flex-wrap">
+                                                 {activity.rating && (
+                                                   <span className="flex items-center gap-0.5">
+                                                     <Star className="w-2.5 h-2.5 text-gold fill-gold" />
+                                                     {activity.rating}
+                                                   </span>
+                                                 )}
+                                                 {activity.duration && (
+                                                   <span className="flex items-center gap-0.5">
+                                                     <Clock className="w-2.5 h-2.5" />
+                                                     {activity.duration}
+                                                   </span>
+                                                 )}
+                                                 {activity.ticketPrice && (
+                                                   <span className="flex items-center gap-0.5">
+                                                     <Ticket className="w-2.5 h-2.5" />
+                                                     {activity.ticketPrice}
+                                                   </span>
+                                                 )}
+                                                 {activity.address && (
+                                                   <MapPin className="w-2.5 h-2.5 opacity-40 hidden sm:block" />
+                                                 )}
+                                               </div>
+                                             </div>
+
+                                             {/* Delete */}
+                                             <button
+                                               className="opacity-0 group-hover:opacity-40 hover:!opacity-100 p-1.5 transition-all hover:bg-destructive/10 hover:text-destructive rounded-lg shrink-0"
+                                               onClick={(e) => { e.stopPropagation(); deleteActivity(dayIdx, activity.id); }}
+                                             >
+                                               <Trash2 className="w-3.5 h-3.5" />
+                                             </button>
                                            </div>
-                                           
-                                           <div className="space-y-4">
-                                             {timeActivities.map((activity: any, actInTimeIdx: number) => {
-                                               const actIdx = day.activities.findIndex((a: any) => a.id === activity.id);
-                                               return (
-                                                 <div key={activity.id}>
-                                                   <Draggable draggableId={activity.id} index={actIdx}>
-                                                     {(prov, snap) => (
-                                                       <div 
-                                                         ref={prov.innerRef} 
-                                                         {...prov.draggableProps} 
-                                                         className={cn(
-                                                           "group relative flex items-center gap-4 p-3 bg-card border border-border/60 rounded-2xl transition-all",
-                                                           snap.isDragging ? "shadow-elevated ring-2 ring-primary/20 z-50 scale-[1.02]" : "shadow-card hover:shadow-md"
-                                                         )}
-                                                       >
-                                                         {/* Drag handle */}
-                                                         <div {...prov.dragHandleProps} className="shrink-0 text-muted-foreground cursor-grab active:cursor-grabbing opacity-30 group-hover:opacity-100 transition-opacity p-1">
-                                                           <GripVertical className="w-4 h-4" />
-                                                         </div>
-
-                                                         {/* Photo */}
-                                                         <div className="w-16 h-16 shrink-0 overflow-hidden rounded-xl bg-muted border border-border/10">
-                                                           <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover" />
-                                                         </div>
-
-                                                         {/* Content */}
-                                                         <div className="flex-1 min-w-0 cursor-pointer py-1" onClick={() => setSelectedActivity(activity)}>
-                                                           <h4 className="font-bold text-foreground text-sm mb-1 truncate group-hover:text-primary transition-colors">{activity.name}</h4>
-                                                           <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
-                                                             <div className="flex items-center gap-1">
-                                                               <Star className="w-3 h-3 text-gold fill-gold" />
-                                                               <span>{activity.rating || "4.8"}</span>
-                                                             </div>
-                                                             <div className="flex items-center gap-1">
-                                                               <Clock className="w-3 h-3" />
-                                                               <span>{activity.duration || "2h"}</span>
-                                                             </div>
-                                                             <div className="flex items-center gap-1">
-                                                               <Ticket className="w-3 h-3" />
-                                                               <span>{activity.ticketPrice || "Free"}</span>
-                                                             </div>
-                                                             <MapPin className="w-3 h-3 opacity-60 hidden sm:block" />
-                                                           </div>
-                                                         </div>
-
-                                                         {/* Actions */}
-                                                         <button className="opacity-0 group-hover:opacity-40 hover:!opacity-100 p-2 transition-all hover:bg-destructive/10 hover:text-destructive rounded-lg" onClick={(e) => { e.stopPropagation(); deleteActivity(dayIdx, activity.id); }}>
-                                                           <Trash2 className="w-4 h-4" />
-                                                         </button>
-                                                       </div>
-                                                     )}
-                                                   </Draggable>
-
-                                                   {/* Transport Divider */}
-                                                   {actInTimeIdx < timeActivities.length - 1 && (
-                                                     <div className="flex items-center gap-3 px-10 py-3">
-                                                       <div className="flex items-center gap-2 text-muted-foreground/60 transition-colors hover:text-muted-foreground">
-                                                         <Car className="w-4 h-4" />
-                                                         <span className="text-[11px] font-medium">8 min · 2.3 mi</span>
-                                                       </div>
-                                                       <div className="h-px flex-1 bg-border/40" />
-                                                       <button className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground/40 hover:text-primary transition-colors ml-1">
-                                                         <Navigation className="w-3.5 h-3.5" />
-                                                         Directions
-                                                       </button>
-                                                     </div>
-                                                   )}
-                                                 </div>
-                                               );
-                                             })}
-                                           </div>
-                                         </div>
-                                       );
-                                     })}
+                                         )}
+                                       </Draggable>
+                                     ))}
                                      {provided.placeholder}
-                                     
-                                     {/* Add Activity Button */}
+
+                                     {/* Add Activity Button — compact ghost style */}
                                      <button
                                        onClick={() => setAddActivityDayIndex(dayIdx)}
-                                       className="w-full py-4 border-2 border-dashed border-border/40 rounded-2xl flex items-center justify-center gap-2 text-sm font-bold text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all group"
+                                       className="w-full py-2.5 border border-dashed border-border/50 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all"
                                      >
-                                       <Plus className="w-4 h-4 group-hover:scale-120 transition-transform" strokeWidth={3} /> Add Activity
+                                       <Plus className="w-3.5 h-3.5" strokeWidth={2.5} /> Add Activity
                                      </button>
                                    </div>
                                  )}
@@ -694,13 +722,13 @@ const TripPage = () => {
                          })}
                        </div>
 
-                       {/* Inter-city Travel Divider */}
+                       {/* Inter-city travel divider — kept as-is */}
                        {groupIdx < cityGroups.length - 1 && (
-                         <div className="flex items-center gap-4 py-8 justify-center max-w-lg mx-auto">
+                         <div className="flex items-center gap-4 py-6 justify-center max-w-lg mx-auto">
                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border/60 to-border" />
                            <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-border bg-muted/30 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground transition-all hover:bg-muted/50">
-                              <Plane className="w-3.5 h-3.5 rotate-45 text-primary" /> 
-                              <span>Travel to {cityGroups[groupIdx+1].city}</span>
+                             <Plane className="w-3.5 h-3.5 rotate-45 text-primary" />
+                             <span>Travel to {cityGroups[groupIdx + 1].city}</span>
                            </div>
                            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border/60 to-border" />
                          </div>
