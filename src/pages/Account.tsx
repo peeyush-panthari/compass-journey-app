@@ -13,13 +13,6 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Loader2 } from "lucide-react";
 
-const savedTrips = [
-  { id: "1", destination: "Rome, Italy", dates: "Mar 15–17, 2026", days: 3, status: "Generated", image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&h=250&fit=crop" },
-  { id: "2", destination: "Tokyo, Japan", dates: "Apr 10–16, 2026", days: 7, status: "Draft", image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400&h=250&fit=crop" },
-  { id: "3", destination: "Bali, Indonesia", dates: "Jun 1–8, 2026", days: 8, status: "Generated", image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&h=250&fit=crop" },
-  { id: "4", destination: "London, UK", dates: "Jul 20–25, 2026", days: 6, status: "Draft", image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&h=250&fit=crop" },
-];
-
 const sharedTrips = [
   { id: "s1", destination: "Paris, France", dates: "May 5–10, 2026", days: 6, sharedBy: "Ankit Sharma", image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&h=250&fit=crop" },
   { id: "s2", destination: "Dubai, UAE", dates: "Aug 12–16, 2026", days: 5, sharedBy: "Priya Mehta", image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&h=250&fit=crop" },
@@ -143,42 +136,60 @@ const Account = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [trips, setTrips] = useState<any[]>([]);
-  const [fetchingTrips, setFetchingTrips] = useState(true);
-  
+
+  // BUG 1 & 2 FIX: The old code initialised fetchingTrips=true and only set it to false
+  // inside the `if (user)` block. When the component first mounts, user=null (auth is still
+  // loading), so the `if (user)` block never runs and fetchingTrips stays true forever —
+  // causing the infinite spinner. The fix: start as false and only set true when actively
+  // fetching, so the UI shows the empty state while auth resolves instead of spinning forever.
+  const [fetchingTrips, setFetchingTrips] = useState(false);
+
   const [destination, setDestination] = useState("");
   const [checkIn, setCheckIn] = useState<Date | undefined>(addDays(new Date(), 14));
   const [checkOut, setCheckOut] = useState<Date | undefined>(addDays(new Date(), 15));
   const [rooms, setRooms] = useState(1);
   const [guests, setGuests] = useState(2);
 
-  useEffect(() => { 
+  // Redirect to login only after auth has finished loading and confirmed no user
+  useEffect(() => {
     const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
-    if (!loading && !user && !isCallback) navigate("/login"); 
+    if (!loading && !user && !isCallback) navigate("/login");
   }, [user, loading, navigate]);
 
+  // BUG 1 FIX: Fetch trips as soon as we have a user.id — but use user.id (a stable
+  // string) as the dependency, not the entire user object. The user object reference
+  // changes on every token refresh (new object created in syncUser), which previously
+  // caused this effect to re-run on every refresh, hammering Supabase and causing
+  // the "sometimes doesn't load" flakiness.
   useEffect(() => {
-    if (user) {
-      const fetchTrips = async () => {
-        setFetchingTrips(true);
+    if (!user?.id) return;
+
+    const fetchTrips = async () => {
+      setFetchingTrips(true);
+      try {
         const { data, error } = await supabase
           .from('trips')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
-        
-        if (!error && data) {
-          setTrips(data);
-        }
+
+        if (error) throw error;
+        setTrips(data || []);
+      } catch (err: any) {
+        console.error("Error fetching trips:", err.message);
+        setTrips([]);
+      } finally {
         setFetchingTrips(false);
-      };
-      fetchTrips();
-    }
-  }, [user]);
+      }
+    };
+
+    fetchTrips();
+  }, [user?.id]); // Depend on user.id (stable string), not user (object reference)
 
   const handleDeleteTrip = async (e: React.MouseEvent, tripId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!window.confirm("Are you sure you want to delete this trip? This action cannot be undone.")) return;
 
     try {
@@ -186,17 +197,17 @@ const Account = () => {
         .from('trips')
         .delete()
         .eq('id', tripId)
-        .eq('user_id', user?.id); // Extra safety check
+        .eq('user_id', user?.id);
 
       if (error) throw error;
-
       setTrips(prev => prev.filter(t => t.id !== tripId));
     } catch (err: any) {
       console.error("Error deleting trip:", err);
     }
   };
 
-  if (loading || (!user && (window.location.hash.includes('access_token=') || window.location.search.includes('code=')))) return null;
+  // Show nothing while auth is resolving (prevents flash of login redirect)
+  if (loading) return null;
   if (!user) return null;
 
   return (
@@ -301,16 +312,15 @@ const Account = () => {
           ) : trips.length > 0 ? (
             trips.map((trip, i) => (
               <motion.div key={trip.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="min-w-[260px] max-w-[280px] flex-shrink-0 relative group/card">
-                {/* FIX: Changed from /trip?id=${trip.id} to /trip/${trip.id} to match the /trip/:id route */}
                 <Link to={`/trip/${trip.id}`} className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
                   <div className="h-36 overflow-hidden bg-muted relative">
-                    <img 
-                      src={`https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=250&fit=crop`} 
-                      alt={trip.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    <img
+                      src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=250&fit=crop"
+                      alt={trip.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                      <button 
+                      <button
                         onClick={(e) => handleDeleteTrip(e, trip.id)}
                         className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
                         title="Delete Trip"
@@ -322,7 +332,7 @@ const Account = () => {
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="font-display font-bold text-foreground text-sm truncate pr-2">{trip.title || trip.destination}</h3>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase`}>{trip.status}</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase">{trip.status}</span>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {trip.start_date}</span>
@@ -334,8 +344,8 @@ const Account = () => {
             ))
           ) : (
             <div className="flex flex-col items-center justify-center p-8 bg-muted/30 rounded-xl border-2 border-dashed border-border min-w-[260px]">
-               <p className="text-sm text-muted-foreground mb-1">No trips yet</p>
-               <Link to="/plan" className="text-primary text-xs font-bold hover:underline">Start Planning</Link>
+              <p className="text-sm text-muted-foreground mb-1">No trips yet</p>
+              <Link to="/plan" className="text-primary text-xs font-bold hover:underline">Start Planning</Link>
             </div>
           )}
           <Link to="/plan" className="flex flex-col items-center justify-center bg-card rounded-xl border-2 border-dashed border-border hover:border-primary/40 transition-colors min-w-[200px] flex-shrink-0 text-muted-foreground hover:text-foreground">
@@ -352,7 +362,6 @@ const Account = () => {
         <HorizontalScroller>
           {sharedTrips.map((trip, i) => (
             <motion.div key={trip.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="min-w-[260px] max-w-[280px] flex-shrink-0">
-              {/* FIX: Changed from /trip (no ID) to /trip/${trip.id} to match the /trip/:id route */}
               <Link to={`/trip/${trip.id}`} className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
                 <div className="h-36 overflow-hidden relative">
                   <img src={trip.image} alt={trip.destination} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />

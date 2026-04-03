@@ -27,16 +27,16 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    return { 
-      user: null, 
+    return {
+      user: null,
       loading: false,
-      login: async () => ({ success: false, error: "Not ready" }), 
-      signup: async () => ({ success: false, error: "Not ready" }), 
-      updateProfile: async () => ({ success: false, error: "Not ready" }), 
+      login: async () => ({ success: false, error: "Not ready" }),
+      signup: async () => ({ success: false, error: "Not ready" }),
+      updateProfile: async () => ({ success: false, error: "Not ready" }),
       logout: async () => {},
       signInWithGoogle: async () => ({ success: false, error: "Not ready" }),
       signInWithPhone: async () => ({ success: false, error: "Not ready" }),
-      verifyOtp: async () => ({ success: false, error: "Not ready" })
+      verifyOtp: async () => ({ success: false, error: "Not ready" }),
     } as AuthContextType;
   }
   return ctx;
@@ -47,57 +47,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if we're in the middle of a redirect flow.
-    const isAuthCallback = window.location.hash.includes('access_token=') || 
-                          window.location.search.includes('code=');
-    
-    // Maintain a reference to whether onAuthStateChange has seen a definitive event.
-    let eventReceived = false;
+    // ROOT CAUSE OF BUG 3 (Refresh = Logout):
+    // The old code used onAuthStateChange's INITIAL_SESSION event to decide if the user
+    // is logged in. But on a hard page refresh, INITIAL_SESSION fires with session=null
+    // for a brief moment BEFORE Supabase has finished reading the token from localStorage.
+    // The old code saw session=null + INITIAL_SESSION and immediately set user=null +
+    // loading=false, which caused Account.tsx to redirect to /login.
+    //
+    // THE FIX: Use getSession() as the single source of truth for the initial load.
+    // getSession() reads directly from localStorage and reliably returns the stored
+    // session. onAuthStateChange then handles all subsequent events (login, logout,
+    // token refresh) but we skip INITIAL_SESSION entirely to avoid the false null.
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[Auth] Auth Event Received:", event, session ? "Session Found" : "No Session");
-      
+    let initialized = false;
+
+    // Step 1: Read session from localStorage immediately on mount.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         await syncUser(session);
-        setLoading(false);
-        eventReceived = true;
-      } else if (event === 'SIGNED_OUT') {
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+      initialized = true;
+    });
+
+    // Step 2: React to auth changes going forward (login, logout, token refresh).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[Auth] Event:", event, session ? "has session" : "no session");
+
+      // SKIP INITIAL_SESSION — handled by getSession() above.
+      // This is the critical fix: INITIAL_SESSION fires before localStorage is fully
+      // read on a hard refresh and gives a false null, so we ignore it entirely.
+      if (event === "INITIAL_SESSION") return;
+
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        if (session) {
+          await syncUser(session);
+          setLoading(false);
+        }
+      } else if (event === "SIGNED_OUT") {
         setUser(null);
         setLoading(false);
-        eventReceived = true;
-      } else if (event === 'INITIAL_SESSION') {
-        // Only resolve loading if we didn't just get a session via getSession()
-        if (!session && !isAuthCallback) {
-          console.log("[Auth] No initial session found. Setting loading to false.");
-          setUser(null);
-          setLoading(false);
-          eventReceived = true;
-        }
       }
     });
 
-    // Fallback/Init: Explicitly get session once
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        console.log("[Auth] getSession found session. Syncing...");
-        syncUser(session).finally(() => {
-          setLoading(false);
-          eventReceived = true;
-        });
-      } else {
-        // If getSession returns null, we WAIT for onAuthStateChange to confirm INITIAL_SESSION
-        // which is safer than trusting getSession immediately on refresh.
-        console.log("[Auth] getSession returned null. Waiting for event listener...");
-      }
-    });
-
-    // Safety Timeout: Force loading to end after 2.5s if nothing else happens
+    // Safety net: unblock the UI if getSession() never resolves (rare network error)
     const safetyTimeout = setTimeout(() => {
-      if (!eventReceived) {
-        console.warn("[Auth] Auth handshake timeout. Forcing app initialization.");
+      if (!initialized) {
+        console.warn("[Auth] Timeout — forcing load complete.");
         setLoading(false);
       }
-    }, 2500);
+    }, 3000);
 
     return () => {
       subscription.unsubscribe();
@@ -110,17 +111,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       return;
     }
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-    if (profile) {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
       setUser({
         id: session.user.id,
         email: session.user.email || "",
-        fullName: profile.full_name || "User",
-        phone: profile.phone,
-        age: profile.age,
-        gender: profile.gender
+        fullName: profile?.full_name || "User",
+        phone: profile?.phone,
+        age: profile?.age,
+        gender: profile?.gender,
       });
-    } else {
+    } catch {
+      // Profile row may not exist yet — still set user with basic session info
       setUser({ id: session.user.id, email: session.user.email || "", fullName: "User" });
     }
   };
@@ -129,7 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
-        password: password || "testPassword123"
+        password: password || "testPassword123",
       });
       if (error) return { success: false, error: error.message };
       return { success: true };
@@ -143,9 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.auth.signUp({
         email,
         password: password || "testPassword123",
-        options: {
-          data: { full_name: fullName }
-        }
+        options: { data: { full_name: fullName } },
       });
       if (error) return { success: false, error: error.message };
       return { success: true };
@@ -153,21 +158,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: err.message };
     }
   };
-  
+
   const signInWithGoogle = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + "/account"
-        }
+        provider: "google",
+        options: { redirectTo: window.location.origin + "/account" },
       });
       if (error) return { success: false, error: error.message };
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };
     }
-  }
+  };
 
   const updateProfile = async (data: Partial<User>) => {
     if (!user) return { success: false, error: "No user logged in." };
@@ -177,10 +180,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.phone !== undefined) payload.phone = data.phone;
       if (data.age !== undefined) payload.age = data.age;
       if (data.gender !== undefined) payload.gender = data.gender;
-      
-      const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
+
+      const { error } = await supabase.from("profiles").update(payload).eq("id", user.id);
       if (error) throw error;
-      
+
       setUser({ ...user, ...data });
       return { success: true };
     } catch (err) {
@@ -191,29 +194,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithPhone = async (phone: string) => {
     try {
-      // Ensure phone is in E.164 format (+CountryCodeNumber)
-      const formattedPhone = phone.startsWith('+') ? phone : `+${phone.replace(/\D/g, '')}`;
-      
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone
-      });
+      const formattedPhone = phone.startsWith("+") ? phone : `+${phone.replace(/\D/g, "")}`;
+      const { error } = await supabase.auth.signInWithOtp({ phone: formattedPhone });
       if (error) return { success: false, error: error.message };
       return { success: true };
     } catch (err) {
       const error = err as Error;
       return { success: false, error: error.message };
     }
-  }
+  };
 
   const verifyOtp = async (phone: string, token: string) => {
     try {
-      // Ensure phone is in E.164 format (+CountryCodeNumber)
-      const formattedPhone = phone.startsWith('+') ? phone : `+${phone.replace(/\D/g, '')}`;
-      
+      const formattedPhone = phone.startsWith("+") ? phone : `+${phone.replace(/\D/g, "")}`;
       const { error } = await supabase.auth.verifyOtp({
         phone: formattedPhone,
         token,
-        type: 'sms'
+        type: "sms",
       });
       if (error) return { success: false, error: error.message };
       return { success: true };
@@ -221,20 +218,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const error = err as Error;
       return { success: false, error: error.message };
     }
-  }
+  };
 
   const logout = async () => {
-    setUser(null); // Clear immediately so UI updates at once
+    setUser(null);
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, updateProfile, logout, signInWithGoogle, signInWithPhone, verifyOtp }}>
-      {/* FIX: Was "{!loading && children}" which blocked the ENTIRE app from rendering
-          while auth was resolving. This caused TripPage's fetchTrip() useEffect to either
-          not fire at all, or fire after a 2.5s timeout, making the loading spinner stuck.
-          Each page already handles its own auth/loading state individually, so the
-          AuthProvider does NOT need to gate rendering here. */}
+    <AuthContext.Provider
+      value={{ user, loading, login, signup, updateProfile, logout, signInWithGoogle, signInWithPhone, verifyOtp }}
+    >
       {children}
     </AuthContext.Provider>
   );
