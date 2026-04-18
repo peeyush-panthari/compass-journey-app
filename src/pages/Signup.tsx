@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,17 @@ const Signup = () => {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const { signInWithGoogle, signInWithPhone, verifyOtp } = useAuth();
+  const { signInWithGoogle, signInWithPhone, verifyOtp, user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/account", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) return null;
 
   const handleGoogleSignup = async () => {
     const { success, error } = await signInWithGoogle();
