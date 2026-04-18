@@ -150,21 +150,8 @@ const Account = () => {
   const [rooms, setRooms] = useState(1);
   const [guests, setGuests] = useState(2);
 
-  // Redirect to login only after auth has finished loading and confirmed no user
-  useEffect(() => {
-    // Detection for OAuth/OTP callbacks
-    const isCallback = 
-      window.location.hash.includes('access_token=') || 
-      window.location.search.includes('code=') ||
-      window.location.search.includes('type=recovery') ||
-      window.location.search.includes('type=invite') ||
-      window.location.search.includes('type=signup');
+  // Auth relies on ProtectedRoute so we don't need manual navigation checks here
 
-    if (!loading && !user && !isCallback) {
-      console.log("[Account] No session detected, redirecting to login.");
-      navigate("/login");
-    }
-  }, [user, loading, navigate]);
 
   // BUG 1 FIX: Fetch trips as soon as we have a user.id — but use user.id (a stable
   // string) as the dependency, not the entire user object. The user object reference
@@ -216,9 +203,7 @@ const Account = () => {
     }
   };
 
-  // Show nothing while auth is resolving (prevents flash of login redirect)
-  if (loading) return null;
-  if (!user) return null;
+  // No early returns needed, ProtectedRoute handles it
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">

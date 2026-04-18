@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import BottomNav from "@/components/BottomNav";
 import InstallPrompt from "@/components/InstallPrompt";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Keep Index as eager import (first page seen by user)
 import Index from "./pages/Index";
@@ -59,15 +60,15 @@ const AppContent = () => {
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/plan" element={<PlanTrip />} />
+        <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+        <Route path="/plan" element={<ProtectedRoute><PlanTrip /></ProtectedRoute>} />
         {/* FIX: Changed from /trip to /trip/:id so useParams() can read the trip ID */}
-        <Route path="/trip/:id" element={<TripPage />} />
-        <Route path="/account" element={<Account />} />
-        <Route path="/edit-profile" element={<EditProfile />} />
+        <Route path="/trip/:id" element={<ProtectedRoute><TripPage /></ProtectedRoute>} />
+        <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+        <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
         <Route path="/hotels" element={<Hotels />} />
         <Route path="/hotels/:id" element={<HotelDetail />} />
-        <Route path="/explore" element={<Explore />} />
+        <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

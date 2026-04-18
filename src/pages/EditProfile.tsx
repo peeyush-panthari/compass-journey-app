@@ -29,13 +29,7 @@ const EditProfile = () => {
 
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => { 
-    const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
-    if (!loading && !user && !isCallback) navigate("/login"); 
-  }, [user, loading, navigate]);
-
-  if (loading || (!user && (window.location.hash.includes('access_token=') || window.location.search.includes('code=')))) return null;
-  if (!user) return null;
+  // ProtectedRoute handles auth validation and redirects
 
   const handleSaveProfile = async () => {
     setIsSaving(true);

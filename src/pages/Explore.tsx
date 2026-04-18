@@ -34,13 +34,7 @@ const Explore = () => {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
 
-  useEffect(() => { 
-    const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
-    if (!loading && !user && !isCallback) navigate("/login"); 
-  }, [user, loading, navigate]);
-
-  if (loading || (!user && (window.location.hash.includes('access_token=') || window.location.search.includes('code=')))) return null;
-  if (!user) return null;
+  // ProtectedRoute handles auth validation and redirects
 
   const filtered = activeCategory === "all" ? allBlogs : allBlogs.filter((b) => b.category === activeCategory);
 

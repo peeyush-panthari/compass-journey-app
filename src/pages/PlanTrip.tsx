@@ -90,26 +90,7 @@ const PlanTrip = () => {
     return selectedCountries.flatMap(country => countryCityData[country] || []);
   }, [selectedCountries]);
 
-  useEffect(() => {
-    const isCallback =
-      window.location.hash.includes("access_token=") ||
-      window.location.search.includes("code=");
-    if (!loading && !user && !isCallback) navigate("/login");
-  }, [user, loading, navigate]);
-
-  if (loading) {
-    return (
-      <div className="min-h-[100svh] bg-hero-gradient flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
-  }
-
-  const isCallback =
-    window.location.hash.includes("access_token=") ||
-    window.location.search.includes("code=");
-  if (!user && isCallback) return null;
-  if (!user) return null;
+  // ProtectedRoute handles auth validation and redirects
 
   const allCountries = Object.keys(countryCityData);
   const filteredCountries = allCountries.filter(
