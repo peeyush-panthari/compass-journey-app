@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
         enabled: true,
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/],
+        navigateFallbackDenylist: [/^\/~oauth/, /^\/auth/, /\?code=/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}"],
       },
       includeAssets: ["pwa-192x192.png", "pwa-512x512.png"],
