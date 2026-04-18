@@ -18,6 +18,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storage: localStorage,
-    flowType: 'pkce' // Use PKCE for more secure and reliable OAuth flows
+    storageKey: 'voyago-auth-key'
   }
 });

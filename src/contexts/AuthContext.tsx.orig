@@ -44,45 +44,41 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. CRITICAL FIX: URL cleanup logic immediately on mount
-  useEffect(() => {
-    const cleanUrlAfterAuth = async () => {
-      // Use getSession() to check if we've hydrated yet
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
-      const url = new URL(window.location.href);
-      const hasAuthParams = 
-        url.searchParams.get("code") || 
-        url.searchParams.get("access_token") || 
-        url.searchParams.get("refresh_token") ||
-        url.hash.includes("access_token=");
-
-      if (currentSession && hasAuthParams) {
-        console.log("[Auth] Cleaning sensitive tokens from URL...");
-        window.history.replaceState({}, document.title, url.pathname);
-      }
-    };
-
-    cleanUrlAfterAuth();
-  }, []);
-
-  // 2. Auth State Sync (Synchronous to prevent deadlocks)
   useEffect(() => {
     let mounted = true;
+    let initialized = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // 1. Setup the listener FIRST (before any async calls) to ensure we don't miss hydration events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      console.log("[Auth] Event:", event);
       
-      setSession(session);
+      console.log("[Auth] Event:", event, session ? "has session" : "no session");
 
-      // Handle specific events
+      // 2. Process INITIAL_SESSION
       if (event === "INITIAL_SESSION") {
-        setLoading(false);
-      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        if (session) {
+          // Clear OAuth/OTP URL parameters
+          if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          await syncUser(session);
+          setLoading(false);
+          initialized = true;
+        }
+        // If session is null during INITIAL_SESSION, do NOTHING. 
+        // Supabase might still be reading from localStorage. Let getSession() provide the definitive answer.
+        return;
+      }
+
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        if (session) {
+          if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          await syncUser(session);
+        }
         setLoading(false);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
@@ -90,9 +86,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    const safetyTimeout = setTimeout(() => {
+    // 3. Fallback: getSession() to ensure we have the state if INITIAL_SESSION was already fired 
+    // or if the listener was somehow delayed (race condition safety)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted || initialized) return;
+      
+      console.log("[Auth] Fallback getSession:", session ? "has session" : "no session");
+      if (session) {
+        await syncUser(session);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+      initialized = true;
+    }).catch(err => {
+      console.error("[Auth] Initial getSession failed:", err);
       if (mounted) setLoading(false);
-    }, 5000);
+    });
+
+    // 4. Safety net: unblock the UI if nothing resolves (rare network error or Supabase hang)
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && !initialized) {
+        console.warn("[Auth] Initialization timeout — forcing load complete.");
+        setLoading(false);
+      }
+    }, 5000); 
 
     return () => {
       mounted = false;
@@ -100,34 +118,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearTimeout(safetyTimeout);
     };
   }, []);
-
-  // 3. Profile Sync (Parallel effect)
-  useEffect(() => {
-    if (!session?.user) return;
-
-    const syncProfile = async () => {
-      try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        setUser({
-          id: session.user.id,
-          email: session.user.email || "",
-          fullName: profile?.full_name || "User",
-          phone: profile?.phone,
-          age: profile?.age,
-          gender: profile?.gender,
-        });
-      } catch {
-        setUser({ id: session.user.id, email: session.user.email || "", fullName: "User" });
-      }
-    };
-
-    syncProfile();
-  }, [session?.user?.id]);
 
   const syncUser = async (session: any) => {
     if (!session?.user) {
@@ -186,10 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { 
-          redirectTo: window.location.origin + "/account",
-          flowType: "implicit"
-        },
+        options: { redirectTo: window.location.origin + "/account" },
       });
       if (error) return { success: false, error: error.message };
       return { success: true };

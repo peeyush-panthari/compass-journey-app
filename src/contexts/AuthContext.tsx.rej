@@ -1,0 +1,9 @@
+@@ -90,6 +90,7 @@
+     // 3. Fallback: getSession() to ensure we have the state if INITIAL_SESSION was already fired 
+     // or if the listener was somehow delayed (race condition safety)
++    console.log("[Auth] Calling getSession()...");
++    const startTS = Date.now();
+     supabase.auth.getSession().then(async ({ data: { session } }) => {
+       if (!mounted || initialized) return;
+       
+-      console.log("[Auth] Fallback getSession:", session ? "has session" : "no session");
