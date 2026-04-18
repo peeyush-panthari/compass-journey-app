@@ -50,12 +50,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let mounted = true;
     let initialized = false;
 
-    // 0. Immediate optimistic hint: Does any Supabase auth token exist?
-    const hasExistingToken = Object.keys(localStorage).some(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
-    if (hasExistingToken) {
-      console.log("[Auth] Optimistic hint: Auth token detected in storage.");
-    }
-
     // 1. Setup the listener FIRST (before any async calls) to ensure we don't miss hydration events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
@@ -66,6 +60,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // This is the critical moment when Supabase restores session from localStorage
       if (event === "INITIAL_SESSION") {
         if (session) {
+          // Clear OAuth/OTP URL parameters to prevent Supabase from attempting to 
+          // re-exchange a used code upon page refresh, which invalidates the session.
+          if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
           await syncUser(session);
         } else {
           setUser(null);
@@ -77,14 +76,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
         if (session) {
+          if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
           await syncUser(session);
         }
         setLoading(false);
-        initialized = true;
       } else if (event === "SIGNED_OUT") {
         setUser(null);
         setLoading(false);
-        initialized = true;
       }
     });
 
@@ -103,10 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       initialized = true;
     }).catch(err => {
       console.error("[Auth] Initial getSession failed:", err);
-      if (mounted) {
-        setLoading(false);
-        initialized = true;
-      }
+      if (mounted) setLoading(false);
     });
 
     // 4. Safety net: unblock the UI if nothing resolves (rare network error or Supabase hang)
