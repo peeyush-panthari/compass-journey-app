@@ -26,6 +26,55 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
+import { useAuth } from "@/contexts/AuthContext";
+
+const AppContent = () => {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
+          <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <div className="flex flex-col items-center gap-1">
+            <h2 className="text-xl font-medium tracking-tight">Opening your travel journal</h2>
+            <p className="text-sm text-muted-foreground">Checking your credentials...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/plan" element={<PlanTrip />} />
+        {/* FIX: Changed from /trip to /trip/:id so useParams() can read the trip ID */}
+        <Route path="/trip/:id" element={<TripPage />} />
+        <Route path="/account" element={<Account />} />
+        <Route path="/edit-profile" element={<EditProfile />} />
+        <Route path="/hotels" element={<Hotels />} />
+        <Route path="/hotels/:id" element={<HotelDetail />} />
+        <Route path="/explore" element={<Explore />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <BottomNav />
+      <InstallPrompt />
+    </Suspense>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -33,32 +82,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-background">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                <p className="text-sm text-muted-foreground">Loading...</p>
-              </div>
-            </div>
-          }>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/plan" element={<PlanTrip />} />
-              {/* FIX: Changed from /trip to /trip/:id so useParams() can read the trip ID */}
-              <Route path="/trip/:id" element={<TripPage />} />
-              <Route path="/account" element={<Account />} />
-              <Route path="/edit-profile" element={<EditProfile />} />
-              <Route path="/hotels" element={<Hotels />} />
-              <Route path="/hotels/:id" element={<HotelDetail />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-          <BottomNav />
-          <InstallPrompt />
+          <AppContent />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
