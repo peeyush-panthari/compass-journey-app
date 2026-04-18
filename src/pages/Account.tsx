@@ -152,8 +152,22 @@ const Account = () => {
 
   // Redirect to login only after auth has finished loading and confirmed no user
   useEffect(() => {
-    const isCallback = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
-    if (!loading && !user && !isCallback) navigate("/login");
+    // Detection for OAuth/OTP callbacks
+    const isCallback = 
+      window.location.hash.includes('access_token=') || 
+      window.location.search.includes('code=') ||
+      window.location.search.includes('type=recovery') ||
+      window.location.search.includes('type=invite') ||
+      window.location.search.includes('type=signup');
+
+    // Secondary check: Did we just come from an OAuth redirect? 
+    // Supabase often leaves its internal keys in localStorage even during hydration.
+    const hasAuthToken = Object.keys(localStorage).some(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+
+    if (!loading && !user && !isCallback && !hasAuthToken) {
+      console.log("[Account] No session detected, redirecting to login.");
+      navigate("/login");
+    }
   }, [user, loading, navigate]);
 
   // BUG 1 FIX: Fetch trips as soon as we have a user.id — but use user.id (a stable

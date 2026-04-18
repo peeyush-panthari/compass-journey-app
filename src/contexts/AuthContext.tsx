@@ -47,22 +47,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // ROOT CAUSE OF BUG 3 (Refresh = Logout):
-    // The old code used onAuthStateChange's INITIAL_SESSION event to decide if the user
-    // is logged in. But on a hard page refresh, INITIAL_SESSION fires with session=null
-    // for a brief moment BEFORE Supabase has finished reading the token from localStorage.
-    // The old code saw session=null + INITIAL_SESSION and immediately set user=null +
-    // loading=false, which caused Account.tsx to redirect to /login.
-    //
-    // THE FIX: Use getSession() as the single source of truth for the initial load.
-    // getSession() reads directly from localStorage and reliably returns the stored
-    // session. onAuthStateChange then handles all subsequent events (login, logout,
-    // token refresh) but we skip INITIAL_SESSION entirely to avoid the false null.
-
+    let mounted = true;
     let initialized = false;
 
-    // Step 1: Read session from localStorage immediately on mount.
+    // 1. Setup the listener FIRST (before any async calls) to ensure we don't miss hydration events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
+      console.log("[Auth] Event:", event, session ? "has session" : "no session");
+
+      // 2. Process INITIAL_SESSION properly instead of skipping it
+      // This is the critical moment when Supabase restores session from localStorage
+      if (event === "INITIAL_SESSION") {
+        if (session) {
+          await syncUser(session);
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+        initialized = true;
+        return;
+      }
+
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        if (session) {
+          await syncUser(session);
+        }
+        setLoading(false);
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    // 3. Fallback: getSession() to ensure we have the state if INITIAL_SESSION was already fired 
+    // or if the listener was somehow delayed (race condition safety)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted || initialized) return;
+      
+      console.log("[Auth] Fallback getSession:", session ? "has session" : "no session");
       if (session) {
         await syncUser(session);
       } else {
@@ -70,37 +93,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       setLoading(false);
       initialized = true;
+    }).catch(err => {
+      console.error("[Auth] Initial getSession failed:", err);
+      if (mounted) setLoading(false);
     });
 
-    // Step 2: React to auth changes going forward (login, logout, token refresh).
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[Auth] Event:", event, session ? "has session" : "no session");
-
-      // SKIP INITIAL_SESSION — handled by getSession() above.
-      // This is the critical fix: INITIAL_SESSION fires before localStorage is fully
-      // read on a hard refresh and gives a false null, so we ignore it entirely.
-      if (event === "INITIAL_SESSION") return;
-
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-        if (session) {
-          await syncUser(session);
-          setLoading(false);
-        }
-      } else if (event === "SIGNED_OUT") {
-        setUser(null);
-        setLoading(false);
-      }
-    });
-
-    // Safety net: unblock the UI if getSession() never resolves (rare network error)
+    // 4. Safety net: unblock the UI if nothing resolves (rare network error or Supabase hang)
     const safetyTimeout = setTimeout(() => {
-      if (!initialized) {
-        console.warn("[Auth] Timeout — forcing load complete.");
+      if (mounted && !initialized) {
+        console.warn("[Auth] Initialization timeout — forcing load complete.");
         setLoading(false);
       }
-    }, 3000);
+    }, 5000); 
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       clearTimeout(safetyTimeout);
     };
