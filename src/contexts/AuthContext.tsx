@@ -44,6 +44,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // 1. CRITICAL FIX: URL cleanup logic immediately on mount (User Requested)
@@ -65,59 +66,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     cleanUrlAfterAuth();
   }, []);
 
+  // 2. Hardened Session Hydration
   useEffect(() => {
     let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // A. Load session from localStorage immediately
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       if (!mounted) return;
-      console.log("[Auth] Event:", event);
-
-      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
-        if (session) {
-          await syncUser(session);
-        }
-        setLoading(false);
-      } else if (event === "SIGNED_OUT") {
-        setUser(null);
-        setLoading(false);
-      }
+      setSession(initialSession);
+      setLoading(false);
     });
 
-    const safetyTimeout = setTimeout(() => {
-      if (mounted) setLoading(false);
-    }, 5000);
+    // B. Listen for auth changes (Keep in sync)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (!mounted) return;
+      setSession(currentSession);
+      setLoading(false);
+    });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      clearTimeout(safetyTimeout);
     };
   }, []);
 
-  const syncUser = async (session: any) => {
+  // 3. Profile Sync (Triggered by session change)
+  useEffect(() => {
     if (!session?.user) {
       setUser(null);
       return;
     }
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
 
-      setUser({
-        id: session.user.id,
-        email: session.user.email || "",
-        fullName: profile?.full_name || "User",
-        phone: profile?.phone,
-        age: profile?.age,
-        gender: profile?.gender,
-      });
-    } catch {
-      setUser({ id: session.user.id, email: session.user.email || "", fullName: "User" });
-    }
-  };
+    const syncProfile = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+
+        setUser({
+          id: session.user.id,
+          email: session.user.email || "",
+          fullName: profile?.full_name || "User",
+          phone: profile?.phone,
+          age: profile?.age,
+          gender: profile?.gender,
+        });
+      } catch {
+        setUser({ id: session.user.id, email: session.user.email || "", fullName: "User" });
+      }
+    };
+
+    syncProfile();
+  }, [session?.user?.id]);
 
   const login = async (email: string, password?: string) => {
     try {
