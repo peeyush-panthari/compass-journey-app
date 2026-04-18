@@ -48,33 +48,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
-    let initialized = false;
 
-    // 1. Setup the listener FIRST (before any async calls) to ensure we don't miss hydration events
+    // 1. Setup the listener FIRST. Supabase perfectly handles the INITIAL_SESSION event
+    // once localStorage is evaluated, preventing need for concurrent getSession() deadlock.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      
       console.log("[Auth] Event:", event, session ? "has session" : "no session");
 
-      // 2. Process INITIAL_SESSION
+      const isOAuthRedirect = window.location.search.includes('code=') || window.location.hash.includes('access_token=');
+
       if (event === "INITIAL_SESSION") {
         if (session) {
-          // Clear OAuth/OTP URL parameters
-          if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
+          if (isOAuthRedirect) {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
           await syncUser(session);
           setLoading(false);
-          initialized = true;
+        } else {
+          // If session is null, we might be truly logged out OR Supabase is currently 
+          // extracting the ?code= from the URL to exchange it asynchronously.
+          if (isOAuthRedirect) {
+            console.log("[Auth] OAuth code detected in URL. Waiting for SIGNED_IN event...");
+            // Do not setLoading(false) yet; let SIGNED_IN finish the flow.
+          } else {
+            setUser(null);
+            setLoading(false);
+          }
         }
-        // If session is null during INITIAL_SESSION, do NOTHING. 
-        // Supabase might still be reading from localStorage. Let getSession() provide the definitive answer.
-        return;
-      }
-
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
         if (session) {
-          if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
+          if (isOAuthRedirect) {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
           await syncUser(session);
@@ -86,27 +89,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    // 3. Fallback: getSession() to ensure we have the state if INITIAL_SESSION was already fired 
-    // or if the listener was somehow delayed (race condition safety)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted || initialized) return;
-      
-      console.log("[Auth] Fallback getSession:", session ? "has session" : "no session");
-      if (session) {
-        await syncUser(session);
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-      initialized = true;
-    }).catch(err => {
-      console.error("[Auth] Initial getSession failed:", err);
-      if (mounted) setLoading(false);
-    });
-
-    // 4. Safety net: unblock the UI if nothing resolves (rare network error or Supabase hang)
+    // 2. Safety net: unblock the UI if network completely fails
     const safetyTimeout = setTimeout(() => {
-      if (mounted && !initialized) {
+      if (mounted) {
         console.warn("[Auth] Initialization timeout — forcing load complete.");
         setLoading(false);
       }

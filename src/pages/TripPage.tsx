@@ -170,7 +170,10 @@ const TripPage = () => {
   // Fetch Live Data
   useEffect(() => {
     const fetchTrip = async () => {
-      if (!id) return;
+      if (!id) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         const { data: tripData, error: tripErr } = await supabase.from("trips").select("*").eq("id", id).single();
