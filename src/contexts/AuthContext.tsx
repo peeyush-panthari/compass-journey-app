@@ -47,42 +47,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. CRITICAL FIX: URL cleanup logic immediately on mount (User Requested)
-  useEffect(() => {
-    const cleanUrlAfterAuth = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      const url = new URL(window.location.href);
-      const hasAuthParams = 
-        url.searchParams.get("code") || 
-        url.searchParams.get("access_token") || 
-        url.searchParams.get("refresh_token") ||
-        url.hash.includes("access_token=");
-
-      if (currentSession && hasAuthParams) {
-        console.log("[Auth] Cleaning sensitive tokens from URL...");
-        window.history.replaceState({}, document.title, url.pathname);
-      }
-    };
-    cleanUrlAfterAuth();
-  }, []);
-
-  // 2. Hardened Session Hydration
+  // ✅ FIXED: Unified Auth Initialization (NO race conditions)
   useEffect(() => {
     let mounted = true;
 
-    // A. Load session from localStorage immediately
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      if (!mounted) return;
-      setSession(initialSession);
-      setLoading(false);
-    });
+    const initAuth = async () => {
+      // 1. Get session (handles PKCE exchange)
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
 
-    // B. Listen for auth changes (Keep in sync)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       if (!mounted) return;
-      setSession(currentSession);
+
+      // 2. Set session first
+      setSession(initialSession);
+
+      // 3. Clean URL AFTER session is established
+      const url = new URL(window.location.href);
+
+      const hasAuthParams =
+        url.searchParams.get("code") ||
+        url.searchParams.get("access_token") ||
+        url.searchParams.get("refresh_token") ||
+        url.hash.includes("access_token=");
+
+      if (initialSession && hasAuthParams) {
+        console.log("[Auth] Cleaning sensitive tokens from URL...");
+        window.history.replaceState(
+          {},
+          document.title,
+          url.pathname + url.hash
+        );
+      }
+
+      // 4. Now mark loading false (after everything is stable)
       setLoading(false);
-    });
+    };
+
+    initAuth();
+
+    // 5. Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, currentSession) => {
+        if (!mounted) return;
+        setSession(currentSession);
+        setLoading(false);
+      }
+    );
 
     return () => {
       mounted = false;
@@ -90,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // 3. Profile Sync (Triggered by session change)
+  // 6. Profile Sync
   useEffect(() => {
     if (!session?.user) {
       setUser(null);
@@ -114,7 +123,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           gender: profile?.gender,
         });
       } catch {
-        setUser({ id: session.user.id, email: session.user.email || "", fullName: "User" });
+        setUser({
+          id: session.user.id,
+          email: session.user.email || "",
+          fullName: "User",
+        });
       }
     };
 
