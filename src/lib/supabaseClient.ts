@@ -17,7 +17,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: localStorage,
-    storageKey: 'voyago-auth-key'
+    storage: localStorage
   }
 });

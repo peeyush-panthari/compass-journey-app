@@ -44,15 +44,12 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. CRITICAL FIX: URL cleanup logic immediately on mount
+  // 1. CRITICAL FIX: URL cleanup logic immediately on mount (User Requested)
   useEffect(() => {
     const cleanUrlAfterAuth = async () => {
-      // Use getSession() to check if we've hydrated yet
       const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
       const url = new URL(window.location.href);
       const hasAuthParams = 
         url.searchParams.get("code") || 
@@ -65,24 +62,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         window.history.replaceState({}, document.title, url.pathname);
       }
     };
-
     cleanUrlAfterAuth();
   }, []);
 
-  // 2. Auth State Sync (Synchronous to prevent deadlocks)
   useEffect(() => {
     let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       console.log("[Auth] Event:", event);
-      
-      setSession(session);
 
-      // Handle specific events
-      if (event === "INITIAL_SESSION") {
-        setLoading(false);
-      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
+        if (session) {
+          await syncUser(session);
+        }
         setLoading(false);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
@@ -100,34 +93,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearTimeout(safetyTimeout);
     };
   }, []);
-
-  // 3. Profile Sync (Parallel effect)
-  useEffect(() => {
-    if (!session?.user) return;
-
-    const syncProfile = async () => {
-      try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        setUser({
-          id: session.user.id,
-          email: session.user.email || "",
-          fullName: profile?.full_name || "User",
-          phone: profile?.phone,
-          age: profile?.age,
-          gender: profile?.gender,
-        });
-      } catch {
-        setUser({ id: session.user.id, email: session.user.email || "", fullName: "User" });
-      }
-    };
-
-    syncProfile();
-  }, [session?.user?.id]);
 
   const syncUser = async (session: any) => {
     if (!session?.user) {
@@ -150,7 +115,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         gender: profile?.gender,
       });
     } catch {
-      // Profile row may not exist yet — still set user with basic session info
       setUser({ id: session.user.id, email: session.user.email || "", fullName: "User" });
     }
   };
@@ -186,10 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { 
-          redirectTo: window.location.origin + "/account",
-          flowType: "implicit"
-        },
+        options: { redirectTo: window.location.origin + "/account" },
       });
       if (error) return { success: false, error: error.message };
       return { success: true };
