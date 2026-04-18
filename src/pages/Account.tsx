@@ -160,11 +160,7 @@ const Account = () => {
       window.location.search.includes('type=invite') ||
       window.location.search.includes('type=signup');
 
-    // Secondary check: Did we just come from an OAuth redirect? 
-    // Supabase often leaves its internal keys in localStorage even during hydration.
-    const hasAuthToken = Object.keys(localStorage).some(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
-
-    if (!loading && !user && !isCallback && !hasAuthToken) {
+    if (!loading && !user && !isCallback) {
       console.log("[Account] No session detected, redirecting to login.");
       navigate("/login");
     }

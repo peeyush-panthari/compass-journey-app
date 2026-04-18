@@ -56,21 +56,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       console.log("[Auth] Event:", event, session ? "has session" : "no session");
 
-      // 2. Process INITIAL_SESSION properly instead of skipping it
-      // This is the critical moment when Supabase restores session from localStorage
+      // 2. Process INITIAL_SESSION
       if (event === "INITIAL_SESSION") {
         if (session) {
-          // Clear OAuth/OTP URL parameters to prevent Supabase from attempting to 
-          // re-exchange a used code upon page refresh, which invalidates the session.
+          // Clear OAuth/OTP URL parameters
           if (window.location.search.includes('code=') || window.location.hash.includes('access_token=')) {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
           await syncUser(session);
-        } else {
-          setUser(null);
+          setLoading(false);
+          initialized = true;
         }
-        setLoading(false);
-        initialized = true;
+        // If session is null during INITIAL_SESSION, do NOTHING. 
+        // Supabase might still be reading from localStorage. Let getSession() provide the definitive answer.
         return;
       }
 
