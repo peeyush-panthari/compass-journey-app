@@ -33,7 +33,7 @@ export const useAuth = () => {
       login: async () => ({ success: false, error: "Not ready" }),
       signup: async () => ({ success: false, error: "Not ready" }),
       updateProfile: async () => ({ success: false, error: "Not ready" }),
-      logout: async () => {},
+      logout: async () => { },
       signInWithGoogle: async () => ({ success: false, error: "Not ready" }),
       signInWithPhone: async () => ({ success: false, error: "Not ready" }),
       verifyOtp: async () => ({ success: false, error: "Not ready" }),

@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 10000;
 // PHASE 1: Create the Trip Shell (Instant)
 app.post('/api/trips', async (req, res) => {
   const { destination, startDate, numDays, companions, purpose, pace, budget, experiences, userId } = req.body;
-  
+
   if (!userId) return res.status(401).json({ error: "Auth required" });
 
   try {
@@ -56,7 +56,7 @@ app.post('/api/trips/:id/generate', async (req, res) => {
     // The correct model name is "gemini-1.5-flash-latest".
     const modelName = process.env.GEMINI_MODEL || "gemini-1.5-flash-latest";
     const model = genAI.getGenerativeModel({ model: modelName });
-    
+
     const prompt = `As a luxury travel designer, create a premium day-by-day JSON itinerary for ${trip.countries.join(', ')}.
       Trip context: ${trip.num_days} days, traveling as ${trip.companion}, purpose: ${trip.purpose}, pace: ${trip.pace}, budget: ${trip.budget_tier}.
       
@@ -81,9 +81,9 @@ app.post('/api/trips/:id/generate', async (req, res) => {
     // 3. Persistence Phase
     const { data: days, error: daysErr } = await supabase.from('itinerary_days').insert(
       itinerary.map((d, i) => ({
-        trip_id: trip.id, 
-        day_number: d.dayNumber || (i+1),
-        date: new Date(new Date(trip.start_date).getTime() + i*86400000).toISOString().split('T')[0],
+        trip_id: trip.id,
+        day_number: d.dayNumber || (i + 1),
+        date: new Date(new Date(trip.start_date).getTime() + i * 86400000).toISOString().split('T')[0],
         city: d.city || trip.countries[0],
         country: d.country || "Destination",
         sort_order: i
@@ -98,7 +98,7 @@ app.post('/api/trips/:id/generate', async (req, res) => {
       if (dayId) {
         d.activities?.forEach((act, aIdx) => {
           actsToInsert.push({
-            day_id: dayId, name: act.name, description: act.description, 
+            day_id: dayId, name: act.name, description: act.description,
             time_of_day: act.timeOfDay || 'morning', sort_order: aIdx,
             why_visit: act.whyVisit, duration: act.duration, ticket_price: act.ticketPrice,
             open_time: act.openTime, close_time: act.closeTime
@@ -106,7 +106,7 @@ app.post('/api/trips/:id/generate', async (req, res) => {
         });
       }
     });
-    
+
     if (actsToInsert.length > 0) {
       await supabase.from('activities').insert(actsToInsert);
     }
@@ -135,34 +135,34 @@ async function runBackgroundEnrichment(tripId, city) {
     const queryCity = act.itinerary_days.city || city;
 
     if (placesKey) {
-        try {
-            const pRes = await fetch(`https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(`${act.name} in ${queryCity}`)}&inputtype=textquery&fields=place_id,rating,photos&key=${placesKey}`);
-            const pData = await pRes.json();
-            if (pData.candidates?.[0]) {
-                const c = pData.candidates[0];
-                updates.google_place_id = c.place_id;
-                updates.rating = c.rating || 4.8;
-                if (c.photos?.[0]) {
-                    updates.photo_url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photoreference=${c.photos[0].photo_reference}&key=${placesKey}`;
-                }
-            }
-        } catch (e) {}
+      try {
+        const pRes = await fetch(`https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(`${act.name} in ${queryCity}`)}&inputtype=textquery&fields=place_id,rating,photos&key=${placesKey}`);
+        const pData = await pRes.json();
+        if (pData.candidates?.[0]) {
+          const c = pData.candidates[0];
+          updates.google_place_id = c.place_id;
+          updates.rating = c.rating || 4.8;
+          if (c.photos?.[0]) {
+            updates.photo_url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photoreference=${c.photos[0].photo_reference}&key=${placesKey}`;
+          }
+        }
+      } catch (e) { }
     }
 
     if (youtubeKey) {
-        try {
-            const yRes = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=2&q=${encodeURIComponent(`${act.name} ${queryCity} guide`)}&type=video&key=${youtubeKey}`);
-            const yData = await yRes.json();
-            updates.youtube_videos = yData.items?.map(item => ({
-                title: item.snippet.title,
-                videoUrl: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-                thumbnailUrl: item.snippet.thumbnails?.high?.url
-            })) || [];
-        } catch (e) {}
+      try {
+        const yRes = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=2&q=${encodeURIComponent(`${act.name} ${queryCity} guide`)}&type=video&key=${youtubeKey}`);
+        const yData = await yRes.json();
+        updates.youtube_videos = yData.items?.map(item => ({
+          title: item.snippet.title,
+          videoUrl: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+          thumbnailUrl: item.snippet.thumbnails?.high?.url
+        })) || [];
+      } catch (e) { }
     }
 
     if (Object.keys(updates).length > 0) {
-        await supabase.from('activities').update(updates).eq('id', act.id);
+      await supabase.from('activities').update(updates).eq('id', act.id);
     }
   }
 }
