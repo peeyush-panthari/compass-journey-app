@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,13 +15,10 @@ const Signup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!loading && user) {
-      navigate("/account", { replace: true });
-    }
-  }, [user, loading, navigate]);
-
   if (loading) return null;
+  if (user) {
+    return <Navigate to="/account" replace />;
+  }
 
   const handleGoogleSignup = async () => {
     const { success, error } = await signInWithGoogle();
