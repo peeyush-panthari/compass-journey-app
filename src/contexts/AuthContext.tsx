@@ -50,6 +50,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let mounted = true;
     let initialized = false;
 
+    // 0. Immediate optimistic hint: Does any Supabase auth token exist?
+    const hasExistingToken = Object.keys(localStorage).some(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+    if (hasExistingToken) {
+      console.log("[Auth] Optimistic hint: Auth token detected in storage.");
+    }
+
     // 1. Setup the listener FIRST (before any async calls) to ensure we don't miss hydration events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
@@ -74,9 +80,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await syncUser(session);
         }
         setLoading(false);
+        initialized = true;
       } else if (event === "SIGNED_OUT") {
         setUser(null);
         setLoading(false);
+        initialized = true;
       }
     });
 
@@ -95,7 +103,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       initialized = true;
     }).catch(err => {
       console.error("[Auth] Initial getSession failed:", err);
-      if (mounted) setLoading(false);
+      if (mounted) {
+        setLoading(false);
+        initialized = true;
+      }
     });
 
     // 4. Safety net: unblock the UI if nothing resolves (rare network error or Supabase hang)
