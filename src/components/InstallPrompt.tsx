@@ -60,31 +60,30 @@ const InstallPrompt = () => {
   if (!deferredPrompt && !showIOSPrompt) return null;
 
   return (
-    <div className="fixed bottom-20 left-3 right-3 z-[60] md:left-auto md:right-4 md:bottom-4 md:max-w-sm animate-in slide-in-from-bottom-4 fade-in duration-300">
-      <div className="bg-card border border-border rounded-2xl shadow-elevated p-4 flex items-start gap-3">
-        <img src="/assets/logo.png" alt="GlobeGenie" className="h-10 sm:h-12 w-auto rounded-xl shadow-sm flex-shrink-0 object-contain" />
+    <div className="fixed bottom-4 left-3 right-3 z-[60] md:left-auto md:right-4 md:bottom-4 md:max-w-sm animate-in slide-in-from-bottom-4 fade-in duration-300">
+      <div className="bg-card border border-border rounded-2xl shadow-elevated p-3 flex items-center gap-3">
         <div className="flex-1 min-w-0">
           <p className="font-display font-bold text-sm text-foreground">Install GlobeGenie</p>
           {isIOS ? (
-            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              Tap <Share className="inline w-3.5 h-3.5 -mt-0.5 text-primary" /> then <strong>"Add to Home Screen"</strong> for the best experience.
+            <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+              Tap <Share className="inline w-3 h-3 -mt-0.5 text-primary" /> then <strong>"Add to Home Screen"</strong>
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Add to your home screen for quick access & offline use.
+            <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+              Add to home screen for quick access.
             </p>
           )}
-          {!isIOS && (
-            <Button
-              size="sm"
-              onClick={handleInstall}
-              className="mt-2 h-8 text-xs bg-gold-gradient text-primary-foreground font-semibold shadow-gold hover:opacity-90 rounded-lg"
-            >
-              <Download className="w-3.5 h-3.5 mr-1" /> Install App
-            </Button>
-          )}
         </div>
-        <button onClick={handleDismiss} className="p-1 text-muted-foreground hover:text-foreground compact-touch">
+        {!isIOS && (
+          <Button
+            size="sm"
+            onClick={handleInstall}
+            className="h-8 text-xs bg-gold-gradient text-primary-foreground font-semibold shadow-gold hover:opacity-90 rounded-lg shrink-0 px-3"
+          >
+            <Download className="w-3.5 h-3.5 mr-1" /> Install
+          </Button>
+        )}
+        <button onClick={handleDismiss} className="p-1 -mr-1 text-muted-foreground hover:text-foreground compact-touch shrink-0">
           <X className="w-4 h-4" />
         </button>
       </div>

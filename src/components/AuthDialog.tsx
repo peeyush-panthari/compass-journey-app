@@ -66,7 +66,7 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
       toast({ title: "Welcome back!", description: "Let's plan your trip!" });
       onOpenChange(false);
       resetState();
-      navigate("/account");
+      navigate("/my-trips");
     } else {
       toast({ title: "Verification Failed", description: error, variant: "destructive" });
     }

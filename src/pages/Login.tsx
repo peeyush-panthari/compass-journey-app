@@ -17,7 +17,7 @@ const Login = () => {
 
   if (loading) return null;
   if (user) {
-    return <Navigate to="/account" replace />;
+    return <Navigate to="/my-trips" replace />;
   }
 
   const handleGoogleLogin = async () => {
@@ -51,7 +51,7 @@ const Login = () => {
     const { success, error } = await verifyOtp(phone, otp);
     if (success) {
       toast({ title: "Welcome back!" });
-      navigate("/account");
+      navigate("/my-trips");
     } else {
       toast({ title: "Invalid OTP", description: error, variant: "destructive" });
     }

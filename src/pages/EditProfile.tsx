@@ -63,7 +63,7 @@ const EditProfile = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 pt-18 sm:pt-24 pb-24 md:pb-16 max-w-2xl safe-top safe-bottom">
-        <button onClick={() => navigate("/account")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <button onClick={() => navigate("/my-trips")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Account
         </button>
 

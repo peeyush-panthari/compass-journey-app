@@ -15,8 +15,20 @@ const AuthCallback = () => {
     const handleCallback = async () => {
       try {
         console.log("[AuthCallback] Handling session hydration...");
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(window.location.href);
+          if (exchangeError) {
+            console.error("[AuthCallback] PKCE exchange failed:", exchangeError.message);
+            navigate("/login?error=oauth_exchange_failed");
+            return;
+          }
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.error("[AuthCallback] Session hydration error:", error.message);
           navigate("/login?error=session_failed");
@@ -27,7 +39,7 @@ const AuthCallback = () => {
           console.log("[AuthCallback] Session successfully recovered. Cleaning URL...");
           // We don't need replaceState here if we're moving targets, but it's good practice
           window.history.replaceState({}, document.title, window.location.pathname);
-          navigate("/account", { replace: true });
+          navigate("/my-trips", { replace: true });
         } else {
           console.warn("[AuthCallback] No session found after redirect.");
           navigate("/login");

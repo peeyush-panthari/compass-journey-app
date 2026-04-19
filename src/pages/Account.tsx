@@ -11,6 +11,7 @@ import Navbar from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { tripCardCoverUrl } from "@/lib/tripCover";
 import { Loader2 } from "lucide-react";
 
 const sharedTrips = [
@@ -310,7 +311,7 @@ const Account = () => {
                 <Link to={`/trip/${trip.id}`} className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
                   <div className="h-36 overflow-hidden bg-muted relative">
                     <img
-                      src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=250&fit=crop"
+                      src={tripCardCoverUrl(trip.cover_image, i)}
                       alt={trip.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />

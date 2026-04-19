@@ -19,7 +19,8 @@ export default defineConfig(({ mode }) => ({
         enabled: true,
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/, /^\/auth/, /\?code=/],
+        // Allow SPA fallback for /auth/callback so OAuth return loads the app shell (still fetched over network when online).
+        navigateFallbackDenylist: [/^\/~oauth/, /\?code=/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}"],
       },
       includeAssets: ["pwa-192x192.png", "pwa-512x512.png"],

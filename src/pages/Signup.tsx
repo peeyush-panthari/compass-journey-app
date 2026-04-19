@@ -17,7 +17,7 @@ const Signup = () => {
 
   if (loading) return null;
   if (user) {
-    return <Navigate to="/account" replace />;
+    return <Navigate to="/my-trips" replace />;
   }
 
   const handleGoogleSignup = async () => {
@@ -51,7 +51,7 @@ const Signup = () => {
     const { success, error } = await verifyOtp(phone, otp);
     if (success) {
       toast({ title: "Account Created!", description: "Welcome to GlobeGenie!" });
-      navigate("/account");
+      navigate("/my-trips");
     } else {
       toast({ title: "Verification Failed", description: error, variant: "destructive" });
     }

@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import { countryCityData } from "@/data/destinations";
 import { useAuth } from "@/contexts/AuthContext";
+import { getBackendUrl } from "@/lib/backendUrl";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -168,7 +169,7 @@ const PlanTrip = () => {
       };
 
       // 1. Create Trip Shell (Instant)
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:10000";
+      const BACKEND_URL = getBackendUrl();
       const createRes = await fetch(`${BACKEND_URL}/api/trips`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

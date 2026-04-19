@@ -64,7 +64,7 @@ const AppContent = () => {
         <Route path="/plan" element={<ProtectedRoute><PlanTrip /></ProtectedRoute>} />
         {/* FIX: Changed from /trip to /trip/:id so useParams() can read the trip ID */}
         <Route path="/trip/:id" element={<ProtectedRoute><TripPage /></ProtectedRoute>} />
-        <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+        <Route path="/my-trips" element={<ProtectedRoute><Account /></ProtectedRoute>} />
         <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
         <Route path="/hotels" element={<Hotels />} />
         <Route path="/hotels/:id" element={<HotelDetail />} />

@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabaseClient";
+import { resolveActivityPhotoUrl } from "@/lib/activityPhoto";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 
@@ -195,12 +196,26 @@ const TripPage = () => {
             .map((act: any) => ({
               ...act,
               timeOfDay: act.time_of_day || "morning",
-              photoUrl: act.photo_url || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1070&auto=format&fit=crop",
+              photoUrl: resolveActivityPhotoUrl(act.photo_url),
               youtubeVideos: act.youtube_videos || []
             }))
         }));
 
         setItinerary(transformedDays);
+
+        let firstPhotoRaw: string | null = null;
+        for (const day of daysData) {
+          const sorted = [...(day.activities || [])].sort((a: any, b: any) => a.sort_order - b.sort_order);
+          const p = sorted[0]?.photo_url;
+          if (p) {
+            firstPhotoRaw = p;
+            break;
+          }
+        }
+        if (firstPhotoRaw && tripData?.id && !tripData.cover_image) {
+          const { error: coverErr } = await supabase.from("trips").update({ cover_image: firstPhotoRaw }).eq("id", tripData.id);
+          if (!coverErr) setTrip((prev: any) => (prev ? { ...prev, cover_image: firstPhotoRaw } : prev));
+        }
 
         // --- STEP: Trigger Background Enrichment (Mainstream Logic) ---
         const needsEnrichment = transformedDays.some(day =>

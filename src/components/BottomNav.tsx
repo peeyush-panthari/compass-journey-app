@@ -11,13 +11,18 @@ const BottomNav = () => {
   if (hiddenPaths.includes(location.pathname)) return null;
   if (!user && location.pathname === "/") return null;
 
-  const navItems = [
+  const allItems = [
     { to: "/", icon: Home, label: "Home" },
     { to: "/plan", icon: Globe, label: "Plan" },
     { to: "/chat", icon: MessageSquare, label: "Chat" },
     { to: "/trip", icon: Map, label: "Trip" },
-    { to: user ? "/account" : "/login", icon: User, label: user ? "Account" : "Login" },
+    { to: user ? "/my-trips" : "/login", icon: User, label: user ? "My Trips" : "Login" },
   ];
+
+  // Logged-in PWA users on mobile/tablet: omit Chat & Trip (still reachable via Home / Plan flows)
+  const navItems = user
+    ? allItems.filter((item) => item.to !== "/chat" && item.to !== "/trip")
+    : allItems;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border md:hidden safe-bottom">

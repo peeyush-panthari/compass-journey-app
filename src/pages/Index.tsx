@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Globe, MapPin, Users, Sparkles, Calendar, Shield, FileText, MessageSquare, ArrowRight, Plane, Map, Star, Clock, DollarSign, Hotel, Paperclip, BookOpen } from "lucide-react";
+import { Globe, MapPin, Sparkles, MessageSquare, ArrowRight, Plane, Map, Star, Clock, DollarSign, Hotel, Paperclip, BookOpen, Calendar, Palmtree, Send, Mountain, Sun, Camera, Bike, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import AuthDialog from "@/components/AuthDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import PWAVoyagoHero from "@/components/PWAVoyagoHero";
+import RecentTripsSection from "@/components/RecentTripsSection";
 
 const features = [
   { icon: Sparkles, title: "AI-Powered Trips", description: "Chat with our AI to generate a personalized day-by-day travel plan optimized for your interests and budget.", iconBg: "bg-primary/10 text-primary" },
@@ -35,17 +36,141 @@ const destinationCards = [
 const Index = () => {
   const [authOpen, setAuthOpen] = useState(false);
   const { user } = useAuth();
+  // null = not yet determined (loading), true = user has trips, false = no trips
+  const [hasTrips, setHasTrips] = useState<boolean | null>(null);
+
+  const handleTripsLoaded = (count: number) => {
+    setHasTrips(count > 0);
+  };
+
+  // Show logged-in dashboard (trips section) when: user is logged in AND (trips are loading OR user has trips)
+  const showDashboard = !!user && hasTrips !== false;
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Navbar />
 
-      {/* Mobile PWA Hero (Voyago Design) */}
+      {/* Mobile & tablet portrait: same dashboard + Recent Trips logic as desktop (show while trips load, not only after) */}
       <div className="block md:hidden">
-        <PWAVoyagoHero onAuthOpen={() => setAuthOpen(true)} />
+        {showDashboard ? (
+          <div className="pt-20 pb-24 px-4 safe-top safe-bottom bg-hero-gradient min-h-screen">
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="mb-10">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="inline-flex items-center gap-2 bg-primary/10 border border-primary/15 rounded-full px-3 py-1 mb-4">
+                <span className="w-1.5 h-1.5 rounded-full bg-sea-foam animate-pulse" />
+                <span className="text-xs font-medium text-primary">Welcome back, {user?.fullName?.split(" ")[0] ?? "Explorer"} 👋</span>
+              </motion.div>
+              <h1 className="text-3xl font-display font-bold text-foreground leading-tight mb-2">
+                Where to{" "}
+                <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="text-gradient-ocean">
+                  next?
+                </motion.span>
+              </h1>
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="text-sm text-muted-foreground leading-relaxed">
+                Pick up where you left off, or start a new adventure with AI-powered planning.
+              </motion.p>
+            </motion.div>
+            <RecentTripsSection onTripsLoaded={handleTripsLoaded} />
+          </div>
+        ) : (
+          <PWAVoyagoHero onAuthOpen={() => setAuthOpen(true)} />
+        )}
       </div>
 
-      {/* Desktop Hero */}
+      {/* Desktop: Dashboard if user has trips, else marketing hero */}
+      {showDashboard ? (
+        <section className="hidden md:block min-h-screen bg-hero-gradient overflow-x-hidden">
+          {/* Animated greeting hero — 2 column layout */}
+          <div className="container mx-auto px-6 lg:px-12 pt-[104px] pb-0 max-w-full safe-top">
+            <div className="grid md:grid-cols-2 gap-8 items-center min-h-[340px]">
+              {/* Left: Text */}
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7 }}
+                className="mb-12"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="inline-flex items-center gap-2 bg-primary/10 border border-primary/15 rounded-full px-4 py-1.5 mb-3"
+                >
+                  <span className="w-2 h-2 rounded-full bg-sea-foam animate-pulse" />
+                  <span className="text-sm font-medium text-primary">Welcome back, {user?.fullName?.split(" ")[0] ?? "Explorer"} 👋</span>
+                </motion.div>
+
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-bold text-foreground leading-[1.1] mb-3">
+                  Where to{" "}
+                  <motion.span
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.6 }}
+                    className="text-gradient-ocean"
+                  >
+                    next?
+                  </motion.span>
+                </h1>
+
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="text-lg text-muted-foreground max-w-lg leading-relaxed"
+                >
+                  Pick up where you left off, or start a new adventure with AI-powered planning.
+                </motion.p>
+              </motion.div>
+
+              {/* Right: Floating destination badges */}
+              <div className="relative hidden md:block h-[340px] pointer-events-none select-none">
+                {/* Destination badges */}
+                {[
+                  { label: "Paris",     Icon: Plane,    color: "#FF6B6B", delay: 0.2,  style: "top-[8%]   right-[5%]" },
+                  { label: "Bali",      Icon: Palmtree, color: "#FFB86C", delay: 0.35, style: "top-[20%]  left-[2%]" },
+                  { label: "Santorini", Icon: MapPin,   color: "#2B7FFF", delay: 0.5,  style: "top-[42%]  right-[12%]" },
+                  { label: "Singapore", Icon: Send,     color: "#FF6B6B", delay: 0.65, style: "top-[63%]  left-[5%]" },
+                  { label: "Maldives",  Icon: Palmtree, color: "#2ECC71", delay: 0.45, style: "top-[26%]  right-[38%]" },
+                  { label: "Himachal",  Icon: Mountain, color: "#9B59B6", delay: 0.55, style: "top-[50%]  left-[32%]" },
+                ].map(({ label, Icon, color, delay, style }) => (
+                  <motion.div
+                    key={label}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1, y: [0, -8, 0] }}
+                    transition={{ opacity: { delay, duration: 0.4 }, scale: { delay, duration: 0.4 }, y: { delay: delay + 0.3, duration: 3.5 + delay, repeat: Infinity, ease: "easeInOut" } }}
+                    className={`absolute bg-white rounded-full px-4 py-2 shadow-card flex items-center gap-2 border border-blue-50/50 ${style}`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" style={{ color }} />
+                    <span className="text-sm font-bold text-[#1A1A1A]">{label}</span>
+                  </motion.div>
+                ))}
+
+                {/* Floating icon tiles */}
+                {[
+                  { Icon: Sun,      bg: "bg-[#FFF9E5]", color: "#FFD700", size: "w-12 h-12", iconSize: "w-6 h-6", style: "top-[4%]   left-[42%]", delay: 0.6  },
+                  { Icon: Camera,   bg: "bg-[#FFF2F2]", color: "#FF6B6B", size: "w-10 h-10", iconSize: "w-5 h-5", style: "top-[36%]  left-[8%]",  delay: 0.7  },
+                  { Icon: Bike,     bg: "bg-[#F0F7FF]", color: "#2B7FFF", size: "w-10 h-10", iconSize: "w-5 h-5", style: "top-[68%]  right-[4%]", delay: 0.75 },
+                  { Icon: Utensils, bg: "bg-[#E0FFE9]", color: "#2ECC71", size: "w-10 h-10", iconSize: "w-5 h-5", style: "top-[80%]  left-[28%]", delay: 0.8  },
+                ].map(({ Icon, bg, color, size, iconSize, style, delay }) => (
+                  <motion.div
+                    key={style}
+                    initial={{ opacity: 0, scale: 0.7 }}
+                    animate={{ opacity: 1, scale: 1, y: [0, -6, 0] }}
+                    transition={{ opacity: { delay, duration: 0.4 }, scale: { delay, duration: 0.4 }, y: { delay: delay + 0.5, duration: 4 + delay, repeat: Infinity, ease: "easeInOut" } }}
+                    className={`absolute ${size} rounded-2xl ${bg} flex items-center justify-center shadow-sm ${style}`}
+                  >
+                    <Icon className={iconSize} style={{ color }} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Trips section */}
+          <div className="container mx-auto px-6 lg:px-12 pb-10 max-w-full">
+            <RecentTripsSection onTripsLoaded={handleTripsLoaded} />
+          </div>
+        </section>
+      ) : (
       <section className="relative min-h-[100svh] hidden md:flex items-center bg-hero-gradient overflow-x-hidden">
         <div className="absolute top-20 right-[30%] w-72 h-72 rounded-full bg-primary/5 blur-3xl animate-drift" />
         <div className="absolute bottom-20 left-20 w-96 h-96 rounded-full bg-accent/5 blur-3xl animate-drift" style={{ animationDelay: "5s" }} />
@@ -147,6 +272,7 @@ const Index = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* Features */}
       <section id="features" className="py-16 sm:py-24 bg-background relative">

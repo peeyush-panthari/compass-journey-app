@@ -34,14 +34,20 @@ const Navbar = () => {
         </Link>
 
         <div className="hidden md:flex items-center gap-1">
-          {isLanding && (
+          {isLanding && !user && (
             <>
               <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-2 compact-touch">Features</a>
               <a href="#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-2 compact-touch">How It Works</a>
             </>
           )}
           {user ? (
-            <Popover>
+            <div className="flex items-center gap-1">
+              <Link to="/my-trips">
+                <Button variant="outline" className="text-sm font-semibold text-primary border-primary/40 hover:bg-primary/10 hover:border-primary hover:text-primary transition-all rounded-xl">
+                  My Trips
+                </Button>
+              </Link>
+              <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" className="text-sm text-muted-foreground hover:text-foreground gap-2">
                   <div className="w-7 h-7 rounded-full bg-ocean-gradient flex items-center justify-center text-primary-foreground font-display font-bold text-xs">{user.fullName.charAt(0).toUpperCase()}</div>
@@ -59,12 +65,13 @@ const Navbar = () => {
                   </div>
                 </div>
                 <div className="p-2 flex flex-col gap-1">
-                  <button onClick={() => navigate("/account")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"><User className="w-4 h-4 text-muted-foreground" /> View Account</button>
+                  <button onClick={() => navigate("/my-trips")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"><User className="w-4 h-4 text-muted-foreground" /> My Trips</button>
                   <button onClick={() => navigate("/edit-profile")} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"><Pencil className="w-4 h-4 text-muted-foreground" /> Edit Profile</button>
                   <button onClick={async () => { await logout(); navigate("/"); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"><LogOut className="w-4 h-4" /> Sign Out</button>
                 </div>
               </PopoverContent>
             </Popover>
+            </div>
           ) : (
             <>
               <Link to="/login">
@@ -98,8 +105,8 @@ const Navbar = () => {
             )}
             {user ? (
               <>
-                <Link to="/account" onClick={() => setMobileOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start"><User className="w-4 h-4 mr-2" /> My Account</Button>
+                <Link to="/my-trips" onClick={() => setMobileOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start"><User className="w-4 h-4 mr-2" /> My Trips</Button>
                 </Link>
                 <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={async () => { await logout(); setMobileOpen(false); navigate("/"); }}>
                   <LogOut className="w-4 h-4 mr-2" /> Sign Out
