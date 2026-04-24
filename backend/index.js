@@ -94,17 +94,31 @@ app.post('/api/trips/:id/generate', async (req, res) => {
         "activities": [
           {
             "name": "Specific real venue or attraction name",
-            "description": "short string",
-            "whyVisit": "narrative string",
+            "address": "Full street address with city and country",
+            "description": "2-3 sentence description",
+            "whyVisit": "Why this place is special and worth visiting",
             "timeOfDay": "morning" | "afternoon" | "evening",
             "sortOrder": 1,
             "openTime": "09:00",
             "closeTime": "18:00",
             "duration": "2 hours",
-            "ticketPrice": "$20"
+            "ticketPrice": "$20",
+            "bestTimeToVisit": "Early morning to avoid crowds",
+            "travelTimeFromPrevious": "15 mins taxi" or "First stop",
+            "foodSuggestions": ["Try the masala dosa at MTR", "Coffee at Indian Coffee House"],
+            "hiddenGems": ["Secret rooftop view on 3rd floor", "Hidden garden behind the main building"]
           }
         ]
       }
+      
+      IMPORTANT RULES:
+      - For first activity of each day: travelTimeFromPrevious = "First stop of the day"
+      - For other activities: provide realistic travel time from previous activity (e.g., "10 mins walk", "20 mins taxi")
+      - foodSuggestions: 2-3 specific nearby food/drink recommendations with venue names
+      - hiddenGems: 2-3 insider tips or secret spots at/near the location
+      - address: Must be a complete address including street, city, country
+      - bestTimeToVisit: Specific timing advice (e.g., "Early morning", "Sunset", "Weekday afternoons")
+      
       dayNumber must be 1..${trip.num_days}. Spread cities across days logically. No markdown, only JSON.`;
 
     const result = await model.generateContent(prompt);
@@ -133,10 +147,21 @@ app.post('/api/trips/:id/generate', async (req, res) => {
       if (dayId) {
         d.activities?.forEach((act, aIdx) => {
           actsToInsert.push({
-            day_id: dayId, name: act.name, description: act.description,
-            time_of_day: act.timeOfDay || 'morning', sort_order: aIdx,
-            why_visit: act.whyVisit, duration: act.duration, ticket_price: act.ticketPrice,
-            open_time: act.openTime, close_time: act.closeTime
+            day_id: dayId,
+            name: act.name,
+            address: act.address || null,
+            description: act.description,
+            time_of_day: act.timeOfDay || 'morning',
+            sort_order: aIdx,
+            why_visit: act.whyVisit,
+            duration: act.duration,
+            ticket_price: act.ticketPrice,
+            open_time: act.openTime,
+            close_time: act.closeTime,
+            best_time_to_visit: act.bestTimeToVisit || null,
+            travel_time_from_previous: act.travelTimeFromPrevious || null,
+            food_suggestions: act.foodSuggestions || [],
+            hidden_gems: act.hiddenGems || []
           });
         });
       }
@@ -164,7 +189,27 @@ function placePhotoStorageToken(photoReference) {
 }
 
 /**
+ * Get detailed address from Google Place Details API
+ */
+async function getPlaceAddress(placesKey, placeId) {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=formatted_address&key=${placesKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    if (data.status === "OK" && data.result?.formatted_address) {
+      return data.result.formatted_address;
+    }
+    return null;
+  } catch (e) {
+    console.error(`[GENIE][Address] Failed for place_id ${placeId}:`, e?.message || e);
+    return null;
+  }
+}
+
+/**
  * Find Place + optional Details fallback — Find Place often omits `photos` even when they exist.
+ * Now also fetches multiple photos for the gallery.
  */
 async function enrichPlaceFromGoogle(placesKey, placeName, queryCity) {
   const input = encodeURIComponent(`${placeName} in ${queryCity}`);
@@ -186,6 +231,9 @@ async function enrichPlaceFromGoogle(placesKey, placeName, queryCity) {
   }
 
   let photoRef = c.photos?.[0]?.photo_reference;
+  let photoRefs = c.photos?.map(p => p.photo_reference).filter(Boolean) || [];
+  
+  // If no photos from FindPlace, try Place Details
   if (!photoRef && c.place_id) {
     const dUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(c.place_id)}&fields=photos,rating&key=${placesKey}`;
     const dRes = await fetch(dUrl);
@@ -196,7 +244,8 @@ async function enrichPlaceFromGoogle(placesKey, placeName, queryCity) {
       );
     } else {
       photoRef = dData.result?.photos?.[0]?.photo_reference;
-      if (photoRef) console.log(`[GENIE][Places] Got photo via Place Details for "${placeName}"`);
+      photoRefs = dData.result?.photos?.map(p => p.photo_reference).filter(Boolean) || [];
+      if (photoRef) console.log(`[GENIE][Places] Got ${photoRefs.length} photos via Place Details for "${placeName}"`);
     }
   }
 
@@ -204,7 +253,9 @@ async function enrichPlaceFromGoogle(placesKey, placeName, queryCity) {
     google_place_id: c.place_id,
     rating: c.rating ?? null,
     photo_url: photoRef ? placePhotoStorageToken(photoRef) : null,
+    photos: photoRefs.slice(0, 10).map(ref => placePhotoStorageToken(ref)) // Get up to 10 photos
   };
+  
   if (!out.photo_url) {
     console.warn(`[GENIE][Places] No photo for "${placeName}" (${queryCity}) place_id=${c.place_id || "none"}`);
   }
@@ -278,9 +329,24 @@ async function runBackgroundEnrichment(tripId, fallbackCity) {
       try {
         const place = await enrichPlaceFromGoogle(placesKey, act.name, queryCity);
         if (place) {
-          if (place.google_place_id) updates.google_place_id = place.google_place_id;
+          if (place.google_place_id) {
+            updates.google_place_id = place.google_place_id;
+            // Generate Google Maps URL from place_id
+            updates.google_maps_url = `https://www.google.com/maps/place/?q=place_id:${place.google_place_id}`;
+          }
           if (place.rating != null) updates.rating = place.rating;
           if (place.photo_url) updates.photo_url = place.photo_url;
+          
+          // Save photos array for gallery
+          if (place.photos && place.photos.length > 0) {
+            updates.photos = place.photos;
+          }
+          
+          // Get address if not already set by Gemini
+          if (!act.address && place.google_place_id) {
+            const address = await getPlaceAddress(placesKey, place.google_place_id);
+            if (address) updates.address = address;
+          }
         }
       } catch (e) {
         console.error(`[GENIE][Places] Exception for "${act.name}":`, e?.message || e);

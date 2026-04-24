@@ -14,11 +14,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { tripCardCoverUrl } from "@/lib/tripCover";
 import { Loader2 } from "lucide-react";
 
-const sharedTrips = [
-  { id: "s1", destination: "Paris, France", dates: "May 5–10, 2026", days: 6, sharedBy: "Ankit Sharma", image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&h=250&fit=crop" },
-  { id: "s2", destination: "Dubai, UAE", dates: "Aug 12–16, 2026", days: 5, sharedBy: "Priya Mehta", image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&h=250&fit=crop" },
-];
-
 interface ExploreBlog {
   id: string;
   title: string;
@@ -137,6 +132,7 @@ const Account = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [trips, setTrips] = useState<any[]>([]);
+  const [sharedTrips, setSharedTrips] = useState<any[]>([]);
 
   // BUG 1 & 2 FIX: The old code initialised fetchingTrips=true and only set it to false
   // inside the `if (user)` block. When the component first mounts, user=null (auth is still
@@ -168,14 +164,16 @@ const Account = () => {
         const { data, error } = await supabase
           .from('trips')
           .select('*')
-          .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setTrips(data || []);
+        const allTrips = data || [];
+        setTrips(allTrips.filter((trip) => trip.user_id === user.id));
+        setSharedTrips(allTrips.filter((trip) => trip.user_id !== user.id));
       } catch (err: any) {
         console.error("Error fetching trips:", err.message);
         setTrips([]);
+        setSharedTrips([]);
       } finally {
         setFetchingTrips(false);
       }
@@ -356,24 +354,29 @@ const Account = () => {
         </div>
 
         <HorizontalScroller>
-          {sharedTrips.map((trip, i) => (
+          {sharedTrips.length > 0 ? sharedTrips.map((trip, i) => (
             <motion.div key={trip.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="min-w-[260px] max-w-[280px] flex-shrink-0">
               <Link to={`/trip/${trip.id}`} className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group h-full">
                 <div className="h-36 overflow-hidden relative">
-                  <img src={trip.image} alt={trip.destination} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={tripCardCoverUrl(trip.cover_image, i)} alt={trip.title || trip.destination} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-2 right-2 bg-card/90 backdrop-blur-sm text-[10px] font-medium px-2 py-1 rounded-full flex items-center gap-1 text-muted-foreground"><Users className="w-3 h-3" /> Shared</div>
                 </div>
                 <div className="p-4">
-                  <h3 className="font-display font-bold text-foreground text-sm mb-1">{trip.destination}</h3>
+                  <h3 className="font-display font-bold text-foreground text-sm mb-1">{trip.title || trip.destination}</h3>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {trip.dates}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {trip.days}d</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {trip.start_date}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {trip.num_days}d</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Shared by <span className="font-medium text-foreground">{trip.sharedBy}</span></p>
+                  <p className="text-xs text-muted-foreground">Shared trip with edit access</p>
                 </div>
               </Link>
             </motion.div>
-          ))}
+          )) : (
+            <div className="flex flex-col items-center justify-center p-8 bg-muted/30 rounded-xl border-2 border-dashed border-border min-w-[260px]">
+              <p className="text-sm text-muted-foreground mb-1">No shared trips yet</p>
+              <p className="text-xs text-muted-foreground">Trips shared with you will appear here.</p>
+            </div>
+          )}
         </HorizontalScroller>
 
         {/* Explore */}

@@ -37,9 +37,9 @@ const AuthCallback = () => {
 
         if (session) {
           console.log("[AuthCallback] Session successfully recovered. Cleaning URL...");
-          // We don't need replaceState here if we're moving targets, but it's good practice
+          const next = url.searchParams.get("next");
           window.history.replaceState({}, document.title, window.location.pathname);
-          navigate("/my-trips", { replace: true });
+          navigate(next || "/my-trips", { replace: true });
         } else {
           console.warn("[AuthCallback] No session found after redirect.");
           navigate("/login");

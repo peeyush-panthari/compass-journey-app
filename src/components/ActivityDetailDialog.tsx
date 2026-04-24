@@ -90,7 +90,7 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
             <div className="space-y-6 pt-5">
               {/* About Section */}
               <div>
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-[0.1em] mb-2">About</h3>
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-[0.1em] mb-2">Editor's Summary</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed leading-7">{activity.description}</p>
               </div>
 
@@ -107,51 +107,12 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {(() => {
                   const hours = formatTime(activity.openTime) + " – " + formatTime(activity.closeTime);
-                  return <DetailItem icon={<Clock className="w-4 h-4 text-primary" />} label="Opening Hours" value={hours} />;
+                  return <DetailItem icon={<Clock className="w-4 h-4 text-primary" />} label="Operating Hours" value={hours} />;
                 })()}
-                <DetailItem icon={<Clock className="w-4 h-4 text-emerald-500" />} label="Est. Time Needed" value={activity.duration} />
-                <DetailItem icon={<Ticket className="w-4 h-4 text-rose-500" />} label="Ticket Price" value={activity.ticketPrice} />
-                <DetailItem icon={<Sun className="w-4 h-4 text-amber-500" />} label="Best Time to Visit" value={activity.bestTimeToVisit || "Evening"} />
+                <DetailItem icon={<Clock className="w-4 h-4 text-emerald-500" />} label="Time Investment" value={activity.duration} />
+                <DetailItem icon={<Ticket className="w-4 h-4 text-rose-500" />} label="Journey Cost" value={activity.ticketPrice} />
+                <DetailItem icon={<Sun className="w-4 h-4 text-amber-500" />} label="Prime Visiting Time" value={activity.bestTimeToVisit || "Early Morning"} />
               </div>
-
-              {/* Travel from Previous */}
-              {activity.travelTimeFromPrevious && (
-                <div className="bg-teal-50/50 p-4 rounded-2xl border border-teal-100/50">
-                  <div className="flex items-center gap-3">
-                    <Navigation className="w-5 h-5 text-teal-600" />
-                    <div>
-                      <p className="text-[10px] font-bold text-teal-800 uppercase tracking-widest mb-1">
-                        Travel from Previous
-                      </p>
-                      <p className="text-sm font-semibold text-foreground">
-                        {activity.travelTimeFromPrevious}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Open in Google Maps Button */}
-              {activity.googleMapsUrl && (
-                <Button 
-                  asChild 
-                  variant="outline" 
-                  className="w-full h-12 rounded-2xl border-2 border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all shadow-sm"
-                >
-                  <a 
-                    href={activity.googleMapsUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between px-5"
-                  >
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-5 h-5 text-primary" />
-                      <span className="text-sm font-semibold text-foreground">Open in Google Maps</span>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                  </a>
-                </Button>
-              )}
 
               {/* Recommendations Mapping */}
               {(activity.foodSuggestions?.length! > 0 || activity.hiddenGems?.length! > 0) && (
@@ -184,13 +145,13 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
                 </>
               )}
 
-              {/* Discovery Gallery - Photos */}
+              {/* Discovery Gallery */}
               {activity.photos && activity.photos.length > 0 && (
                 <>
                   <Separator className="opacity-50" />
                   <div>
                     <h3 className="text-xs font-bold text-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-                       <Camera className="w-4 h-4 text-primary" /> Photos
+                       <Camera className="w-4 h-4 text-primary" /> Visual Journey Gallery
                     </h3>
                     <div className="flex w-full overflow-x-auto gap-4 pb-3 snap-x snap-mandatory scrollbar-hide">
                       {activity.photos.map((photo, i) => (
@@ -203,13 +164,13 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
                 </>
               )}
 
-              {/* Videos & Shorts */}
+              {/* Visual Guides */}
               {activity.youtubeVideos && activity.youtubeVideos.length > 0 && (
                 <>
                   <Separator className="opacity-50" />
                   <div>
                     <h3 className="text-xs font-bold text-foreground uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <Play className="w-4 h-4 text-destructive" /> Videos & Shorts
+                      <Play className="w-4 h-4 text-destructive" /> Immersive Visual Guides
                     </h3>
                     <div className="space-y-6">
                       {activity.youtubeVideos.map((video, i) => {

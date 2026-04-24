@@ -32,6 +32,7 @@ serve(async (req) => {
     const twilioToken = Deno.env.get('TWILIO_AUTH_TOKEN')
     const twilioPhone = Deno.env.get('TWILIO_PHONE_NUMBER')
     const appUrl = Deno.env.get('APP_URL') || 'https://globegenie.app'
+    const authHeader = req.headers.get('Authorization')
 
     console.log(`[GLOBEGENIE_LOG] [${requestId}] Checking creds...`, {
       supabase: !!supabaseUrl && !!supabaseServiceKey,
@@ -41,13 +42,95 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseServiceKey) throw new Error("Supabase auth not set up in secrets")
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    const { data: trip, error: tripErr } = await supabase.from('trips').select('title').eq('id', tripId).single()
+    const normalizedEmail = email ? String(email).trim().toLowerCase() : null
+    const redirectTo = `${appUrl}/auth/callback?next=/trip/${tripId}`
+
+    const token = authHeader?.replace('Bearer ', '')
+    if (!token) throw new Error("Missing authorization token")
+
+    const { data: inviterUserData, error: inviterUserErr } = await supabase.auth.getUser(token)
+    const inviter = inviterUserData?.user
+    if (inviterUserErr || !inviter) {
+      console.error(`[GLOBEGENIE_LOG] [${requestId}] Invalid inviter token:`, inviterUserErr)
+      throw new Error("Unauthorized")
+    }
+
+    const { data: inviterProfile } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', inviter.id)
+      .maybeSingle()
+
+    const { data: trip, error: tripErr } = await supabase.from('trips').select('id, title, user_id').eq('id', tripId).single()
     if (tripErr || !trip) {
       console.error(`[GLOBEGENIE_LOG] [${requestId}] Journey project not found:`, tripErr);
       throw new Error("Journey project not found")
     }
 
-    let inviteDetails = { method: null, sent: false }
+    if (trip.user_id !== inviter.id) {
+      const { data: collaboration, error: collaborationErr } = await supabase
+        .from('trip_collaborators')
+        .select('id')
+        .eq('trip_id', tripId)
+        .eq('user_id', inviter.id)
+        .eq('accepted', true)
+        .in('role', ['owner', 'editor'])
+        .maybeSingle()
+
+      if (collaborationErr || !collaboration) {
+        console.error(`[GLOBEGENIE_LOG] [${requestId}] Inviter lacks access:`, collaborationErr)
+        throw new Error("You do not have permission to invite collaborators to this trip")
+      }
+    }
+
+    let inviteDetails = { method: null, sent: false, provider: null }
+    let collaboratorUserId: string | null = null
+
+    if (normalizedEmail) {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .ilike('email', normalizedEmail)
+        .maybeSingle()
+
+      collaboratorUserId = existingProfile?.id || null
+
+      if (collaboratorUserId) {
+        const { error: otpErr } = await supabase.auth.signInWithOtp({
+          email: normalizedEmail,
+          options: {
+            emailRedirectTo: redirectTo,
+            data: {
+              trip_id: tripId,
+              trip_title: trip.title,
+              inviter_name: inviterProfile?.full_name || inviter.email || 'A GlobeGenie traveler',
+            },
+          },
+        })
+
+        if (otpErr) {
+          console.error(`[GLOBEGENIE_LOG] [${requestId}] Existing user email invite failed:`, otpErr)
+        } else {
+          inviteDetails = { method: 'email', sent: true, provider: 'magiclink' }
+        }
+      } else {
+        const { data: inviteUserData, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(normalizedEmail, {
+          redirectTo,
+          data: {
+            trip_id: tripId,
+            trip_title: trip.title,
+            inviter_name: inviterProfile?.full_name || inviter.email || 'A GlobeGenie traveler',
+          },
+        })
+
+        if (inviteErr) {
+          console.error(`[GLOBEGENIE_LOG] [${requestId}] New user email invite failed:`, inviteErr)
+        } else {
+          collaboratorUserId = inviteUserData.user?.id ?? null
+          inviteDetails = { method: 'email', sent: true, provider: 'supabase_invite' }
+        }
+      }
+    }
 
     // 1. Send SMS Invite (Twilio)
     if (phone && twilioSid && twilioToken && twilioPhone) {
@@ -67,7 +150,7 @@ serve(async (req) => {
 
         if (tRes.ok) {
             console.log(`[GLOBEGENIE_LOG] [${requestId}] ✅ Twilio SMS success!`);
-            inviteDetails = { method: 'sms', sent: true }
+            inviteDetails = { method: 'sms', sent: true, provider: 'twilio' }
         } else {
             const errBody = await tRes.json()
             console.error(`[GLOBEGENIE_LOG] [${requestId}] ⚠️ Twilio API error:`, errBody);
@@ -78,13 +161,52 @@ serve(async (req) => {
 
     // 2. Persist to DB
     console.log(`[GLOBEGENIE_LOG] [${requestId}] Persisting collaborator record to db...`);
-    const { error: collErr } = await supabase.from('trip_collaborators').insert({
-        trip_id: tripId,
-        email: email || null,
-        phone: phone || null,
-        role,
-        accepted: false
-    })
+    const collaboratorPayload = {
+      trip_id: tripId,
+      user_id: collaboratorUserId,
+      email: normalizedEmail || null,
+      phone: phone || null,
+      role,
+      invited_by: inviter.id,
+      accepted: Boolean(collaboratorUserId),
+    }
+
+    let existingCollaborator = null
+
+    if (collaboratorUserId) {
+      const { data } = await supabase
+        .from('trip_collaborators')
+        .select('id')
+        .eq('trip_id', tripId)
+        .eq('user_id', collaboratorUserId)
+        .maybeSingle()
+      existingCollaborator = data
+    }
+
+    if (!existingCollaborator && normalizedEmail) {
+      const { data } = await supabase
+        .from('trip_collaborators')
+        .select('id')
+        .eq('trip_id', tripId)
+        .eq('email', normalizedEmail)
+        .maybeSingle()
+      existingCollaborator = data
+    }
+
+    let collErr = null
+
+    if (existingCollaborator?.id) {
+      const { error } = await supabase
+        .from('trip_collaborators')
+        .update(collaboratorPayload)
+        .eq('id', existingCollaborator.id)
+      collErr = error
+    } else {
+      const { error } = await supabase
+        .from('trip_collaborators')
+        .insert(collaboratorPayload)
+      collErr = error
+    }
 
     if (collErr) {
       console.error(`[GLOBEGENIE_LOG] [${requestId}] ❌ Collaborator persistence failed:`, collErr);
@@ -92,7 +214,15 @@ serve(async (req) => {
     }
 
     console.log(`[GLOBEGENIE_LOG] [${requestId}] 🏁 Invitation process complete.`);
-    return new Response(JSON.stringify({ success: true, invite: inviteDetails }), {
+    return new Response(JSON.stringify({
+      success: true,
+      invite: inviteDetails,
+      collaborator: {
+        email: normalizedEmail,
+        userId: collaboratorUserId,
+        accepted: Boolean(collaboratorUserId),
+      },
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
