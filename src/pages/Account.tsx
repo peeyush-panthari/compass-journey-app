@@ -129,16 +129,15 @@ const HorizontalScroller = ({ children }: { children: React.ReactNode }) => {
 };
 
 const Account = () => {
-  const { user, loading } = useAuth();
+  // FIXED: Also pull `session` from context so we can use session.user.id
+  // as a fallback when the profile hasn't synced yet. This is the root cause
+  // of trips not showing after Google OAuth login — `user` is null for a brief
+  // window while syncProfile() is running, but session.user.id is available
+  // immediately after the OAuth redirect completes.
+  const { user, session, loading } = useAuth();
   const navigate = useNavigate();
   const [trips, setTrips] = useState<any[]>([]);
   const [sharedTrips, setSharedTrips] = useState<any[]>([]);
-
-  // BUG 1 & 2 FIX: The old code initialised fetchingTrips=true and only set it to false
-  // inside the `if (user)` block. When the component first mounts, user=null (auth is still
-  // loading), so the `if (user)` block never runs and fetchingTrips stays true forever —
-  // causing the infinite spinner. The fix: start as false and only set true when actively
-  // fetching, so the UI shows the empty state while auth resolves instead of spinning forever.
   const [fetchingTrips, setFetchingTrips] = useState(false);
 
   const [destination, setDestination] = useState("");
@@ -147,39 +146,42 @@ const Account = () => {
   const [rooms, setRooms] = useState(1);
   const [guests, setGuests] = useState(2);
 
-  // Auth relies on ProtectedRoute so we don't need manual navigation checks here
+  // FIXED: Use the resolved user ID — prefer user.id (fully synced profile),
+  // but fall back to session?.user?.id so trips load the moment auth is ready
+  // even if the profiles table query is still in-flight.
+  const resolvedUserId = user?.id ?? session?.user?.id ?? null;
 
-
-  // BUG 1 FIX: Fetch trips as soon as we have a user.id — but use user.id (a stable
-  // string) as the dependency, not the entire user object. The user object reference
-  // changes on every token refresh (new object created in syncUser), which previously
-  // caused this effect to re-run on every refresh, hammering Supabase and causing
-  // the "sometimes doesn't load" flakiness.
   useEffect(() => {
-    if (!user?.id) return;
+    // Don't attempt to fetch if auth is still initialising
+    if (loading) return;
+    // No session at all → nothing to fetch
+    if (!resolvedUserId) return;
 
     const fetchTrips = async () => {
       setFetchingTrips(true);
+
+      // ── Owned trips ──────────────────────────────────────────────────────────
       try {
         const { data: ownedTrips, error: ownedError } = await supabase
-          .from('trips')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+          .from("trips")
+          .select("*")
+          .eq("user_id", resolvedUserId)
+          .order("created_at", { ascending: false });
 
         if (ownedError) throw ownedError;
         setTrips(ownedTrips || []);
       } catch (err: any) {
-        console.error("Error fetching owned trips:", err.message);
+        console.error("[Account] Error fetching owned trips:", err.message);
         setTrips([]);
       }
 
+      // ── Shared / collaborated trips ──────────────────────────────────────────
       try {
         const { data: collaboratorRows, error: collaboratorsError } = await supabase
-          .from('trip_collaborators')
-          .select('trip_id')
-          .eq('user_id', user.id)
-          .eq('accepted', true);
+          .from("trip_collaborators")
+          .select("trip_id")
+          .eq("user_id", resolvedUserId)
+          .eq("accepted", true);
 
         if (collaboratorsError) throw collaboratorsError;
 
@@ -191,17 +193,17 @@ const Account = () => {
           setSharedTrips([]);
         } else {
           const { data: sharedVisibleTrips, error: sharedTripsError } = await supabase
-            .from('trips')
-            .select('*')
-            .in('id', sharedTripIds)
-            .neq('user_id', user.id)
-            .order('created_at', { ascending: false });
+            .from("trips")
+            .select("*")
+            .in("id", sharedTripIds)
+            .neq("user_id", resolvedUserId)
+            .order("created_at", { ascending: false });
 
           if (sharedTripsError) throw sharedTripsError;
           setSharedTrips(sharedVisibleTrips || []);
         }
       } catch (err: any) {
-        console.error("Error fetching shared trips:", err.message);
+        console.error("[Account] Error fetching shared trips:", err.message);
         setSharedTrips([]);
       } finally {
         setFetchingTrips(false);
@@ -209,7 +211,7 @@ const Account = () => {
     };
 
     fetchTrips();
-  }, [user?.id]); // Depend on user.id (stable string), not user (object reference)
+  }, [resolvedUserId, loading]); // Re-run only when the stable ID or loading state changes
 
   const handleDeleteTrip = async (e: React.MouseEvent, tripId: string) => {
     e.preventDefault();
@@ -219,19 +221,17 @@ const Account = () => {
 
     try {
       const { error } = await supabase
-        .from('trips')
+        .from("trips")
         .delete()
-        .eq('id', tripId)
-        .eq('user_id', user?.id);
+        .eq("id", tripId)
+        .eq("user_id", resolvedUserId);
 
       if (error) throw error;
-      setTrips(prev => prev.filter(t => t.id !== tripId));
+      setTrips((prev) => prev.filter((t) => t.id !== tripId));
     } catch (err: any) {
-      console.error("Error deleting trip:", err);
+      console.error("[Account] Error deleting trip:", err);
     }
   };
-
-  // No early returns needed, ProtectedRoute handles it
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">

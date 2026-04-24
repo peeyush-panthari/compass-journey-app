@@ -23,6 +23,7 @@ const EditProfile = lazy(() => import("./pages/EditProfile"));
 const Hotels = lazy(() => import("./pages/Hotels"));
 const HotelDetail = lazy(() => import("./pages/HotelDetail"));
 const Explore = lazy(() => import("./pages/Explore"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Invite = lazy(() => import("./pages/Invite"));
@@ -71,6 +72,7 @@ const AppContent = () => {
         <Route path="/hotels" element={<Hotels />} />
         <Route path="/hotels/:id" element={<HotelDetail />} />
         <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
+        <Route path="/explore/:id" element={<ProtectedRoute><BlogPost /></ProtectedRoute>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/invite" element={<Invite />} />
         <Route path="/invite/accept" element={<AcceptInvite />} />

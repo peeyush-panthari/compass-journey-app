@@ -6,9 +6,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 dotenv.config();
 
+const blogsRouter = require('./routes/blogs');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/api/blogs', blogsRouter);
 
 /** Proxy Place Photos so the API key stays on the server (browser loads /api/place-photo, not maps.googleapis.com with key). */
 app.get("/api/place-photo", async (req, res) => {

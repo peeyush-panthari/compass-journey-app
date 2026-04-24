@@ -13,6 +13,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  session: any | null; // ← ADDED: exposes raw Supabase session
   loading: boolean;
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   signup: (email: string, fullName: string, password?: string) => Promise<{ success: boolean; error?: string }>;
@@ -30,6 +31,7 @@ export const useAuth = () => {
   if (!ctx) {
     return {
       user: null,
+      session: null,
       loading: false,
       login: async () => ({ success: false, error: "Not ready" }),
       signup: async () => ({ success: false, error: "Not ready" }),
@@ -48,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ FIXED: Unified Auth Initialization (NO race conditions)
+  // ✅ Unified Auth Initialization (NO race conditions)
   useEffect(() => {
     let mounted = true;
 
@@ -100,7 +102,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // 6. Profile Sync
+  // 6. Profile Sync — builds the friendly `user` object from the raw session
+  //    FIXED: If the profiles row doesn't exist yet (e.g. first Google OAuth login
+  //    before the DB trigger fires), we still populate `user` using the session
+  //    metadata so that user.id is always available for downstream queries.
   useEffect(() => {
     if (!session?.user) {
       setUser(null);
@@ -109,25 +114,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const syncProfile = async () => {
       try {
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
           .single();
 
+        // Whether or not the profile row exists, always set user with at minimum
+        // the id + email from the session so trips can be fetched immediately.
         setUser({
           id: session.user.id,
           email: session.user.email || "",
-          fullName: profile?.full_name || "User",
+          fullName:
+            profile?.full_name ||
+            session.user.user_metadata?.full_name ||
+            session.user.user_metadata?.name ||
+            "User",
           phone: profile?.phone,
           age: profile?.age,
           gender: profile?.gender,
         });
+
+        // If the profile row is missing (PGRST116 = "no rows"), create it now.
+        // This handles the race condition where handle_new_user trigger hasn't
+        // fired yet, or the user signed up via Google OAuth before the trigger existed.
+        if (error?.code === "PGRST116") {
+          console.log("[Auth] Profile row missing — creating it now.");
+          await supabase.from("profiles").upsert({
+            id: session.user.id,
+            full_name:
+              session.user.user_metadata?.full_name ||
+              session.user.user_metadata?.name ||
+              "User",
+            email: session.user.email || "",
+          });
+        }
       } catch {
+        // Absolute fallback — still expose user.id so trips query can run
         setUser({
           id: session.user.id,
           email: session.user.email || "",
-          fullName: "User",
+          fullName:
+            session.user.user_metadata?.full_name ||
+            session.user.user_metadata?.name ||
+            "User",
         });
       }
     };
@@ -231,7 +261,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, signup, updateProfile, logout, signInWithGoogle, signInWithPhone, verifyOtp }}
+      value={{ user, session, loading, login, signup, updateProfile, logout, signInWithGoogle, signInWithPhone, verifyOtp }}
     >
       {children}
     </AuthContext.Provider>
