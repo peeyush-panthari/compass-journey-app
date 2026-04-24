@@ -470,6 +470,8 @@ const TripPage = () => {
 
     setShareSubmitting(true);
     try {
+      console.log('🔄 Invoking invite-collaborator function...', { tripId: id, email });
+
       const { data, error } = await supabase.functions.invoke("invite-collaborator", {
         body: {
           tripId: id,
@@ -478,8 +480,18 @@ const TripPage = () => {
         },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Enhanced error logging
+      if (error) {
+        console.error('❌ Supabase function error:', error);
+        throw new Error(error.message || 'Failed to invoke Edge Function');
+      }
+
+      if (data?.error) {
+        console.error('❌ Function returned error:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('✅ Invite successful:', data);
 
       setTripmates((prev) => {
         if (prev.some((mate) => mate.id === data?.collaborator?.userId || mate.name === email)) return prev;
@@ -499,11 +511,35 @@ const TripPage = () => {
 
       return true;
     } catch (err: any) {
-      console.error("Failed to invite collaborator", err);
+      console.error("❌ Failed to invite collaborator:", err);
+
+      // More descriptive error messages
+      let errorMessage = "Could not send the invite right now.";
+      if (err?.context) {
+        try {
+          const body = await err.context.json();
+          if (body?.error) errorMessage = body.error;
+        } catch {
+          /* ignore response parse issues */
+        }
+      }
+
+      if (err?.message?.includes('Unauthorized')) {
+        errorMessage = "You don't have permission to invite collaborators.";
+      } else if (err?.message?.includes('not found')) {
+        errorMessage = "Trip not found. Please refresh the page.";
+      } else if (err?.message?.includes('Supabase auth not set up')) {
+        errorMessage = "Server configuration error. Please contact support.";
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
       toast({
         title: "Invite failed",
-        description: err?.message || "Could not send the invite right now.",
+        description: errorMessage,
+        variant: "destructive",
       });
+
       return false;
     } finally {
       setShareSubmitting(false);
@@ -799,44 +835,44 @@ const TripPage = () => {
                           const showRating = hasActivityRating(activity);
                           const showDuration = hasActivityDuration(activity);
                           return (
-                        <div
-                          key={activity.id}
-                          className="flex items-center gap-2.5 px-2.5 py-2 bg-card border border-border/60 rounded-xl cursor-pointer"
-                          onClick={() => setSelectedActivity(activity)}
-                        >
-                          <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
-                            {actIdx + 1}
-                          </div>
-                          <div className="w-10 h-10 shrink-0 overflow-hidden rounded-lg bg-muted">
-                            <img src={activity.photoUrl} className="w-full h-full object-cover" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-foreground text-sm leading-tight truncate">{activity.name}</h4>
-                            <p className="mt-0.5 text-xs leading-relaxed text-foreground/85 line-clamp-2">
-                              {getEditorSummary(activity)}
-                            </p>
-                            <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-[10px] text-muted-foreground">
-                              {showRating && (
-                              <span className="flex items-center gap-1 min-w-0">
-                                <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0" />
-                                <span className="truncate">{activity.rating}</span>
-                              </span>
-                              )}
-                              {openingHours && (
-                              <span className="flex items-center gap-1 min-w-0">
-                                <Clock className="w-2.5 h-2.5 shrink-0" />
-                                <span className="truncate">{openingHours}</span>
-                              </span>
-                              )}
-                              {showDuration && (
-                              <span className="flex items-center gap-1 min-w-0 col-span-2">
-                                <Clock className="w-2.5 h-2.5 shrink-0" />
-                                <span className="truncate">Avg Time Spend: {activity.duration}</span>
-                              </span>
-                              )}
+                            <div
+                              key={activity.id}
+                              className="flex items-center gap-2.5 px-2.5 py-2 bg-card border border-border/60 rounded-xl cursor-pointer"
+                              onClick={() => setSelectedActivity(activity)}
+                            >
+                              <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                {actIdx + 1}
+                              </div>
+                              <div className="w-10 h-10 shrink-0 overflow-hidden rounded-lg bg-muted">
+                                <img src={activity.photoUrl} className="w-full h-full object-cover" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-foreground text-sm leading-tight truncate">{activity.name}</h4>
+                                <p className="mt-0.5 text-xs leading-relaxed text-foreground/85 line-clamp-2">
+                                  {getEditorSummary(activity)}
+                                </p>
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-[10px] text-muted-foreground">
+                                  {showRating && (
+                                    <span className="flex items-center gap-1 min-w-0">
+                                      <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0" />
+                                      <span className="truncate">{activity.rating}</span>
+                                    </span>
+                                  )}
+                                  {openingHours && (
+                                    <span className="flex items-center gap-1 min-w-0">
+                                      <Clock className="w-2.5 h-2.5 shrink-0" />
+                                      <span className="truncate">{openingHours}</span>
+                                    </span>
+                                  )}
+                                  {showDuration && (
+                                    <span className="flex items-center gap-1 min-w-0 col-span-2">
+                                      <Clock className="w-2.5 h-2.5 shrink-0" />
+                                      <span className="truncate">Avg Time Spend: {activity.duration}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
                           );
                         })()
                       ))}
@@ -1139,70 +1175,70 @@ const TripPage = () => {
                                             const showRating = hasActivityRating(activity);
                                             const showDuration = hasActivityDuration(activity);
                                             return (
-                                          // Change 4: Compact card — p-2.5 instead of p-3,
-                                          // smaller photo (w-12 h-12 vs w-16 h-16),
-                                          // tighter gap, no transport divider between items
-                                          <div
-                                            ref={prov.innerRef}
-                                            {...prov.draggableProps}
-                                            className={cn(
-                                              "group relative flex items-center gap-2.5 px-2.5 py-2 bg-card border border-border/60 rounded-xl transition-all",
-                                              snap.isDragging ? "shadow-elevated ring-2 ring-primary/20 z-50 scale-[1.01]" : "hover:shadow-sm hover:border-border"
-                                            )}
-                                          >
-                                            {/* Drag handle */}
-                                            <div {...prov.dragHandleProps} className="shrink-0 text-muted-foreground/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/60 transition-opacity">
-                                              <GripVertical className="w-3.5 h-3.5" />
-                                            </div>
-
-                                            {/* Number badge — replaces time-of-day label */}
-                                            <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
-                                              {actIdx + 1}
-                                            </div>
-
-                                            {/* Thumbnail — smaller than before */}
-                                            <div className="w-11 h-11 shrink-0 overflow-hidden rounded-lg bg-muted border border-border/10">
-                                              <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover" />
-                                            </div>
-
-                                            {/* Content */}
-                                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedActivity(activity)}>
-                                              <h4 className="font-semibold text-foreground text-sm leading-tight truncate group-hover:text-primary transition-colors">
-                                                {activity.name}
-                                              </h4>
-                                              <p className="mt-0.5 text-sm leading-relaxed text-foreground/85 line-clamp-2">
-                                                {getEditorSummary(activity)}
-                                              </p>
-                                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-3 gap-y-1.5 mt-1 text-[11px] text-muted-foreground font-medium">
-                                                {showRating && (
-                                                <span className="flex items-center gap-1 min-w-0">
-                                                  <Star className="w-2.5 h-2.5 text-gold fill-gold shrink-0" />
-                                                  <span className="truncate">{activity.rating}</span>
-                                                </span>
+                                              // Change 4: Compact card — p-2.5 instead of p-3,
+                                              // smaller photo (w-12 h-12 vs w-16 h-16),
+                                              // tighter gap, no transport divider between items
+                                              <div
+                                                ref={prov.innerRef}
+                                                {...prov.draggableProps}
+                                                className={cn(
+                                                  "group relative flex items-center gap-2.5 px-2.5 py-2 bg-card border border-border/60 rounded-xl transition-all",
+                                                  snap.isDragging ? "shadow-elevated ring-2 ring-primary/20 z-50 scale-[1.01]" : "hover:shadow-sm hover:border-border"
                                                 )}
-                                                {openingHours && (
-                                                <span className="flex items-center gap-1 min-w-0">
-                                                  <Clock className="w-2.5 h-2.5 shrink-0" />
-                                                  <span className="truncate">{openingHours}</span>
-                                                </span>
-                                                )}
-                                                {showDuration && (
-                                                <span className="flex items-center gap-1 min-w-0">
-                                                  <Clock className="w-2.5 h-2.5 shrink-0" />
-                                                  <span className="truncate">Avg Time Spend: {activity.duration}</span>
-                                                </span>
-                                                )}
+                                              >
+                                                {/* Drag handle */}
+                                                <div {...prov.dragHandleProps} className="shrink-0 text-muted-foreground/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/60 transition-opacity">
+                                                  <GripVertical className="w-3.5 h-3.5" />
+                                                </div>
+
+                                                {/* Number badge — replaces time-of-day label */}
+                                                <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                  {actIdx + 1}
+                                                </div>
+
+                                                {/* Thumbnail — smaller than before */}
+                                                <div className="w-11 h-11 shrink-0 overflow-hidden rounded-lg bg-muted border border-border/10">
+                                                  <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover" />
+                                                </div>
+
+                                                {/* Content */}
+                                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedActivity(activity)}>
+                                                  <h4 className="font-semibold text-foreground text-sm leading-tight truncate group-hover:text-primary transition-colors">
+                                                    {activity.name}
+                                                  </h4>
+                                                  <p className="mt-0.5 text-sm leading-relaxed text-foreground/85 line-clamp-2">
+                                                    {getEditorSummary(activity)}
+                                                  </p>
+                                                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-3 gap-y-1.5 mt-1 text-[11px] text-muted-foreground font-medium">
+                                                    {showRating && (
+                                                      <span className="flex items-center gap-1 min-w-0">
+                                                        <Star className="w-2.5 h-2.5 text-gold fill-gold shrink-0" />
+                                                        <span className="truncate">{activity.rating}</span>
+                                                      </span>
+                                                    )}
+                                                    {openingHours && (
+                                                      <span className="flex items-center gap-1 min-w-0">
+                                                        <Clock className="w-2.5 h-2.5 shrink-0" />
+                                                        <span className="truncate">{openingHours}</span>
+                                                      </span>
+                                                    )}
+                                                    {showDuration && (
+                                                      <span className="flex items-center gap-1 min-w-0">
+                                                        <Clock className="w-2.5 h-2.5 shrink-0" />
+                                                        <span className="truncate">Avg Time Spend: {activity.duration}</span>
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                </div>
+
+                                                {/* Delete */}
+                                                <button
+                                                  className="opacity-0 group-hover:opacity-40 hover:!opacity-100 p-1.5 transition-all hover:bg-destructive/10 hover:text-destructive rounded-lg shrink-0"
+                                                  onClick={(e) => { e.stopPropagation(); deleteActivity(dayIdx, activity.id); }}
+                                                >
+                                                  <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
                                               </div>
-                                            </div>
-
-                                            {/* Delete */}
-                                            <button
-                                              className="opacity-0 group-hover:opacity-40 hover:!opacity-100 p-1.5 transition-all hover:bg-destructive/10 hover:text-destructive rounded-lg shrink-0"
-                                              onClick={(e) => { e.stopPropagation(); deleteActivity(dayIdx, activity.id); }}
-                                            >
-                                              <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                          </div>
                                             );
                                           })()
                                         )}

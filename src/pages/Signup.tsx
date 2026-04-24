@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, Navigate } from "react-router-dom";
+import { Link, useNavigate, Navigate, useLocation } from "react-router-dom";
 import { Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,15 +13,17 @@ const Signup = () => {
   const [otpSent, setOtpSent] = useState(false);
   const { signInWithGoogle, signInWithPhone, verifyOtp, user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const next = new URLSearchParams(location.search).get("next") || "/my-trips";
 
   if (loading) return null;
   if (user) {
-    return <Navigate to="/my-trips" replace />;
+    return <Navigate to={next} replace />;
   }
 
   const handleGoogleSignup = async () => {
-    const { success, error } = await signInWithGoogle();
+    const { success, error } = await signInWithGoogle(next);
     if (!success) {
       toast({ title: "Sign Up Failed", description: error, variant: "destructive" });
     }
@@ -51,7 +53,7 @@ const Signup = () => {
     const { success, error } = await verifyOtp(phone, otp);
     if (success) {
       toast({ title: "Account Created!", description: "Welcome to GlobeGenie!" });
-      navigate("/my-trips");
+      navigate(next);
     } else {
       toast({ title: "Verification Failed", description: error, variant: "destructive" });
     }
@@ -90,7 +92,7 @@ const Signup = () => {
             </form>
           )}
 
-          <p className="text-center text-sm text-muted-foreground mt-6">Already have an account? <Link to="/login" className="text-primary font-medium hover:underline">Sign In</Link></p>
+          <p className="text-center text-sm text-muted-foreground mt-6">Already have an account? <Link to={`/login?next=${encodeURIComponent(next)}`} className="text-primary font-medium hover:underline">Sign In</Link></p>
         </div>
       </motion.div>
     </div>

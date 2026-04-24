@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <body style="margin:0;padding:0;background:#f7f4ef;font-family:'DM Sans',Arial,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7f4ef;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:24px;padding:40px 36px;box-shadow:0 12px 40px rgba(15,23,42,0.08);">
+            <tr>
+              <td>
+                <div style="font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:700;color:#0f172a;margin-bottom:20px;">
+                  GlobeGenie
+                </div>
+                <h1 style="margin:0 0 18px;font-size:30px;line-height:1.2;font-weight:700;color:#0f172a;">
+                  {{ index .Data "inviter_name" }} invited you to "{{ index .Data "trip_title" }}"
+                </h1>
+                <p style="margin:0 0 14px;font-size:18px;line-height:1.75;color:#475569;">
+                  {{ index .Data "inviter_name" }} invited you to join the "{{ index .Data "trip_title" }}" trip plan on GlobeGenie.
+                </p>
+                <p style="margin:0 0 28px;font-size:18px;line-height:1.75;color:#475569;">
+                  Check out my trip plan on GlobeGenie! We can plan together in real time, keep all our bookings organized in one place, and much more. Let's create an unforgettable trip!
+                </p>
+                <a
+                  href="{{ .SiteURL }}/invite?token_hash={{ .TokenHash }}&type=magiclink&trip_id={{ index .Data "trip_id" }}&mode={{ index .Data "invite_mode" }}"
+                  style="display:inline-block;background:#1e88c8;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:999px;"
+                >
+                  Open Trip
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

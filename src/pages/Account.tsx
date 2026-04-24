@@ -161,18 +161,47 @@ const Account = () => {
     const fetchTrips = async () => {
       setFetchingTrips(true);
       try {
-        const { data, error } = await supabase
+        const { data: ownedTrips, error: ownedError } = await supabase
           .from('trips')
           .select('*')
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        const allTrips = data || [];
-        setTrips(allTrips.filter((trip) => trip.user_id === user.id));
-        setSharedTrips(allTrips.filter((trip) => trip.user_id !== user.id));
+        if (ownedError) throw ownedError;
+        setTrips(ownedTrips || []);
       } catch (err: any) {
-        console.error("Error fetching trips:", err.message);
+        console.error("Error fetching owned trips:", err.message);
         setTrips([]);
+      }
+
+      try {
+        const { data: collaboratorRows, error: collaboratorsError } = await supabase
+          .from('trip_collaborators')
+          .select('trip_id')
+          .eq('user_id', user.id)
+          .eq('accepted', true);
+
+        if (collaboratorsError) throw collaboratorsError;
+
+        const sharedTripIds = Array.from(
+          new Set((collaboratorRows || []).map((row) => row.trip_id).filter(Boolean))
+        );
+
+        if (sharedTripIds.length === 0) {
+          setSharedTrips([]);
+        } else {
+          const { data: sharedVisibleTrips, error: sharedTripsError } = await supabase
+            .from('trips')
+            .select('*')
+            .in('id', sharedTripIds)
+            .neq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+          if (sharedTripsError) throw sharedTripsError;
+          setSharedTrips(sharedVisibleTrips || []);
+        }
+      } catch (err: any) {
+        console.error("Error fetching shared trips:", err.message);
         setSharedTrips([]);
       } finally {
         setFetchingTrips(false);

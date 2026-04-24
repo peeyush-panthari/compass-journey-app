@@ -43,8 +43,6 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const normalizedEmail = email ? String(email).trim().toLowerCase() : null
-    const redirectTo = `${appUrl}/auth/callback?next=/trip/${tripId}`
-
     const token = authHeader?.replace('Bearer ', '')
     if (!token) throw new Error("Missing authorization token")
 
@@ -96,14 +94,17 @@ serve(async (req) => {
       collaboratorUserId = existingProfile?.id || null
 
       if (collaboratorUserId) {
+        const redirectTo = `${appUrl}/invite?trip_id=${encodeURIComponent(tripId)}&mode=signin`
         const { error: otpErr } = await supabase.auth.signInWithOtp({
           email: normalizedEmail,
           options: {
+            shouldCreateUser: false,
             emailRedirectTo: redirectTo,
             data: {
               trip_id: tripId,
               trip_title: trip.title,
               inviter_name: inviterProfile?.full_name || inviter.email || 'A GlobeGenie traveler',
+              invite_mode: 'signin',
             },
           },
         })
@@ -114,12 +115,14 @@ serve(async (req) => {
           inviteDetails = { method: 'email', sent: true, provider: 'magiclink' }
         }
       } else {
+        const redirectTo = `${appUrl}/invite?trip_id=${encodeURIComponent(tripId)}&mode=signup`
         const { data: inviteUserData, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(normalizedEmail, {
           redirectTo,
           data: {
             trip_id: tripId,
             trip_title: trip.title,
             inviter_name: inviterProfile?.full_name || inviter.email || 'A GlobeGenie traveler',
+            invite_mode: 'signup',
           },
         })
 
@@ -165,7 +168,6 @@ serve(async (req) => {
       trip_id: tripId,
       user_id: collaboratorUserId,
       email: normalizedEmail || null,
-      phone: phone || null,
       role,
       invited_by: inviter.id,
       accepted: Boolean(collaboratorUserId),

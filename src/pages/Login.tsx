@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, Navigate } from "react-router-dom";
+import { Link, useNavigate, Navigate, useLocation } from "react-router-dom";
 import { Globe, Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,15 +13,17 @@ const Login = () => {
   const [otpSent, setOtpSent] = useState(false);
   const { signInWithGoogle, signInWithPhone, verifyOtp, user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const next = new URLSearchParams(location.search).get("next") || "/my-trips";
 
   if (loading) return null;
   if (user) {
-    return <Navigate to="/my-trips" replace />;
+    return <Navigate to={next} replace />;
   }
 
   const handleGoogleLogin = async () => {
-    const { success, error } = await signInWithGoogle();
+    const { success, error } = await signInWithGoogle(next);
     if (!success) {
       toast({ title: "Login Failed", description: error, variant: "destructive" });
     }
@@ -51,7 +53,7 @@ const Login = () => {
     const { success, error } = await verifyOtp(phone, otp);
     if (success) {
       toast({ title: "Welcome back!" });
-      navigate("/my-trips");
+      navigate(next);
     } else {
       toast({ title: "Invalid OTP", description: error, variant: "destructive" });
     }
@@ -91,7 +93,7 @@ const Login = () => {
             </form>
           )}
 
-          <p className="text-center text-sm text-muted-foreground mt-6">Don't have an account? <Link to="/signup" className="text-primary font-medium hover:underline">Sign Up</Link></p>
+          <p className="text-center text-sm text-muted-foreground mt-6">Don't have an account? <Link to={`/signup?next=${encodeURIComponent(next)}`} className="text-primary font-medium hover:underline">Sign Up</Link></p>
         </div>
       </motion.div>
     </div>

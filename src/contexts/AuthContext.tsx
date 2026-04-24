@@ -18,7 +18,7 @@ interface AuthContextType {
   signup: (email: string, fullName: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  signInWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  signInWithGoogle: (next?: string) => Promise<{ success: boolean; error?: string }>;
   signInWithPhone: (phone: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
 }
@@ -162,9 +162,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (next?: string) => {
     try {
-      const redirectTo = getOAuthRedirectTo();
+      const redirectTo = getOAuthRedirectTo(next);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo },

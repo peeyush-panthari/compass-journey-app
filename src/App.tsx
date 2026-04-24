@@ -25,6 +25,8 @@ const HotelDetail = lazy(() => import("./pages/HotelDetail"));
 const Explore = lazy(() => import("./pages/Explore"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const Invite = lazy(() => import("./pages/Invite"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 
 const queryClient = new QueryClient();
 
@@ -70,6 +72,8 @@ const AppContent = () => {
         <Route path="/hotels/:id" element={<HotelDetail />} />
         <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/invite" element={<Invite />} />
+        <Route path="/invite/accept" element={<AcceptInvite />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <BottomNav />

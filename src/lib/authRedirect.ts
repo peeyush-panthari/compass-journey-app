@@ -9,10 +9,16 @@
  * Optional: set `VITE_OAUTH_REDIRECT_ORIGIN` in `.env.local` to the exact origin (no trailing slash),
  * e.g. `http://192.168.1.23:8080` if `window.location.origin` is wrong in an embedded browser.
  */
-export function getOAuthRedirectTo(): string {
+export function getOAuthRedirectTo(next?: string): string {
   const envOrigin = import.meta.env.VITE_OAUTH_REDIRECT_ORIGIN?.trim().replace(/\/$/, "");
-  if (envOrigin) return `${envOrigin}/auth/callback`;
+  if (envOrigin) {
+    const url = new URL(`${envOrigin}/auth/callback`);
+    if (next) url.searchParams.set("next", next);
+    return url.toString();
+  }
 
-  if (typeof window === "undefined") return "/auth/callback";
-  return `${window.location.origin}/auth/callback`;
+  if (typeof window === "undefined") return next ? `/auth/callback?next=${encodeURIComponent(next)}` : "/auth/callback";
+  const url = new URL(`${window.location.origin}/auth/callback`);
+  if (next) url.searchParams.set("next", next);
+  return url.toString();
 }
