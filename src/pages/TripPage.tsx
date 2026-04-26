@@ -461,8 +461,17 @@ const TripPage = () => {
 
   const inviteCollaborator = async (emailInput: string, source: "share" | "tripmate") => {
     const email = emailInput.trim().toLowerCase();
-    if (!email || !id || !trip) {
+    if (!email) {
       toast({ title: "Enter a valid email address" });
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({ title: "Enter a valid email address" });
+      return false;
+    }
+    if (!id || !trip) {
+      toast({ title: "Trip not loaded yet", description: "Please wait a moment and try again." });
       return false;
     }
 
@@ -1622,7 +1631,7 @@ const TripPage = () => {
               <Button
                 type="button"
                 className="rounded-2xl h-12 font-bold text-sm"
-                disabled={shareSubmitting}
+                disabled={shareSubmitting || !trip}
                 onClick={async () => {
                   const success = await inviteCollaborator(shareEmail, "share");
                   if (success) {
