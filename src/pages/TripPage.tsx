@@ -1528,9 +1528,9 @@ const TripPage = () => {
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[410px] max-w-[90vw] rounded-3xl p-6">
-                <p className="text-lg font-bold text-foreground mb-4">Select from a category</p>
-                <div className="grid grid-cols-2 gap-4">
+              <PopoverContent className="w-[500px] max-w-[95vw] rounded-3xl p-4">
+                <p className="text-sm font-bold text-foreground mb-3 px-1">Select from a category</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {CATEGORY_OPTIONS.map((option) => {
                     const OptionIcon = option.icon;
                     return (
@@ -1539,12 +1539,12 @@ const TripPage = () => {
                         type="button"
                         onClick={() => setExpenseDraft((prev) => ({ ...prev, category: option.value }))}
                         className={cn(
-                          "rounded-2xl bg-muted/60 border px-4 py-6 flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors",
+                          "rounded-2xl bg-muted/60 border px-3 py-3 flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors",
                           expenseDraft.category === option.value ? "border-primary bg-primary/5 text-foreground" : "border-transparent"
                         )}
                       >
-                        <OptionIcon className="w-8 h-8" />
-                        <span className="text-lg">{option.value}</span>
+                        <OptionIcon className="w-5 h-5" />
+                        <span className="text-xs font-medium text-center">{option.value}</span>
                       </button>
                     );
                   })}
