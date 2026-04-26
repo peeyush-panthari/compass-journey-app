@@ -228,6 +228,7 @@ const TripPage = () => {
   const [simplifyGroupExpenses, setSimplifyGroupExpenses] = useState(true);
   const [defaultCurrency, setDefaultCurrency] = useState<(typeof CURRENCY_OPTIONS)[number]["symbol"]>("₹");
   const [budgetDraft, setBudgetDraft] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [expenseDraft, setExpenseDraft] = useState({
     amount: "",
     currency: "₹",
@@ -1518,7 +1519,7 @@ const TripPage = () => {
               />
             </div>
 
-            <Popover>
+            <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
               <PopoverTrigger asChild>
                 <button type="button" className="w-full h-16 rounded-3xl border border-border bg-card px-5 flex items-center justify-between text-left">
                   <span className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -1537,7 +1538,10 @@ const TripPage = () => {
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => setExpenseDraft((prev) => ({ ...prev, category: option.value }))}
+                        onClick={() => {
+                          setExpenseDraft((prev) => ({ ...prev, category: option.value }));
+                          setCategoryOpen(false);
+                        }}
                         className={cn(
                           "rounded-2xl bg-muted/60 border px-3 py-3 flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors",
                           expenseDraft.category === option.value ? "border-primary bg-primary/5 text-foreground" : "border-transparent"
