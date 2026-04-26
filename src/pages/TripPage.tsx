@@ -1528,9 +1528,9 @@ const TripPage = () => {
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[820px] max-w-[90vw] rounded-3xl p-6">
+              <PopoverContent className="w-[410px] max-w-[90vw] rounded-3xl p-6">
                 <p className="text-lg font-bold text-foreground mb-4">Select from a category</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   {CATEGORY_OPTIONS.map((option) => {
                     const OptionIcon = option.icon;
                     return (
