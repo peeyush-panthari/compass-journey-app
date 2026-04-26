@@ -177,6 +177,7 @@ const Account = () => {
 
       // ── Shared / collaborated trips ──────────────────────────────────────────
       try {
+        console.log("[Account] Fetching shared trips for user:", resolvedUserId);
         const { data: collaboratorRows, error: collaboratorsError } = await supabase
           .from("trip_collaborators")
           .select("trip_id")
@@ -184,14 +185,20 @@ const Account = () => {
           .eq("accepted", true);
 
         if (collaboratorsError) throw collaboratorsError;
+        
+        console.log("[Account] Collaborator rows:", collaboratorRows);
 
         const sharedTripIds = Array.from(
           new Set((collaboratorRows || []).map((row) => row.trip_id).filter(Boolean))
         );
+        
+        console.log("[Account] Shared trip IDs:", sharedTripIds);
 
         if (sharedTripIds.length === 0) {
+          console.log("[Account] No shared trip IDs found.");
           setSharedTrips([]);
         } else {
+          console.log("[Account] Fetching trip details for shared IDs...");
           const { data: sharedVisibleTrips, error: sharedTripsError } = await supabase
             .from("trips")
             .select("*")
@@ -200,6 +207,7 @@ const Account = () => {
             .order("created_at", { ascending: false });
 
           if (sharedTripsError) throw sharedTripsError;
+          console.log("[Account] Shared visible trips fetched:", sharedVisibleTrips);
           setSharedTrips(sharedVisibleTrips || []);
         }
       } catch (err: any) {
