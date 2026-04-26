@@ -401,6 +401,29 @@ const TripPage = () => {
           if (!coverErr) setTrip((prev: any) => (prev ? { ...prev, cover_image: firstPhotoRaw } : prev));
         }
 
+        // --- Fetch Budget & Expenses ---
+        const { data: budgetData, error: budgetErr } = await supabase.from("trip_budgets").select("*").eq("trip_id", id).maybeSingle();
+        if (!budgetErr && budgetData) {
+          setBudget(Number(budgetData.total_budget));
+          setDefaultCurrency(budgetData.currency);
+        }
+
+        const { data: expensesData, error: expensesErr } = await supabase.from("expenses").select("*").eq("trip_id", id);
+        if (!expensesErr && expensesData) {
+          setExpenses(expensesData.map((e: any) => ({
+            id: e.id,
+            amount: Number(e.amount),
+            currency: e.currency,
+            category: e.category,
+            title: e.title || e.category,
+            paidBy: e.paid_by,
+            split: e.split,
+            participants: e.participants || [],
+            date: e.date
+          })));
+        }
+
+
         // --- STEP: Trigger Background Enrichment (Mainstream Logic) ---
         const needsEnrichment = transformedDays.some(day =>
           day.activities.some((act: any) => !act.youtubeVideos || act.youtubeVideos.length === 0)
@@ -577,19 +600,43 @@ const TripPage = () => {
     setAddExpenseOpen(true);
   };
 
-  const handleSaveBudget = (e: React.FormEvent) => {
+  const handleCurrencyChange = async (value: string) => {
+    setDefaultCurrency(value);
+    // If budget exists, update the currency in Supabase
+    if (budget !== null) {
+      await supabase.from("trip_budgets").upsert({
+        trip_id: id,
+        total_budget: budget,
+        currency: value
+      }, { onConflict: 'trip_id' });
+    }
+  };
+
+  const handleSaveBudget = async (e: React.FormEvent) => {
     e.preventDefault();
     const value = Number(budgetDraft);
     if (!Number.isFinite(value) || value <= 0) {
       toast({ title: "Enter a valid budget amount" });
       return;
     }
+
+    const { error } = await supabase.from("trip_budgets").upsert({
+      trip_id: id,
+      total_budget: value,
+      currency: defaultCurrency
+    }, { onConflict: 'trip_id' });
+
+    if (error) {
+      toast({ title: "Failed to save budget", variant: "destructive" });
+      return;
+    }
+
     setBudget(value);
     setSetBudgetOpen(false);
     toast({ title: "Budget updated" });
   };
 
-  const handleSaveExpense = (e: React.FormEvent) => {
+  const handleSaveExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = Number(expenseDraft.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -613,17 +660,37 @@ const TripPage = () => {
       return;
     }
 
+    const newExpense = {
+      id: crypto.randomUUID(),
+      trip_id: id,
+      amount,
+      currency: expenseDraft.currency,
+      category: expenseDraft.category,
+      title: expenseDraft.category,
+      paid_by: expenseDraft.paidBy,
+      split: expenseDraft.split,
+      participants,
+      date: expenseDraft.date || new Date().toISOString().slice(0, 10),
+    };
+
+    const { error } = await supabase.from("expenses").insert(newExpense);
+
+    if (error) {
+      toast({ title: "Failed to save expense", variant: "destructive" });
+      return;
+    }
+
     setExpenses((prev) => [
       {
-        id: crypto.randomUUID(),
-        amount,
-        currency: expenseDraft.currency,
-        category: expenseDraft.category,
-        title: expenseDraft.category,
-        paidBy: expenseDraft.paidBy,
-        split: expenseDraft.split,
-        participants,
-        date: expenseDraft.date || new Date().toISOString().slice(0, 10),
+        id: newExpense.id,
+        amount: newExpense.amount,
+        currency: newExpense.currency,
+        category: newExpense.category,
+        title: newExpense.title,
+        paidBy: newExpense.paid_by,
+        split: newExpense.split as Expense["split"],
+        participants: newExpense.participants,
+        date: newExpense.date,
       },
       ...prev,
     ]);
@@ -1670,7 +1737,7 @@ const TripPage = () => {
 
             <div className="space-y-3">
               <h3 className="text-xl font-bold text-foreground">Default currency</h3>
-              <Select value={defaultCurrency} onValueChange={(value: (typeof CURRENCY_OPTIONS)[number]["symbol"]) => setDefaultCurrency(value)}>
+              <Select value={defaultCurrency} onValueChange={handleCurrencyChange}>
                 <SelectTrigger className="w-full h-auto rounded-3xl border border-border bg-card px-5 py-4">
                   <div className="flex items-center gap-4 text-left">
                     {(() => {
