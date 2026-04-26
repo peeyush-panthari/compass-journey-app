@@ -20,7 +20,7 @@
                   Check out my trip plan on GlobeGenie! We can plan together in real time, keep all our bookings organized in one place, and much more. Let's create an unforgettable trip!
                 </p>
                 <a
-                  href="{{ .ConfirmationURL }}"
+                  href="{{ .SiteURL }}/invite?token_hash={{ .TokenHash }}&type=invite&trip_id={{ .Data.trip_id }}&mode=signup"
                   style="display:inline-block;background:#1e88c8;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:999px;"
                 >
                   Open Trip
