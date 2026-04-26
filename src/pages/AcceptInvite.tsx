@@ -17,16 +17,27 @@ const AcceptInvite = () => {
         return;
       }
 
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
         type: type as "magiclink" | "invite",
       });
 
-      if (error) {
-        console.error("[AcceptInvite] verifyOtp failed:", error.message);
+      if (error || !data.user) {
+        console.error("[AcceptInvite] verifyOtp failed:", error?.message);
         navigate(`/login?next=${encodeURIComponent(`/trip/${tripId}`)}`, { replace: true });
         return;
       }
+
+      // Explicitly link the invitation to the user's ID and mark it as accepted
+      // This handles cases where the user was invited by email before they had an account.
+      console.log("[AcceptInvite] Linking invitation for user:", data.user.id);
+      await supabase
+        .from("trip_collaborators")
+        .update({
+          user_id: data.user.id,
+          accepted: true
+        })
+        .match({ trip_id: tripId, email: data.user.email });
 
       navigate(`/trip/${tripId}`, { replace: true });
     };

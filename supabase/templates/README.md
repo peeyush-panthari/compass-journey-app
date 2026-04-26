@@ -7,9 +7,9 @@ For hosted Supabase projects, copy these values into:
 Use the following subjects:
 
 - `Invite user` subject:
-  `{{ index .Data "inviter_name" }} invited you "{{ index .Data "trip_title" }}" on Globegenie`
+  `{{ .Data.inviter_name }} invited you "{{ .Data.trip_title }}" on Globegenie`
 - `Magic Link` subject:
-  `{{ index .Data "inviter_name" }} invited you "{{ index .Data "trip_title" }}" on Globegenie`
+  `{{ .Data.inviter_name }} invited you "{{ .Data.trip_title }}" on Globegenie`
 
 Use the following HTML bodies:
 

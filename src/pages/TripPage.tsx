@@ -222,13 +222,11 @@ const TripPage = () => {
   const [tripmates, setTripmates] = useState<Tripmate[]>([]);
   const [groupBalancesOpen, setGroupBalancesOpen] = useState(false);
   const [groupBalancesView, setGroupBalancesView] = useState<"summary" | "overview">("summary");
-  const [addTripmateOpen, setAddTripmateOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareSubmitting, setShareSubmitting] = useState(false);
   const [expenseSettingsOpen, setExpenseSettingsOpen] = useState(false);
   const [simplifyGroupExpenses, setSimplifyGroupExpenses] = useState(true);
   const [defaultCurrency, setDefaultCurrency] = useState<(typeof CURRENCY_OPTIONS)[number]["symbol"]>("₹");
-  const [newTripmateEmail, setNewTripmateEmail] = useState("");
   const [budgetDraft, setBudgetDraft] = useState("");
   const [expenseDraft, setExpenseDraft] = useState({
     amount: "",
@@ -505,8 +503,8 @@ const TripPage = () => {
       });
 
       toast({
-        title: source === "share" ? "Trip shared" : "Tripmate invited",
-        description: `Invitation sent to ${email}`,
+        title: "Invitation sent",
+        description: `Trip shared with ${email}`,
       });
 
       return true;
@@ -625,19 +623,6 @@ const TripPage = () => {
     toast({ title: "Expense added" });
   };
 
-  const handleAddTripmate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const email = newTripmateEmail.trim();
-    if (!email) {
-      toast({ title: "Enter a tripmate email" });
-      return;
-    }
-    const success = await inviteCollaborator(email, "tripmate");
-    if (success) {
-      setNewTripmateEmail("");
-      setAddTripmateOpen(false);
-    }
-  };
 
   const toggleExpenseParticipant = (participantId: string) => {
     setExpenseDraft((prev) => ({
@@ -1312,7 +1297,7 @@ const TripPage = () => {
                     <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => toast({ title: "Breakdown coming soon" })}>
                       <BarChart3 className="w-5 h-5 opacity-70 group-hover:opacity-100" /> View breakdown
                     </button>
-                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setAddTripmateOpen(true)}>
+                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setShareDialogOpen(true)}>
                       <UserPlus className="w-5 h-5 opacity-70 group-hover:opacity-100" /> Add tripmate
                     </button>
                     <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setExpenseSettingsOpen(true)}>
@@ -1338,7 +1323,7 @@ const TripPage = () => {
                     <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => toast({ title: "Breakdown coming soon" })}>
                       <BarChart3 className="w-5 h-5 opacity-70 group-hover:opacity-100" /> View breakdown
                     </button>
-                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setAddTripmateOpen(true)}>
+                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setShareDialogOpen(true)}>
                       <UserPlus className="w-5 h-5 opacity-70 group-hover:opacity-100" /> Add tripmate
                     </button>
                     <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setExpenseSettingsOpen(true)}>
@@ -1616,22 +1601,11 @@ const TripPage = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={addTripmateOpen} onOpenChange={setAddTripmateOpen}>
-        <DialogContent className="sm:max-w-sm rounded-3xl border-none shadow-2xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-display font-bold text-center">Add tripmate</DialogTitle>
-          </DialogHeader>
-          <form className="space-y-5 mt-4" onSubmit={handleAddTripmate}>
-            <Input value={newTripmateEmail} onChange={(e) => setNewTripmateEmail(e.target.value)} placeholder="Tripmate email" className="h-12 rounded-2xl text-base" type="email" />
-            <Button type="submit" className="w-full rounded-2xl h-12 font-bold text-sm" disabled={shareSubmitting}>{shareSubmitting ? "Sending..." : "Add tripmate"}</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogContent className="sm:max-w-sm rounded-3xl border border-border/60 shadow-elevated p-6">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-display font-bold text-center">Share trip</DialogTitle>
+            <DialogTitle className="text-2xl font-display font-bold text-center">Share Trip & Invite Tripmates</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <Input
