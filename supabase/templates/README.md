@@ -7,9 +7,9 @@ For hosted Supabase projects, copy these values into:
 Use the following subjects:
 
 - `Invite user` subject:
-  `{{ .Data.inviter_name }} invited you "{{ .Data.trip_title }}" on Globegenie`
+  `{{ if .Data.inviter_name }}{{ .Data.inviter_name }} invited you to "{{ .Data.trip_title }}"{{ else }}You've been invited to a trip!{{ end }} on GlobeGenie`
 - `Magic Link` subject:
-  `{{ .Data.inviter_name }} invited you "{{ .Data.trip_title }}" on Globegenie`
+  `{{ if .Data.inviter_name }}{{ .Data.inviter_name }} invited you to "{{ .Data.trip_title }}"{{ else }}You've been invited to a trip!{{ end }} on GlobeGenie`
 
 Use the following HTML bodies:
 

@@ -11,16 +11,16 @@
                   GlobeGenie
                 </div>
                 <h1 style="margin:0 0 18px;font-size:30px;line-height:1.2;font-weight:700;color:#0f172a;">
-                  {{ .Data.inviter_name }} invited you to "{{ .Data.trip_title }}"
+                  {{ if .Data.inviter_name }}{{ .Data.inviter_name }} invited you to "{{ .Data.trip_title }}"{{ else }}You've been invited to a trip!{{ end }}
                 </h1>
                 <p style="margin:0 0 14px;font-size:18px;line-height:1.75;color:#475569;">
-                  {{ .Data.inviter_name }} invited you to join the "{{ .Data.trip_title }}" trip plan on GlobeGenie.
+                  {{ if .Data.inviter_name }}{{ .Data.inviter_name }} invited you to join the "{{ .Data.trip_title }}" trip plan on GlobeGenie.{{ else }}A fellow traveler has invited you to collaborate on a trip plan.{{ end }}
                 </p>
                 <p style="margin:0 0 28px;font-size:18px;line-height:1.75;color:#475569;">
                   Check out my trip plan on GlobeGenie! We can plan together in real time, keep all our bookings organized in one place, and much more. Let's create an unforgettable trip!
                 </p>
                 <a
-                  href="{{ .SiteURL }}/invite?token_hash={{ .TokenHash }}&type=magiclink&trip_id={{ .Data.trip_id }}&mode={{ .Data.invite_mode }}"
+                  href="{{ .ConfirmationURL }}"
                   style="display:inline-block;background:#1e88c8;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:14px 28px;border-radius:999px;"
                 >
                   Open Trip
