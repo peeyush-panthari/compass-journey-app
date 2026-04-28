@@ -1,11 +1,49 @@
 {
-  "title": "10 Best Street Foods in Bangkok",
-  "excerpt": "A quick guide to the food stalls, market stops, and late-night bites worth saving in Bangkok.",
-  "content": "<h2>Start in Yaowarat</h2><p>Bangkok's Chinatown is one of the best places to begin a street food crawl.</p><h2>What to order</h2><ul><li>Pad Thai</li><li>Mango sticky rice</li><li>Boat noodles</li></ul>",
-  "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&h=800&fit=crop",
+  "title": "Province of Naples Guide: Raw Italy, Real Experiences & Coastal Strategy (2026)",
+  "excerpt": "A deep, experience-first guide to Naples covering food, chaos, Pompeii, and Amalfi Coast strategy—without tourist fluff.",
+  "slug": "naples-travel-guide",
+  "primary_keyword": "naples travel guide",
+  "secondary_keywords": [
+    "things to do in naples italy",
+    "naples food guide",
+    "amalfi coast strategy",
+    "pompeii travel tips"
+  ],
+  "seo": {
+    "meta_title": "Naples Travel Guide 2026: Food, Pompeii & Amalfi Strategy",
+    "meta_description": "Explore Naples like a local—food, history, and Amalfi Coast strategy with practical insights and travel tips.",
+    "schema_type": "TravelGuide"
+  },
+  "content": "<h2>Reality Check: Naples Is Not Built for Tourists</h2><p>Naples is often misunderstood. Travelers expecting a polished European city are usually caught off guard. Traffic is chaotic, streets are loud, and infrastructure feels unpredictable. But that chaos is not a flaw—it is the identity of the city.</p><p>Naples is not curated. It is lived in. And once you accept that, the experience becomes far more rewarding.</p><img src='https://images.unsplash.com/photo-1533105079780-92b9be482077?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Naples City: Energy Over Order</h2><p>The historic center is dense, vibrant, and intense. Narrow streets filled with scooters, street vendors, and local conversations create an environment that feels alive at all times.</p><p>This is not a place to follow strict itineraries. The best experiences often come from walking without direction and observing daily life.</p><h2>Food Strategy: Simplicity Wins</h2><p>Naples is the birthplace of pizza—but expecting variety is a mistake. The best places focus on a few simple ingredients: dough, tomato, mozzarella, and technique.</p><p>The difference lies in execution, not innovation.</p><img src='https://images.unsplash.com/photo-1548365328-9f547fb0953d?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Pompeii: Context Changes Everything</h2><p>Walking through Pompeii without context reduces it to ruins. Understanding the daily life, structure, and sudden destruction transforms it into one of the most powerful historical experiences in Europe.</p><p>Allocate at least 3–4 hours. Rushing this site removes its impact.</p><h2>Amalfi Coast: Beauty vs Reality</h2><p>The Amalfi Coast is visually stunning—but logistically challenging. Narrow roads, heavy traffic, and crowded viewpoints can reduce the experience if not planned well.</p><ul><li>Start early (before 8 AM)</li><li>Avoid peak midday travel</li><li>Consider staying overnight instead of day trips</li></ul><img src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Common Mistakes</h2><ul><li>Expecting a clean, structured city</li><li>Overplanning Amalfi in one day</li><li>Ignoring local neighborhoods</li></ul><h2>Budget Breakdown</h2><ul><li>Budget: €60–€100</li><li>Mid-range: €120–€220</li><li>Premium: €250+</li></ul><h2>Final Insight</h2><p>Naples rewards those who embrace imperfection. The more you try to control the experience, the less you enjoy it.</p>",
+  "images": [
+    "https://images.unsplash.com/photo-1533105079780-92b9be482077",
+    "https://images.unsplash.com/photo-1548365328-9f547fb0953d",
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836"
+  ],
   "author": "GlobeGenie Team",
-  "author_avatar": "GG",
-  "category": "food",
+  "category": "travel",
   "type": "blog",
-  "published": true
+  "published": true,
+  "seo_cluster": {
+    "pillar": "Italy Travel Guide",
+    "cluster_topics": [
+      "naples itinerary",
+      "amalfi coast travel",
+      "italy food guide",
+      "pompeii history guide"
+    ]
+  },
+  "distribution_strategy": {
+    "channels": [
+      "SEO",
+      "Pinterest",
+      "YouTube Shorts",
+      "Reddit"
+    ],
+    "content_hooks": [
+      "Naples is not what you expect",
+      "Why tourists struggle in Naples",
+      "Real Amalfi Coast strategy"
+    ]
+  }
 }

@@ -1,11 +1,48 @@
 {
-  "title": "10 Best Street Foods in Bangkok",
-  "excerpt": "A quick guide to the food stalls, market stops, and late-night bites worth saving in Bangkok.",
-  "content": "<h2>Start in Yaowarat</h2><p>Bangkok's Chinatown is one of the best places to begin a street food crawl.</p><h2>What to order</h2><ul><li>Pad Thai</li><li>Mango sticky rice</li><li>Boat noodles</li></ul>",
-  "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&h=800&fit=crop",
+  "title": "Pasig City Walking Guide: How to Experience Local Culture & History (2026)",
+  "excerpt": "Explore Pasig City through a practical walking guide that reveals history, food, and everyday urban life beyond tourist routes.",
+  "slug": "pasig-city-walking-guide",
+  "primary_keyword": "pasig city walking guide",
+  "secondary_keywords": [
+    "things to do in pasig city",
+    "pasig travel guide",
+    "kapitolyo food guide",
+    "philippines local walking tour"
+  ],
+  "seo": {
+    "meta_title": "Pasig City Walking Guide 2026: Culture, Food & Local Life",
+    "meta_description": "Discover Pasig City through walking routes, food spots, and cultural insights with this practical travel guide.",
+    "schema_type": "TravelGuide"
+  },
+  "content": "<h2>Reality Check: Pasig Is Not a Tourist City—That’s Its Strength</h2><p>Pasig City rarely appears on international travel itineraries. Unlike major destinations, it does not offer iconic landmarks or curated attractions. At first glance, this can make it seem unremarkable.</p><p>But that assumption misses the point. Pasig is not designed for tourists—it is built for daily life. And that is exactly what makes it valuable for travelers seeking a more grounded, authentic experience.</p><img src='https://images.unsplash.com/photo-1505761671935-60b3a7427bad?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Understanding Pasig: Urban Flow Over Attractions</h2><p>Unlike cities where tourism is concentrated in specific zones, Pasig operates as a continuous urban environment. Culture is not packaged—it is distributed across streets, markets, and neighborhoods.</p><p>This means your experience depends less on where you go and more on how you move through the city.</p><h2>Kapitolyo District: Food as an Entry Point</h2><p>Kapitolyo has quietly developed into one of the most interesting food hubs in the area. Small restaurants, experimental kitchens, and local eateries coexist within a compact space.</p><p>The advantage here is density. You can explore multiple food experiences within walking distance, making it ideal for a walking-based itinerary.</p><img src='https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Pasig Cathedral: A Historical Anchor</h2><p>Amid the modern urban environment, Pasig Cathedral provides historical continuity. It represents the older layers of the city and offers a contrast to the surrounding development.</p><p>While not as grand as major tourist churches, its significance lies in its connection to local identity.</p><h2>Walking Strategy: How to Navigate Efficiently</h2><p>Walking in Pasig requires a different mindset compared to tourist cities. The goal is not to cover landmarks but to observe patterns—how people interact, where they gather, and how daily routines unfold.</p><ul><li>Start early (before heat and traffic peak)</li><li>Plan short walking loops instead of long routes</li><li>Use cafés or food stops as breaks</li></ul><p>This approach allows you to stay comfortable while still exploring meaningfully.</p><h2>Climate Reality: Heat and Humidity</h2><p>Pasig’s climate plays a major role in shaping your experience. High humidity and heat can quickly drain energy if not managed properly.</p><ul><li>Carry water at all times</li><li>Take indoor breaks regularly</li><li>Avoid walking during peak afternoon hours</li></ul><h2>What Most Travelers Get Wrong</h2><ul><li>Expecting traditional tourist attractions</li><li>Walking long distances without breaks</li><li>Ignoring local food culture</li></ul><p>Pasig is not about highlights—it is about immersion.</p><h2>Budget Breakdown</h2><ul><li>Budget: PHP 800–1500</li><li>Mid-range: PHP 2000–4000</li><li>Premium: PHP 5000+</li></ul><h2>Final Insight</h2><p>Pasig offers something many destinations cannot: an unfiltered view of urban life. If you approach it with the right expectations, it becomes one of the most authentic experiences in the region.</p>",
+  "images": [
+    "https://images.unsplash.com/photo-1505761671935-60b3a7427bad",
+    "https://images.unsplash.com/photo-1498654896293-37aacf113fd9"
+  ],
   "author": "GlobeGenie Team",
-  "author_avatar": "GG",
-  "category": "food",
+  "category": "travel",
   "type": "blog",
-  "published": true
+  "published": true,
+  "seo_cluster": {
+    "pillar": "Philippines Travel Guide",
+    "cluster_topics": [
+      "manila travel guide",
+      "philippines itinerary",
+      "local experiences philippines",
+      "food spots in manila"
+    ]
+  },
+  "distribution_strategy": {
+    "channels": [
+      "SEO",
+      "YouTube Shorts",
+      "Reddit",
+      "Google Discover"
+    ],
+    "content_hooks": [
+      "Why Pasig is not for tourists—and why that’s good",
+      "Hidden urban experiences in Manila",
+      "Walk through real local life in Philippines"
+    ]
+  }
 }

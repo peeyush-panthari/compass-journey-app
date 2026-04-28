@@ -116,15 +116,16 @@ async function main() {
     return;
   }
 
+  // Use upsert if slug is provided to avoid duplicate key errors
   const { data, error } = await supabase
     .from("explore_content")
-    .insert(payload)
+    .upsert(payload, { onConflict: "slug" })
     .select("id, title, published, created_at")
     .single();
 
   if (error) throw error;
 
-  console.log(JSON.stringify({ action: "created", blog: data }, null, 2));
+  console.log(JSON.stringify({ action: "pushed (upserted)", blog: data }, null, 2));
 }
 
 main().catch((error) => {

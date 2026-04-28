@@ -1,11 +1,48 @@
 {
-  "title": "10 Best Street Foods in Bangkok",
-  "excerpt": "A quick guide to the food stalls, market stops, and late-night bites worth saving in Bangkok.",
-  "content": "<h2>Start in Yaowarat</h2><p>Bangkok's Chinatown is one of the best places to begin a street food crawl.</p><h2>What to order</h2><ul><li>Pad Thai</li><li>Mango sticky rice</li><li>Boat noodles</li></ul>",
-  "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&h=800&fit=crop",
+  "title": "Best Places to Go for Dinner in Bali: Experience-First Dining Guide (2026)",
+  "excerpt": "Discover where to have dinner in Bali based on experience, setting, and timing—not just ratings or popularity.",
+  "slug": "bali-dinner-guide",
+  "primary_keyword": "best dinner places bali",
+  "secondary_keywords": [
+    "romantic dinner bali",
+    "bali sunset dinner spots",
+    "where to eat in bali",
+    "bali food experience guide"
+  ],
+  "seo": {
+    "meta_title": "Best Dinner Places in Bali: Sunset & Romantic Dining Guide (2026)",
+    "meta_description": "Explore Bali’s best dinner experiences—cliffside views, jungle dining, and sunset spots with practical tips.",
+    "schema_type": "TravelGuide"
+  },
+  "content": "<h2>Reality Check: Dining in Bali Is About Experience, Not Just Food</h2><p>Many travelers choose restaurants based on ratings or popularity. In Bali, that approach misses the bigger picture. The best dining experiences here are defined by setting, timing, and atmosphere—not just taste.</p><p>A simple meal can become memorable if paired with the right environment.</p><img src='https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Uluwatu: Cliffside Drama</h2><p>Uluwatu offers some of the most visually dramatic dining experiences in Bali. Restaurants perched on cliffs provide uninterrupted ocean views, especially during sunset.</p><p>The key here is timing. Arrive before sunset to secure the best seating.</p><h2>Seminyak: Balanced and Accessible</h2><p>Seminyak provides variety and accessibility. It’s ideal for travelers who want quality without traveling long distances. The atmosphere is lively but controlled.</p><h2>Ubud: Intimate and Calm</h2><p>Dining in Ubud focuses more on tranquility. Jungle surroundings, softer lighting, and quieter environments create a completely different experience compared to coastal areas.</p><img src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Timing Strategy</h2><ul><li>Sunset slots (5:30–6:30 PM) are premium</li><li>Late dinners (after 8 PM) are quieter</li><li>Avoid peak tourist hours</li></ul><h2>Common Mistakes</h2><ul><li>Choosing based only on ratings</li><li>Ignoring location logistics</li><li>Not booking in advance for sunset</li></ul><h2>Budget Breakdown</h2><ul><li>Budget: IDR 100k–200k</li><li>Mid-range: IDR 250k–600k</li><li>Premium: IDR 700k+</li></ul><h2>Final Insight</h2><p>The best dinner in Bali is not necessarily the most expensive or the most popular. It’s the one that aligns with the moment—location, time, and mood.</p>",
+  "images": [
+    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836"
+  ],
   "author": "GlobeGenie Team",
-  "author_avatar": "GG",
   "category": "food",
   "type": "blog",
-  "published": true
+  "published": true,
+  "seo_cluster": {
+    "pillar": "Bali Travel Guide",
+    "cluster_topics": [
+      "bali food guide",
+      "things to do in bali",
+      "ubud vs seminyak",
+      "bali itinerary"
+    ]
+  },
+  "distribution_strategy": {
+    "channels": [
+      "SEO",
+      "Instagram",
+      "Pinterest",
+      "YouTube Shorts"
+    ],
+    "content_hooks": [
+      "Most people pick the wrong restaurants in Bali",
+      "Best sunset dinners in Bali",
+      "Bali dining mistakes to avoid"
+    ]
+  }
 }
