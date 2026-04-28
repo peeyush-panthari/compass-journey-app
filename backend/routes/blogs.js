@@ -117,7 +117,7 @@ router.get('/', async (req, res) => {
 
         let query = supabase
             .from('explore_content')
-            .select('id, title, excerpt, image, author, author_avatar, category, type, likes, views, created_at, slug', { count: 'exact' })
+            .select('id, title, excerpt, image, author, author_avatar, category, type, likes, views, created_at, slug, images', { count: 'exact' })
             .eq('published', true)
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);

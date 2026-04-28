@@ -120,9 +120,9 @@ const Explore = () => {
                 />
 
                 <div className="relative h-48 overflow-hidden bg-muted">
-                  {blog.image ? (
+                  {(blog.image || (blog.images && blog.images[0])) ? (
                     <img
-                      src={blog.image}
+                      src={blog.image || blog.images[0]}
                       alt={blog.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />

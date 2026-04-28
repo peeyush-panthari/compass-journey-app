@@ -13,45 +13,34 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { tripCardCoverUrl } from "@/lib/tripCover";
 import { Loader2 } from "lucide-react";
+import { fetchPublishedBlogs, type BlogSummary } from "@/lib/blogs";
 
-interface ExploreBlog {
-  id: string;
-  title: string;
-  excerpt: string;
-  image: string;
-  author: string;
-  authorAvatar: string;
-  likes: number;
-  views: number;
-  url: string;
-  category: "destination" | "food" | "video";
-  type: "blog" | "video";
-}
-
-const exploreBlogs: ExploreBlog[] = [
-  { id: "e1", title: "Labuan Bajo 3-Day Itinerary: See Komodo Dragons & Pink Beach", excerpt: "Visited Labuan Bajo multiple times and sailed through Komodo National Park. Sharing the best 3-day itinerary covering all the must-see spots.", image: "https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=500&h=350&fit=crop", author: "Mikorev", authorAvatar: "M", likes: 12, views: 96, url: "#", category: "destination", type: "blog" },
-  { id: "e2", title: "Hidden Gems of Ubud: Beyond the Rice Terraces", excerpt: "Bali's Ubud has so much more than Tegallalang. Discover secret waterfalls, local art villages, and sunrise treks that most tourists miss.", image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=500&h=350&fit=crop", author: "Bali Expat", authorAvatar: "B", likes: 8, views: 81, url: "#", category: "destination", type: "blog" },
-  { id: "e3", title: "Pasig City Walking Guide: History & Culture", excerpt: "It's a series of stops that will make you experience Pasig at its core. You'll find the simplicity of life and rich heritage.", image: "https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=500&h=350&fit=crop", author: "Ken @ Medium", authorAvatar: "K", likes: 5, views: 76, url: "#", category: "destination", type: "blog" },
-  { id: "e4", title: "Best Street Food in Bangkok: A Local's Guide", excerpt: "From Pad Thai at Thip Samai to mango sticky rice at Mae Varee — a curated list of Bangkok's legendary street food vendors.", image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&h=350&fit=crop", author: "Thai Foodie", authorAvatar: "T", likes: 24, views: 312, url: "#", category: "food", type: "blog" },
-  { id: "e5", title: "Rome's Hidden Trattorias: Where Locals Actually Eat", excerpt: "Skip the tourist traps near the Colosseum. These family-run trattorias serve the best cacio e pepe and carbonara in the city.", image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=500&h=350&fit=crop", author: "Roma Eats", authorAvatar: "R", likes: 18, views: 204, url: "#", category: "food", type: "blog" },
-  { id: "e6", title: "Tokyo Ramen Map: 10 Shops You Can't Miss", excerpt: "From rich tonkotsu in Shinjuku to light shoyu in Asakusa — the definitive ramen guide for your Tokyo trip.", image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=500&h=350&fit=crop", author: "Noodle Hunter", authorAvatar: "N", likes: 31, views: 428, url: "#", category: "food", type: "blog" },
-  { id: "e7", title: "Santorini Sunset: 4K Travel Cinematic", excerpt: "Experience the magic of Santorini's iconic sunsets, blue domes, and winding streets in stunning 4K cinematic footage.", image: "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=500&h=350&fit=crop", author: "Travel Films", authorAvatar: "T", likes: 45, views: 1200, url: "#", category: "video", type: "video" },
-  { id: "e8", title: "48 Hours in Paris: A Visual Journey", excerpt: "From the Eiffel Tower at dawn to Montmartre at midnight — two days exploring the City of Light.", image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=500&h=350&fit=crop", author: "Wanderlust TV", authorAvatar: "W", likes: 38, views: 890, url: "#", category: "video", type: "video" },
-  { id: "e9", title: "Japanese Countryside by Train: Full Documentary", excerpt: "Take a scenic rail journey through Japan's countryside — from cherry blossom valleys to snow-capped mountains.", image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=500&h=350&fit=crop", author: "Rail Adventures", authorAvatar: "R", likes: 52, views: 1540, url: "#", category: "video", type: "video" },
-];
-
-const ExploreCard = ({ blog, index }: { blog: ExploreBlog; index: number }) => (
-  <motion.a
-    href={blog.url}
-    target="_blank"
-    rel="noopener noreferrer"
+const ExploreCard = ({ blog, index }: { blog: BlogSummary; index: number }) => (
+  <motion.div
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay: index * 0.05 }}
-    className="block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow group cursor-pointer"
+    className="group relative block bg-card rounded-xl border border-border shadow-card overflow-hidden hover:shadow-elevated transition-shadow cursor-pointer"
   >
-    <div className="relative h-44 overflow-hidden">
-      <img src={blog.image} alt={blog.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+    {/* Entire Card Link */}
+    <Link 
+      to={`/explore/${blog.slug || blog.id}`} 
+      className="absolute inset-0 z-10"
+      aria-label={`Read ${blog.title}`}
+    />
+
+    <div className="relative h-44 overflow-hidden bg-muted">
+      {(blog.image || (blog.images && blog.images[0])) ? (
+        <img 
+          src={blog.image || blog.images[0]} 
+          alt={blog.title} 
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+          Cover image coming soon
+        </div>
+      )}
       {blog.type === "video" && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-12 h-12 rounded-full bg-card/80 backdrop-blur flex items-center justify-center shadow-lg">
@@ -59,22 +48,25 @@ const ExploreCard = ({ blog, index }: { blog: ExploreBlog; index: number }) => (
           </div>
         </div>
       )}
-      <div className="absolute top-2 right-2 flex gap-1.5">
-        <button className="bg-card/80 backdrop-blur text-foreground text-xs font-medium px-3 py-1 rounded-full flex items-center gap-1 hover:bg-card transition-colors shadow-sm">
+      <div className="absolute top-2 right-2 z-20 flex gap-1.5">
+        <button className="bg-card/80 backdrop-blur text-foreground text-[10px] font-medium px-2 py-1 rounded-full flex items-center gap-1 hover:bg-card transition-colors shadow-sm">
           <Share className="w-3 h-3" /> Share
-        </button>
-        <button className="bg-card/80 backdrop-blur text-foreground w-7 h-7 rounded-full flex items-center justify-center hover:bg-card transition-colors shadow-sm">
-          <MoreHorizontal className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>
     <div className="p-4">
-      <h4 className="font-display font-bold text-foreground text-sm leading-tight mb-1.5 line-clamp-2">{blog.title}</h4>
-      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{blog.excerpt}</p>
+      <h4 className="font-display font-bold text-foreground text-sm leading-tight mb-1.5 line-clamp-2 transition-colors group-hover:text-primary">
+        {blog.title}
+      </h4>
+      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+        {blog.excerpt || "Open the article to read the full story."}
+      </p>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-ocean-gradient flex items-center justify-center text-primary-foreground text-[10px] font-bold">{blog.authorAvatar}</div>
-          <span className="text-xs font-medium text-foreground">{blog.author}</span>
+          <div className="w-6 h-6 rounded-full bg-ocean-gradient flex items-center justify-center text-primary-foreground text-[10px] font-bold">
+            {(blog.author_avatar || blog.author || "G").slice(0, 2).toUpperCase()}
+          </div>
+          <span className="text-xs font-medium text-foreground">{blog.author || "GlobeGenie Team"}</span>
         </div>
         <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-0.5"><Heart className="w-3 h-3" /> {blog.likes}</span>
@@ -82,7 +74,7 @@ const ExploreCard = ({ blog, index }: { blog: ExploreBlog; index: number }) => (
         </div>
       </div>
     </div>
-  </motion.a>
+  </motion.div>
 );
 
 const HorizontalScroller = ({ children }: { children: React.ReactNode }) => {
@@ -139,6 +131,8 @@ const Account = () => {
   const [trips, setTrips] = useState<any[]>([]);
   const [sharedTrips, setSharedTrips] = useState<any[]>([]);
   const [fetchingTrips, setFetchingTrips] = useState(false);
+  const [blogs, setBlogs] = useState<BlogSummary[]>([]);
+  const [loadingBlogs, setLoadingBlogs] = useState(false);
 
   const [destination, setDestination] = useState("");
   const [checkIn, setCheckIn] = useState<Date | undefined>(addDays(new Date(), 14));
@@ -220,6 +214,21 @@ const Account = () => {
 
     fetchTrips();
   }, [resolvedUserId, loading]); // Re-run only when the stable ID or loading state changes
+
+  useEffect(() => {
+    const loadBlogs = async () => {
+      setLoadingBlogs(true);
+      try {
+        const data = await fetchPublishedBlogs();
+        setBlogs(data);
+      } catch (err: any) {
+        console.error("[Account] Error fetching blogs:", err.message);
+      } finally {
+        setLoadingBlogs(false);
+      }
+    };
+    loadBlogs();
+  }, []);
 
   const handleDeleteTrip = async (e: React.MouseEvent, tripId: string) => {
     e.preventDefault();
@@ -426,9 +435,21 @@ const Account = () => {
         </div>
 
         <HorizontalScroller>
-          {exploreBlogs.map((blog, i) => (
-            <div key={blog.id} className="min-w-[260px] max-w-[280px] flex-shrink-0"><ExploreCard blog={blog} index={i} /></div>
-          ))}
+          {loadingBlogs ? (
+            <div className="flex items-center justify-center p-8 min-w-[300px]">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : blogs.length > 0 ? (
+            blogs.map((blog, i) => (
+              <div key={blog.id} className="min-w-[260px] max-w-[280px] flex-shrink-0">
+                <ExploreCard blog={blog} index={i} />
+              </div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center p-8 bg-muted/30 rounded-xl border-2 border-dashed border-border min-w-[260px]">
+              <p className="text-sm text-muted-foreground">No recommendations yet</p>
+            </div>
+          )}
         </HorizontalScroller>
 
       </div>
