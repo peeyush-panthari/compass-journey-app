@@ -110,9 +110,9 @@ const BlogPost = () => {
           </div>
         ) : blog ? (
           <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
-            {blog.image && (
+            {(blog.image || (blog.images && blog.images[0])) && (
               <div className="h-72 overflow-hidden bg-muted sm:h-96">
-                <img src={blog.image} alt={blog.title} className="h-full w-full object-cover" />
+                <img src={blog.image || blog.images[0]} alt={blog.title} className="h-full w-full object-cover" />
               </div>
             )}
 
