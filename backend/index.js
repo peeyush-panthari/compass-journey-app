@@ -53,7 +53,7 @@ app.post('/api/trips', async (req, res) => {
   try {
     const { data: trip, error } = await supabase.from('trips').insert({
       user_id: userId,
-      title: `Curated Voyage: ${destination}`,
+      title: destination,
       countries: Array.isArray(destination) ? destination : [destination],
       start_date: startDate ? new Date(startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       num_days: numDays,

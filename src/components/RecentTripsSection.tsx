@@ -203,7 +203,7 @@ const RecentTripsSection = ({ onTripsLoaded }: RecentTripsSectionProps) => {
 
                 {/* Trip info */}
                 <h3 className="font-display font-bold text-foreground text-sm mb-1.5 truncate">
-                  {trip.title || `Trip to ${destination}`}
+                  {(trip.title || `Trip to ${destination}`).replace(/^Curated Voyage:\s*/i, "")}
                 </h3>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <div className="w-5 h-5 rounded-full bg-ocean-gradient flex items-center justify-center text-primary-foreground font-bold text-[9px] shrink-0">

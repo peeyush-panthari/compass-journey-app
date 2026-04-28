@@ -139,7 +139,7 @@ serve(async (req) => {
 
     const { data: trip, error: tripErr } = await supabase.from('trips').insert({
       user_id: userId,
-      title: `Curated Voyage: ${destination || 'Untitled Journey'}`,
+      title: destination || 'Untitled Journey',
       countries: Array.isArray(destination) ? destination : [destination || 'Worldwide'],
       start_date: startObj.toISOString().split('T')[0],
       num_days: itinerary.length,

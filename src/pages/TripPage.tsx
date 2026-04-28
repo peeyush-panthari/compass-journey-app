@@ -239,24 +239,7 @@ const TripPage = () => {
     date: "",
   });
 
-  useEffect(() => {
-    const displayName =
-      user?.user_metadata?.full_name ||
-      user?.email?.split("@")[0]?.replace(/[._-]+/g, " ") ||
-      "You";
-
-    setTripmates((prev) => {
-      const ownerId = user?.id || "you";
-      const ownerName = `You (${displayName.replace(/\b\w/g, (c: string) => c.toUpperCase())})`;
-      if (prev.length > 0) {
-        return prev.map((mate, idx) => (idx === 0 ? { ...mate, id: ownerId, name: ownerName } : mate));
-      }
-      return [
-        { id: ownerId, name: ownerName },
-        { id: "anon-connect", name: "Anon Connect" },
-      ];
-    });
-  }, [user?.id, user?.email, user?.user_metadata?.full_name]);
+  // The previous hardcoded tripmates logic has been moved to fetchTrip
 
   useEffect(() => {
     setExpenseDraft((prev) => ({
@@ -401,6 +384,45 @@ const TripPage = () => {
           const { error: coverErr } = await supabase.from("trips").update({ cover_image: firstPhotoRaw }).eq("id", tripData.id);
           if (!coverErr) setTrip((prev: any) => (prev ? { ...prev, cover_image: firstPhotoRaw } : prev));
         }
+
+        // --- Fetch Tripmates ---
+        const { data: ownerProfile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", tripData.user_id)
+          .maybeSingle();
+
+        const ownerName = ownerProfile?.full_name || "Trip Owner";
+
+        const { data: collabData } = await supabase
+          .from("trip_collaborators")
+          .select("user_id, email")
+          .eq("trip_id", id)
+          .eq("accepted", true);
+
+        const fetchedTripmates = [
+          { id: tripData.user_id, name: ownerName },
+        ];
+
+        if (collabData) {
+          for (const collab of collabData) {
+            if (collab.user_id && collab.user_id !== tripData.user_id) {
+               fetchedTripmates.push({
+                 id: collab.user_id,
+                 name: collab.email?.split("@")[0] || "Collaborator"
+               });
+            }
+          }
+        }
+
+        const formattedTripmates = fetchedTripmates.map(mate => {
+           if (mate.id === user?.id) {
+              return { ...mate, name: `You (${mate.name})` };
+           }
+           return mate;
+        });
+
+        setTripmates(formattedTripmates);
 
         // --- Fetch Budget & Expenses ---
         const { data: budgetData, error: budgetErr } = await supabase.from("trip_budgets").select("*").eq("trip_id", id).maybeSingle();

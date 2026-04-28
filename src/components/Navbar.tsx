@@ -84,9 +84,18 @@ const Navbar = () => {
           )}
         </div>
 
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-foreground">
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          {user && (
+            <Link to="/my-trips">
+              <Button variant="outline" className="text-[10px] sm:text-xs font-semibold text-primary border-primary/40 hover:bg-primary/10 hover:border-primary hover:text-primary transition-all rounded-xl h-8 px-3">
+                My Trips
+              </Button>
+            </Link>
+          )}
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 text-foreground">
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
