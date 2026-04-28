@@ -75,94 +75,96 @@ async function main() {
   }
 
   const raw = fs.readFileSync(filePath, "utf8");
-  const input = JSON.parse(raw);
+  const data = JSON.parse(raw);
+  const blogs = Array.isArray(data) ? data : [data];
 
-  // 2. Handle structured content if the legacy "content" field is missing
-  let content = input.content;
-  if (!content) {
-    let constructedContent = "";
-    
-    if (input.introduction) {
-      constructedContent += input.introduction;
-    }
+  console.log(`Processing ${blogs.length} blog(s)...`);
 
-    if (Array.isArray(input.sections)) {
-      input.sections.forEach(section => {
-        if (section.heading) constructedContent += `<h2>${section.heading}</h2>`;
-        if (section.content) constructedContent += section.content;
-        if (section.image) constructedContent += `<img src="${section.image}?w=1200" style="width:100%;border-radius:12px;margin:20px 0;"/>`;
-      });
-    }
-
-    if (input.practical_info) {
-      constructedContent += "<h2>Practical Information</h2><ul>";
-      if (input.practical_info.budget) constructedContent += `<li><strong>Budget:</strong> ${input.practical_info.budget}</li>`;
-      if (input.practical_info.best_time) constructedContent += `<li><strong>Best Time:</strong> ${input.practical_info.best_time}</li>`;
-      if (input.practical_info.transport) constructedContent += `<li><strong>Transport:</strong> ${input.practical_info.transport}</li>`;
-      if (Array.isArray(input.practical_info.tips)) {
-        constructedContent += `<li><strong>Tips:</strong> ${input.practical_info.tips.join(", ")}</li>`;
+  for (const input of blogs) {
+    // 2. Handle structured content if the legacy "content" field is missing
+    let content = input.content;
+    if (!content) {
+      let constructedContent = "";
+      
+      if (input.introduction) {
+        constructedContent += input.introduction;
       }
-      constructedContent += "</ul>";
+
+      if (Array.isArray(input.sections)) {
+        input.sections.forEach(section => {
+          if (section.heading) constructedContent += `<h2>${section.heading}</h2>`;
+          if (section.content) constructedContent += section.content;
+          if (section.image) constructedContent += `<img src="${section.image}?w=1200" style="width:100%;border-radius:12px;margin:20px 0;"/>`;
+        });
+      }
+
+      if (input.practical_info) {
+        constructedContent += "<h2>Practical Information</h2><ul>";
+        if (input.practical_info.budget) constructedContent += `<li><strong>Budget:</strong> ${input.practical_info.budget}</li>`;
+        if (input.practical_info.best_time) constructedContent += `<li><strong>Best Time:</strong> ${input.practical_info.best_time}</li>`;
+        if (input.practical_info.transport) constructedContent += `<li><strong>Transport:</strong> ${input.practical_info.transport}</li>`;
+        if (Array.isArray(input.practical_info.tips)) {
+          constructedContent += `<li><strong>Tips:</strong> ${input.practical_info.tips.join(", ")}</li>`;
+        }
+        constructedContent += "</ul>";
+      }
+
+      if (Array.isArray(input.faqs)) {
+        constructedContent += "<h2>Frequently Asked Questions</h2>";
+        input.faqs.forEach(faq => {
+          constructedContent += `<p><strong>Q: ${faq.question}</strong><br/>A: ${faq.answer}</p>`;
+        });
+      }
+
+      content = constructedContent;
     }
 
-    if (Array.isArray(input.faqs)) {
-      constructedContent += "<h2>Frequently Asked Questions</h2>";
-      input.faqs.forEach(faq => {
-        constructedContent += `<p><strong>Q: ${faq.question}</strong><br/>A: ${faq.answer}</p>`;
-      });
+    // 3. Fallback for excerpt from introduction if missing
+    const excerpt = input.excerpt || (input.introduction ? sanitizeHtml(input.introduction, { allowedTags: [], allowedAttributes: {} }).slice(0, 160) + "..." : null);
+
+    const payload = {
+      title: String(input.title).trim(),
+      excerpt: excerpt,
+      content: sanitizeHtml(String(content), sanitizeConfig),
+      image: input.image || (Array.isArray(input.images) ? input.images[0] : null),
+      author: input.author ? String(input.author).trim() : "GlobeGenie Team",
+      author_avatar: input.author_avatar || null,
+      category: input.category || "travel",
+      type: input.type || "blog",
+      video_url: input.video_url || null,
+      published: input.published !== undefined ? Boolean(input.published) : true,
+      // Enhanced Schema Fields
+      slug: input.slug?.trim() || null,
+      primary_keyword: input.primary_keyword?.trim() || null,
+      secondary_keywords: Array.isArray(input.secondary_keywords) ? input.secondary_keywords : (input.seo?.keywords || []),
+      seo: input.seo || {},
+      images: Array.isArray(input.images) ? input.images : [],
+      seo_cluster: input.seo_cluster || {},
+      distribution_strategy: input.distribution_strategy || {},
+    };
+
+    if (input.id) {
+      const { data: updatedData, error: updateError } = await supabase
+        .from("explore_content")
+        .update(payload)
+        .eq("id", input.id)
+        .select("id, title, published, updated_at")
+        .single();
+
+      if (updateError) throw updateError;
+      console.log(JSON.stringify({ action: "updated", blog: updatedData }, null, 2));
+    } else {
+      // Use upsert if slug is provided to avoid duplicate key errors
+      const { data: upsertedData, error: upsertError } = await supabase
+        .from("explore_content")
+        .upsert(payload, { onConflict: "slug" })
+        .select("id, title, published, created_at")
+        .single();
+
+      if (upsertError) throw upsertError;
+      console.log(JSON.stringify({ action: "pushed (upserted)", blog: upsertedData }, null, 2));
     }
-
-    content = constructedContent;
   }
-
-  // 3. Fallback for excerpt from introduction if missing
-  const excerpt = input.excerpt || (input.introduction ? sanitizeHtml(input.introduction, { allowedTags: [], allowedAttributes: {} }).slice(0, 160) + "..." : null);
-
-  const payload = {
-    title: String(input.title).trim(),
-    excerpt: excerpt,
-    content: sanitizeHtml(String(content), sanitizeConfig),
-    image: input.image || (Array.isArray(input.images) ? input.images[0] : null),
-    author: input.author ? String(input.author).trim() : "GlobeGenie Team",
-    author_avatar: input.author_avatar || null,
-    category: input.category || "travel",
-    type: input.type || "blog",
-    video_url: input.video_url || null,
-    published: input.published !== undefined ? Boolean(input.published) : true,
-    // Enhanced Schema Fields
-    slug: input.slug?.trim() || null,
-    primary_keyword: input.primary_keyword?.trim() || null,
-    secondary_keywords: Array.isArray(input.secondary_keywords) ? input.secondary_keywords : (input.seo?.keywords || []),
-    seo: input.seo || {},
-    images: Array.isArray(input.images) ? input.images : [],
-    seo_cluster: input.seo_cluster || {},
-    distribution_strategy: input.distribution_strategy || {},
-  };
-
-  if (input.id) {
-    const { data, error } = await supabase
-      .from("explore_content")
-      .update(payload)
-      .eq("id", input.id)
-      .select("id, title, published, updated_at")
-      .single();
-
-    if (error) throw error;
-
-    console.log(JSON.stringify({ action: "updated", blog: data }, null, 2));
-    return;
-  }
-
-  // Use upsert if slug is provided to avoid duplicate key errors
-  const { data, error } = await supabase
-    .from("explore_content")
-    .upsert(payload, { onConflict: "slug" })
-    .select("id, title, published, created_at")
-    .single();
-
-  if (error) throw error;
-
-  console.log(JSON.stringify({ action: "pushed (upserted)", blog: data }, null, 2));
 }
 
 main().catch((error) => {

@@ -5,26 +5,18 @@
   "sections": [
     {
       "heading": "Hidden Nature Spots",
-      "content": "
-        <h3>Tibumana Waterfall</h3><p>Less crowded, serene waterfall.</p>
-        <h3>Tukad Cepung</h3><p>Unique cave waterfall with light beams.</p>
-        <h3>Campuhan Ridge Walk</h3><p>Peaceful morning walk.</p>
-      ","image": "https://images.unsplash.com/photo-1502082553048-f009c37129b9"
+      "content": "         <h3>Tibumana Waterfall</h3><p>Less crowded, serene waterfall.</p>         <h3>Tukad Cepung</h3><p>Unique cave waterfall with light beams.</p>         <h3>Campuhan Ridge Walk</h3><p>Peaceful morning walk.</p>       ",
+      "image": "https://images.unsplash.com/photo-1502082553048-f009c37129b9"
     },
     {
       "heading": "Unique Café Experiences",
-      "content": "
-        <h3>Zest Ubud</h3><p>Plant-based with jungle views.</p>
-        <h3>Lazy Cats Café</h3><p>Artistic vibe and relaxed atmosphere.</p>
-        <h3>KAFE</h3><p>Healthy meals popular with long-stay travelers.</p>
-      ","image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836"
+      "content": "         <h3>Zest Ubud</h3><p>Plant-based with jungle views.</p>         <h3>Lazy Cats Café</h3><p>Artistic vibe and relaxed atmosphere.</p>         <h3>KAFE</h3><p>Healthy meals popular with long-stay travelers.</p>       ",
+      "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836"
     },
     {
       "heading": "Cultural Experiences",
-      "content": "
-        <h3>Traditional Dance Performances</h3><p>Held in temples across Ubud.</p>
-        <h3>Local Markets</h3><p>Best early morning for authenticity.</p>
-      ","image": "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2"
+      "content": "         <h3>Traditional Dance Performances</h3><p>Held in temples across Ubud.</p>         <h3>Local Markets</h3><p>Best early morning for authenticity.</p>       ",
+      "image": "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2"
     }
   ],
   "practical_info": {
