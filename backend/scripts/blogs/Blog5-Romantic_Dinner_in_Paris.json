@@ -1,48 +1,45 @@
 {
-  "title": "Romantic Dinner in Paris: What Actually Makes It Special (2026 Guide)",
-  "excerpt": "Plan a truly romantic dinner in Paris with the right locations, timing, atmosphere, and local insights—not tourist clichés.",
+  "title": "Romantic Dinner in Paris: Best Restaurants & Areas (2026)",
   "slug": "romantic-dinner-paris",
-  "primary_keyword": "romantic dinner paris",
-  "secondary_keywords": [
-    "best romantic restaurants paris",
-    "paris date night guide",
-    "where to eat in paris couples",
-    "paris dinner experience tips"
+  "introduction": "<p>Paris can be romantic—but only if you choose the right place. This guide helps you avoid tourist traps and find real experiences.</p>",
+  "sections": [
+    {
+      "heading": "Best Areas",
+      "content": "<h3>Saint-Germain</h3><p>Classic Parisian vibe.</p><h3>Montmartre</h3><p>Intimate and artistic.</p>",
+      "image": "https://images.unsplash.com/photo-1502602898657-3e91760cbb34"
+    },
+    {
+      "heading": "Top Restaurants",
+      "content": "<h3>Le Coupe Chou</h3><p>Candlelit atmosphere.</p><h3>Les Ombres</h3><p>Eiffel Tower views.</p>",
+      "image": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0"
+    }
   ],
-  "seo": {
-    "meta_title": "Romantic Dinner in Paris: Best Areas & Tips (2026)",
-    "meta_description": "Discover how to plan the perfect romantic dinner in Paris with expert tips on timing, location, and ambiance.",
-    "schema_type": "TravelGuide"
+  "practical_info": {
+    "budget": "€80–€300",
+    "best_time": "8–10 PM",
+    "transport": "Metro",
+    "tips": [
+      "Book ahead"
+    ]
   },
-  "content": "<h2>Reality Check: Paris Is Not Automatically Romantic</h2><p>Paris has a global reputation for romance, but that reputation can be misleading. Not every restaurant offers a magical experience. In fact, many highly rated places feel crowded, rushed, and transactional—far from romantic.</p><p>Romance in Paris is not guaranteed by location. It is created by choosing the right environment, timing, and pace.</p><img src='https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>What Actually Makes a Dinner Romantic</h2><p>Three factors matter more than anything else:</p><ul><li><strong>Lighting:</strong> Soft, warm lighting creates intimacy</li><li><strong>Spacing:</strong> Tables too close reduce privacy</li><li><strong>Pacing:</strong> Slow service enhances experience</li></ul><p>Most tourists focus only on food quality, but atmosphere defines memory.</p><h2>Seine-side Dining: Elevation Through Setting</h2><p>Restaurants near the Seine benefit from natural ambiance. Views of the river, bridges, and city lights elevate even a simple meal into something memorable.</p><p>However, not all riverfront restaurants are equal. Some prioritize turnover over experience. Look for quieter sections slightly away from major landmarks.</p><h2>Montmartre: Intimacy Over Grandeur</h2><p>Montmartre offers a completely different experience. Smaller streets, local cafés, and reduced tourist density create a more personal atmosphere.</p><p>This is where dinners feel less staged and more genuine.</p><img src='https://images.unsplash.com/photo-1522092787780-1d3c0aeb4d54?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Timing Strategy: When You Go Matters More Than Where</h2><ul><li><strong>Before 7 PM:</strong> Too early, lacks atmosphere</li><li><strong>8–10 PM:</strong> Ideal window</li><li><strong>After 10 PM:</strong> Quieter, more intimate</li></ul><p>Late dinners align better with local culture and create a more relaxed experience.</p><h2>Common Mistakes</h2><ul><li>Choosing based only on ratings</li><li>Dining too early</li><li>Picking overly crowded tourist spots</li></ul><h2>Budget Breakdown (Per Couple)</h2><ul><li>Budget: €60–€100</li><li>Mid-range: €120–€250</li><li>Premium: €300+</li></ul><h2>Final Insight</h2><p>Romantic dinners in Paris are not about luxury—they are about alignment. The right combination of timing, environment, and pacing creates the experience people remember.</p>",
+  "seo": {
+    "meta_title": "Romantic Dinner Paris",
+    "meta_description": "Best romantic dining in Paris.",
+    "keywords": [
+      "paris romantic dinner"
+    ]
+  },
   "images": [
     "https://images.unsplash.com/photo-1502602898657-3e91760cbb34",
-    "https://images.unsplash.com/photo-1522092787780-1d3c0aeb4d54"
+    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0"
   ],
-  "author": "GlobeGenie Team",
-  "category": "food",
-  "type": "blog",
-  "published": true,
-  "seo_cluster": {
-    "pillar": "Paris Travel Guide",
-    "cluster_topics": [
-      "things to do in paris",
-      "paris itinerary",
-      "paris food guide",
-      "romantic places in paris"
-    ]
-  },
-  "distribution_strategy": {
-    "channels": [
-      "SEO",
-      "Pinterest",
-      "Instagram Reels",
-      "Google Discover"
-    ],
-    "content_hooks": [
-      "Paris is not automatically romantic",
-      "Most couples pick the wrong restaurants in Paris",
-      "How to plan the perfect Paris date night"
-    ]
-  }
+  "internal_links": [
+    "paris-travel-guide"
+  ],
+  "faqs": [
+    {
+      "question": "What time should I dine?",
+      "answer": "8 PM or later."
+    }
+  ]
 }

@@ -1,48 +1,71 @@
 {
-  "title": "Best Street Food in Bangkok: A Local’s Guide (2026 Deep Dive)",
-  "excerpt": "Explore Bangkok’s street food like a local with timing strategies, hidden spots, must-try dishes, and practical insights most tourists miss.",
+  "title": "Best Street Food in Bangkok: 10 Must-Try Dishes & Where to Eat Them (2026)",
   "slug": "bangkok-street-food-guide",
-  "primary_keyword": "bangkok street food guide",
-  "secondary_keywords": [
-    "best street food bangkok",
-    "what to eat in bangkok",
-    "bangkok food tips",
-    "thai street food local guide"
+  "introduction": "<p>Bangkok street food isn’t random—it’s hyper-specialized. Each vendor masters one dish over years. This guide shows you what to eat, where to eat it, and how to avoid tourist traps.</p>",
+  "sections": [
+    {
+      "heading": "10 Must-Try Street Foods in Bangkok",
+      "content": "
+        <h3>1. Boat Noodles (Victory Monument)</h3><p>Rich, dark broth served in small bowls.</p>
+        <h3>2. Moo Ping (Street grills across city)</h3><p>Grilled pork skewers—sweet and smoky.</p>
+        <h3>3. Som Tam (Chatuchak Market)</h3><p>Spicy papaya salad.</p>
+        <h3>4. Pad Kra Pao</h3><p>Thai basil stir-fry.</p>
+        <h3>5. Mango Sticky Rice (Mae Varee)</h3><p>Iconic dessert.</p>
+        <h3>6. Khao Moo Daeng</h3><p>BBQ pork rice.</p>
+        <h3>7. Khai Jeow</h3><p>Thai omelette.</p>
+        <h3>8. Kluay Tod</h3><p>Fried bananas.</p>
+        <h3>9. Tom Yum Soup</h3><p>Spicy-sour soup.</p>
+        <h3>10. Satay</h3><p>Grilled skewers with peanut sauce.</p>
+      ","image": "https://images.unsplash.com/photo-1559847844-5315695dadae"
+    },
+    {
+      "heading": "Best Areas for Street Food",
+      "content": "
+        <h3>Yaowarat (Chinatown)</h3><p>Best for night food variety.</p>
+        <h3>Ari</h3><p>Local vibe with fewer tourists.</p>
+        <h3>Victory Monument</h3><p>Famous for boat noodles.</p>
+      ","image": "https://images.unsplash.com/photo-1529042410759-befb1204b468"
+    },
+    {
+      "heading": "How to Eat Like a Local",
+      "content": "<p>Follow crowds, choose busy stalls, and don’t overthink hygiene—high turnover means fresh food.</p>",
+      "image": "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d"
+    }
   ],
-  "seo": {
-    "meta_title": "Bangkok Street Food Guide: What & Where to Eat (2026)",
-    "meta_description": "Complete Bangkok street food guide with local tips, timing strategies, best dishes, and hidden food streets.",
-    "schema_type": "TravelGuide"
+  "practical_info": {
+    "budget": "THB 50–300 per meal",
+    "best_time": "Evening to late night",
+    "transport": "BTS + walking",
+    "tips": [
+      "Carry cash",
+      "Avoid empty stalls",
+      "Eat fresh"
+    ]
   },
-  "content": "<h2>Reality Check: Bangkok Street Food Is Not What You Think</h2><p>Most travelers approach Bangkok street food like a checklist: try Pad Thai, eat mango sticky rice, visit Chinatown, and move on. That approach misses the point entirely. Street food in Bangkok is not a tourist attraction—it’s a living system that feeds millions of people daily.</p><p>The real difference lies in specialization. Vendors don’t try to do everything. They master one dish and repeat it thousands of times. That consistency is what creates quality.</p><img src='https://images.unsplash.com/photo-1559847844-5315695dadae?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Understanding the System: Timing Is Everything</h2><p>Street food in Bangkok operates in shifts. Morning vendors serve soups and rice dishes. Afternoon stalls focus on lighter snacks. Night markets explode with variety.</p><p>If you visit at the wrong time, you’ll assume a place is empty or closed. In reality, you’re just out of sync with the city’s rhythm.</p><h2>What to Eat (Beyond Tourist Favorites)</h2><p><strong>Boat Noodles:</strong> Rich broth, small portions, intense flavor.</p><p><strong>Moo Ping:</strong> Grilled pork skewers that balance sweetness and smokiness.</p><p><strong>Som Tam:</strong> A perfect mix of spicy, sour, and crunchy textures.</p><img src='https://images.unsplash.com/photo-1529042410759-befb1204b468?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Where to Eat Without Overcrowding Yourself</h2><p>Yaowarat (Chinatown) is famous—but also chaotic. A better strategy is to explore smaller streets slightly outside major tourist zones. These areas often deliver better consistency and lower wait times.</p><h2>Hygiene Reality</h2><p>Contrary to common belief, busy stalls are safer. High turnover ensures fresh ingredients. Empty stalls are a bigger risk than crowded ones.</p><h2>Common Mistakes</h2><ul><li>Eating only in tourist zones</li><li>Ignoring timing patterns</li><li>Sticking to familiar dishes</li></ul><h2>Budget</h2><ul><li>Budget: THB 200–400</li><li>Mid-range: THB 500–1000</li><li>Premium: THB 1500+</li></ul><h2>Final Insight</h2><p>Bangkok street food is not about finding the best stall—it’s about understanding how the system works and aligning yourself with it.</p>",
+  "seo": {
+    "meta_title": "Best Street Food in Bangkok",
+    "meta_description": "Explore 10 must-try street foods in Bangkok with locations.",
+    "keywords": [
+      "bangkok street food",
+      "what to eat in bangkok"
+    ]
+  },
   "images": [
     "https://images.unsplash.com/photo-1559847844-5315695dadae",
-    "https://images.unsplash.com/photo-1529042410759-befb1204b468"
+    "https://images.unsplash.com/photo-1529042410759-befb1204b468",
+    "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d"
   ],
-  "author": "GlobeGenie Team",
-  "category": "food",
-  "type": "blog",
-  "published": true,
-  "seo_cluster": {
-    "pillar": "Thailand Travel Guide",
-    "cluster_topics": [
-      "things to do in bangkok",
-      "bangkok itinerary",
-      "thai food guide",
-      "bangkok night markets"
-    ]
-  },
-  "distribution_strategy": {
-    "channels": [
-      "SEO",
-      "Pinterest",
-      "Reddit",
-      "Instagram Reels"
-    ],
-    "content_hooks": [
-      "Most tourists eat the wrong food in Bangkok",
-      "Bangkok street food mistakes",
-      "Eat like a local in Thailand"
-    ]
-  }
+  "internal_links": [
+    "thailand-travel-guide"
+  ],
+  "faqs": [
+    {
+      "question": "Is street food safe in Bangkok?",
+      "answer": "Yes—busy stalls usually indicate fresh food."
+    },
+    {
+      "question": "What is the best time for street food?",
+      "answer": "Evening and night markets offer the best variety."
+    }
+  ]
 }

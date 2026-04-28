@@ -1,44 +1,59 @@
 {
-  "title": "Athens in 4 Days: A Practical, Experience-First Travel Plan (2026)",
-  "excerpt": "A realistic 4-day Athens itinerary that balances history, neighborhoods, food, and travel pacing.",
+  "title": "Athens in 4 Days: Practical Itinerary with Food & Local Insights (2026)",
   "slug": "athens-4-day-itinerary",
-  "primary_keyword": "athens 4 day itinerary",
-  "secondary_keywords": [
-    "things to do in athens",
-    "athens travel plan",
-    "athens guide 2026"
+  "introduction": "<p>Athens is more than ancient ruins. This 4-day itinerary balances history, neighborhoods, and local experiences for a complete trip.</p>",
+  "sections": [
+    {
+      "heading": "Day 1: Acropolis & History",
+      "content": "<p>Start early and explore Acropolis, Parthenon, and the Acropolis Museum. Walk through Plaka in the evening.</p>",
+      "image": "https://images.unsplash.com/photo-1504608524841-42fe6f032b4b"
+    },
+    {
+      "heading": "Day 2: Neighborhood Exploration",
+      "content": "<h3>Plaka</h3><p>Charming streets.</p><h3>Monastiraki</h3><p>Markets and local vibe.</p><h3>Psiri</h3><p>Food and nightlife.</p>",
+      "image": "https://images.unsplash.com/photo-1555992336-03a23c4a5c2e"
+    },
+    {
+      "heading": "Day 3: Museums & Culture",
+      "content": "<p>Visit National Archaeological Museum and Benaki Museum.</p>",
+      "image": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2"
+    },
+    {
+      "heading": "Day 4: Relax & Views",
+      "content": "<p>Visit Lycabettus Hill and enjoy café culture.</p>",
+      "image": "https://images.unsplash.com/photo-1603565816030-6b389eeb23cb"
+    }
   ],
+  "practical_info": {
+    "budget": "€70–€200/day",
+    "best_time": "April–June, September–October",
+    "transport": "Walk + Metro",
+    "tips": [
+      "Avoid midday heat",
+      "Start early"
+    ]
+  },
   "seo": {
-    "meta_title": "Athens in 4 Days: Complete Itinerary (2026 Guide)",
-    "meta_description": "Plan your Athens trip with this 4-day itinerary covering history, neighborhoods, food, and travel strategies.",
-    "schema_type": "TravelGuide"
+    "meta_title": "Athens 4 Day Itinerary",
+    "meta_description": "Plan your Athens trip with this practical 4-day itinerary.",
+    "keywords": [
+      "athens itinerary",
+      "things to do in athens"
+    ]
   },
-  "content": "<h2>Reality Check: Athens Is Not Just About Ruins</h2><p>Most travelers reduce Athens to the Acropolis. While it is iconic, focusing only on landmarks results in a shallow experience. Athens is a city best understood through its neighborhoods, pacing, and atmosphere.</p><img src='https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/><h2>Day 1: Acropolis and Historical Core</h2><p>Start early. By mid-day, crowds and heat make exploration difficult. Visiting early allows you to experience the site with clarity and space.</p><h2>Day 2: Neighborhood Exploration</h2><p>Plaka and Monastiraki offer a mix of history and daily life. Walking without a fixed plan often leads to better discoveries.</p><h2>Day 3: Cultural Depth</h2><p>Museums provide context to everything you’ve seen. Without this, ruins remain just structures.</p><h2>Day 4: Slow Exploration</h2><p>This is where Athens becomes memorable. Cafés, viewpoints, and relaxed exploration create a lasting impression.</p><h2>Heat Strategy</h2><p>Athens heat is not trivial. Plan outdoor activities early morning or evening.</p><h2>Common Mistakes</h2><ul><li>Overpacking itinerary</li><li>Ignoring neighborhoods</li><li>Traveling mid-day</li></ul><h2>Budget</h2><ul><li>Budget: €50–€90</li><li>Mid-range: €100–€200</li><li>Premium: €250+</li></ul><h2>Final Insight</h2><p>Athens is not a city you rush through. It rewards slow, intentional exploration.</p>",
   "images": [
-    "https://images.unsplash.com/photo-1504608524841-42fe6f032b4b"
+    "https://images.unsplash.com/photo-1504608524841-42fe6f032b4b",
+    "https://images.unsplash.com/photo-1555992336-03a23c4a5c2e",
+    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2",
+    "https://images.unsplash.com/photo-1603565816030-6b389eeb23cb"
   ],
-  "author": "GlobeGenie Team",
-  "category": "itinerary",
-  "type": "blog",
-  "published": true,
-  "seo_cluster": {
-    "pillar": "Greece Travel Guide",
-    "cluster_topics": [
-      "athens travel guide",
-      "greece itinerary",
-      "things to do in greece"
-    ]
-  },
-  "distribution_strategy": {
-    "channels": [
-      "SEO",
-      "Pinterest",
-      "Google Discover"
-    ],
-    "content_hooks": [
-      "Most people plan Athens wrong",
-      "4 days in Athens done right",
-      "Athens mistakes to avoid"
-    ]
-  }
+  "internal_links": [
+    "greece-travel-guide"
+  ],
+  "faqs": [
+    {
+      "question": "Is 4 days enough?",
+      "answer": "Yes, it covers major highlights comfortably."
+    }
+  ]
 }
