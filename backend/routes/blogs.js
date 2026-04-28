@@ -117,7 +117,7 @@ router.get('/', async (req, res) => {
 
         let query = supabase
             .from('explore_content')
-            .select('id, title, excerpt, image, author, author_avatar, category, type, likes, views, created_at', { count: 'exact' })
+            .select('id, title, excerpt, image, author, author_avatar, category, type, likes, views, created_at, slug', { count: 'exact' })
             .eq('published', true)
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
@@ -195,7 +195,9 @@ router.get('/:slugOrId', async (req, res) => {
         }
 
         // Increment view count (fire-and-forget)
-        supabase.rpc('increment_blog_views', { blog_id: data.id }).catch(() => { });
+        supabase.rpc('increment_blog_views', { blog_id: data.id }).then(({ error }) => {
+            if (error) console.error('[BLOG] View increment failed:', error.message);
+        });
 
         res.json(data);
     } catch (err) {
