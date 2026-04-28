@@ -78,8 +78,8 @@ export async function fetchPublishedBlogs(category?: string) {
   return payload.blogs as BlogSummary[];
 }
 
-export async function fetchBlogById(id: string) {
-  const response = await fetch(`${getBackendUrl()}/api/blogs/${id}`);
+export async function fetchBlogBySlugOrId(slugOrId: string) {
+  const response = await fetch(`${getBackendUrl()}/api/blogs/${slugOrId}`);
   if (!response.ok) {
     throw new Error(response.status === 404 ? "Blog not found" : "Unable to load blog");
   }

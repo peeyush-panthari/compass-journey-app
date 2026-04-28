@@ -5,10 +5,10 @@ import { ArrowLeft, Eye, Heart, Share2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { fetchBlogById, toggleBlogLike, type BlogPost as BlogPostType } from "@/lib/blogs";
+import { fetchBlogBySlugOrId, toggleBlogLike, type BlogPost as BlogPostType } from "@/lib/blogs";
 
 const BlogPost = () => {
-  const { id } = useParams();
+  const { slugOrId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [blog, setBlog] = useState<BlogPostType | null>(null);
@@ -16,12 +16,12 @@ const BlogPost = () => {
   const [liking, setLiking] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!slugOrId) return;
 
     const loadBlog = async () => {
       setLoading(true);
       try {
-        const data = await fetchBlogById(id);
+        const data = await fetchBlogBySlugOrId(slugOrId);
         setBlog(data);
       } catch (error: any) {
         toast({
@@ -36,7 +36,7 @@ const BlogPost = () => {
     };
 
     loadBlog();
-  }, [id, navigate, toast]);
+  }, [slugOrId, navigate, toast]);
 
   const publishedDate = useMemo(() => {
     if (!blog?.created_at) return null;
@@ -48,11 +48,11 @@ const BlogPost = () => {
   }, [blog?.created_at]);
 
   const handleLike = async () => {
-    if (!blog || !id || liking) return;
+    if (!blog || liking) return;
 
     setLiking(true);
     try {
-      const result = await toggleBlogLike(id);
+      const result = await toggleBlogLike(blog.id);
       setBlog((current) =>
         current
           ? {

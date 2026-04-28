@@ -9,6 +9,7 @@ import { fetchPublishedBlogs, type BlogSummary } from "@/lib/blogs";
 
 const categories = [
   { key: "all", label: "All" },
+  { key: "travel", label: "Travel Guides" },
   { key: "destination", label: "Popular Destinations" },
   { key: "food", label: "Food & Restaurants" },
   { key: "video", label: "Travel Videos" },
@@ -109,41 +110,51 @@ const Explore = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.04 }}
-                className="overflow-hidden rounded-xl border border-border bg-card shadow-card transition-shadow hover:shadow-elevated"
+                className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-card transition-shadow hover:shadow-elevated"
               >
-                <Link to={`/explore/${blog.id}`} className="group block">
-                  <div className="relative h-48 overflow-hidden bg-muted">
-                    {blog.image ? (
-                      <img
-                        src={blog.image}
-                        alt={blog.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-muted text-sm text-muted-foreground">
-                        Cover image coming soon
-                      </div>
-                    )}
-                    <span className="absolute bottom-2 left-2 rounded-full bg-card/85 px-2 py-0.5 text-[10px] font-medium capitalize text-foreground backdrop-blur">
-                      {blog.category === "food"
-                        ? "Food & Dining"
-                        : blog.category === "video"
-                          ? "Video"
+                {/* Entire Card Link */}
+                <Link 
+                  to={`/explore/${blog.slug || blog.id}`} 
+                  className="absolute inset-0 z-10"
+                  aria-label={`Read ${blog.title}`}
+                />
+
+                <div className="relative h-48 overflow-hidden bg-muted">
+                  {blog.image ? (
+                    <img
+                      src={blog.image}
+                      alt={blog.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-muted text-sm text-muted-foreground">
+                      Cover image coming soon
+                    </div>
+                  )}
+                  <span className="absolute bottom-2 left-2 z-20 rounded-full bg-card/85 px-2 py-0.5 text-[10px] font-medium capitalize text-foreground backdrop-blur">
+                    {blog.category === "food"
+                      ? "Food & Dining"
+                      : blog.category === "video"
+                        ? "Video"
+                        : blog.category === "travel"
+                          ? "Travel Guide"
                           : "Destination"}
-                    </span>
-                  </div>
-                </Link>
+                  </span>
+                </div>
+
                 <div className="p-4">
                   <div className="mb-1 flex items-start justify-between gap-3">
-                    <Link to={`/explore/${blog.id}`} className="min-w-0">
-                      <h2 className="line-clamp-2 font-display text-sm font-bold leading-tight text-foreground">
-                        {blog.title}
-                      </h2>
-                    </Link>
+                    <h2 className="line-clamp-2 font-display text-sm font-bold leading-tight text-foreground transition-colors group-hover:text-primary">
+                      {blog.title}
+                    </h2>
                     <button
                       type="button"
-                      onClick={() => shareBlog(blog)}
-                      className="rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:text-foreground"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        shareBlog(blog);
+                      }}
+                      className="relative z-30 rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                       aria-label={`Share ${blog.title}`}
                     >
                       <Share2 className="h-3.5 w-3.5" />

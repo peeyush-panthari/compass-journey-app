@@ -172,24 +172,30 @@ router.get('/admin/all', requireAuth, requireAdmin, async (req, res) => {
     }
 });
 
-// GET /api/blogs/:id — Get single blog (increments view count)
-router.get('/:id', async (req, res) => {
+// GET /api/blogs/:slugOrId — Get single blog (increments view count)
+router.get('/:slugOrId', async (req, res) => {
     try {
-        const { id } = req.params;
+        const { slugOrId } = req.params;
 
-        const { data, error } = await supabase
-            .from('explore_content')
-            .select('*')
-            .eq('id', id)
-            .eq('published', true)
-            .single();
+        // Determine if slugOrId is a UUID or a slug
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
+
+        let query = supabase.from('explore_content').select('*').eq('published', true);
+
+        if (isUuid) {
+            query = query.eq('id', slugOrId);
+        } else {
+            query = query.eq('slug', slugOrId);
+        }
+
+        const { data, error } = await query.single();
 
         if (error || !data) {
             return res.status(404).json({ error: 'Blog not found' });
         }
 
         // Increment view count (fire-and-forget)
-        supabase.rpc('increment_blog_views', { blog_id: id }).catch(() => { });
+        supabase.rpc('increment_blog_views', { blog_id: data.id }).catch(() => { });
 
         res.json(data);
     } catch (err) {

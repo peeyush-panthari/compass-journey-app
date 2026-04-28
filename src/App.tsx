@@ -72,7 +72,7 @@ const AppContent = () => {
         <Route path="/hotels" element={<Hotels />} />
         <Route path="/hotels/:id" element={<HotelDetail />} />
         <Route path="/explore" element={<ProtectedRoute><Explore /></ProtectedRoute>} />
-        <Route path="/explore/:id" element={<ProtectedRoute><BlogPost /></ProtectedRoute>} />
+        <Route path="/explore/:slugOrId" element={<ProtectedRoute><BlogPost /></ProtectedRoute>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/invite" element={<Invite />} />
         <Route path="/invite/accept" element={<AcceptInvite />} />
