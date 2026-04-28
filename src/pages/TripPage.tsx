@@ -193,6 +193,7 @@ const TripPage = () => {
   // Data States
   const [trip, setTrip] = useState<any>(null);
   const [itinerary, setItinerary] = useState<Day[]>([]);
+  const [relevantBlogs, setRelevantBlogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // UI States (From Original Design)
@@ -446,6 +447,22 @@ const TripPage = () => {
           })));
         }
 
+
+        // --- Fetch Relevant Blogs ---
+        const allCities = transformedDays.map(d => d.city).filter(c => c && c !== "City");
+        const allCountries = transformedDays.map(d => d.country).filter(c => c && c !== "Country");
+        const searchTerms = Array.from(new Set([...allCities, ...allCountries]));
+
+        if (searchTerms.length > 0) {
+          const { data: blogsData } = await supabase
+            .from("explore_content")
+            .select("title, excerpt, image, slug")
+            .or(searchTerms.map(term => `title.ilike.%${term}%,secondary_keywords.cs.{"${term}"}`).join(','))
+            .eq("published", true)
+            .limit(10);
+          
+          setRelevantBlogs(blogsData || []);
+        }
 
         // --- STEP: Trigger Background Enrichment (Mainstream Logic) ---
         const needsEnrichment = transformedDays.some(day =>
@@ -1175,13 +1192,23 @@ const TripPage = () => {
             <section id="section-explore" className="mb-8 scroll-mt-20">
               <h2 className="text-xl font-display font-bold mb-4">Explore</h2>
               <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-                {exploreCards.map((card, i) => (
-                  <div key={i} className="min-w-[220px] bg-card rounded-xl border p-3">
-                    <img src={card.image} className="h-32 w-full object-cover rounded-lg mb-2" />
-                    <h4 className="text-sm font-bold truncate">{card.title}</h4>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{card.description}</p>
-                  </div>
-                ))}
+                {relevantBlogs.length > 0 ? (
+                  relevantBlogs.map((blog, i) => (
+                    <Link key={i} to={`/explore/${blog.slug}`} className="min-w-[280px] bg-card rounded-xl border p-3 hover:shadow-md transition-shadow">
+                      <img src={blog.image} className="h-40 w-full object-cover rounded-lg mb-2" alt={blog.title} />
+                      <h4 className="text-sm font-bold line-clamp-1">{blog.title}</h4>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{blog.excerpt}</p>
+                    </Link>
+                  ))
+                ) : (
+                  exploreCards.map((card, i) => (
+                    <div key={i} className="min-w-[220px] bg-card rounded-xl border p-3">
+                      <img src={card.image} className="h-32 w-full object-cover rounded-lg mb-2" alt={card.title} />
+                      <h4 className="text-sm font-bold truncate">{card.title}</h4>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{card.description}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </section>
 
