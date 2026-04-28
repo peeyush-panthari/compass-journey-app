@@ -544,6 +544,14 @@ const TripPage = () => {
         throw new Error(data.error);
       }
 
+      if (data?.alreadyAccepted) {
+        toast({
+          title: "Already a tripmate",
+          description: "Person is already invited to Trip",
+        });
+        return true;
+      }
+
       console.log('✅ Invite successful:', data);
 
       setTripmates((prev) => {

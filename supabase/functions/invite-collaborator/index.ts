@@ -85,6 +85,30 @@ serve(async (req) => {
     let collaboratorUserId: string | null = null
 
     if (normalizedEmail) {
+      // Check if already invited and accepted
+      const { data: existingAccepted } = await supabase
+        .from('trip_collaborators')
+        .select('id, accepted')
+        .eq('trip_id', tripId)
+        .ilike('email', normalizedEmail)
+        .eq('accepted', true)
+        .maybeSingle()
+
+      if (existingAccepted) {
+        console.log(`[GLOBEGENIE_LOG] [${requestId}] User ${normalizedEmail} is already an accepted collaborator for trip ${tripId}`);
+        return new Response(JSON.stringify({
+          success: true,
+          alreadyAccepted: true,
+          collaborator: {
+            email: normalizedEmail,
+            accepted: true,
+          },
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      }
+
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id, full_name, email')
@@ -94,6 +118,31 @@ serve(async (req) => {
       collaboratorUserId = existingProfile?.id || null
 
       if (collaboratorUserId) {
+        // Double check by userId if profile was found
+        const { data: acceptedById } = await supabase
+          .from('trip_collaborators')
+          .select('id')
+          .eq('trip_id', tripId)
+          .eq('user_id', collaboratorUserId)
+          .eq('accepted', true)
+          .maybeSingle()
+
+        if (acceptedById) {
+          console.log(`[GLOBEGENIE_LOG] [${requestId}] User ID ${collaboratorUserId} is already an accepted collaborator for trip ${tripId}`);
+          return new Response(JSON.stringify({
+            success: true,
+            alreadyAccepted: true,
+            collaborator: {
+              email: normalizedEmail,
+              userId: collaboratorUserId,
+              accepted: true,
+            },
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          })
+        }
+
         const redirectTo = `${appUrl}/invite?trip_id=${encodeURIComponent(tripId)}&mode=signin`
         const { error: otpErr } = await supabase.auth.signInWithOtp({
           email: normalizedEmail,
