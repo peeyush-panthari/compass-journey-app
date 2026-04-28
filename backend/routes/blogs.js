@@ -242,10 +242,17 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
             image,       // URL (or uploaded separately via /upload)
             author,
             author_avatar,
-            category,    // destination | food | video
+            category,    // destination | food | video | travel
             type,        // blog | video
             video_url,
             published,
+            slug,
+            primary_keyword,
+            secondary_keywords,
+            seo,
+            images,
+            seo_cluster,
+            distribution_strategy,
         } = req.body;
 
         // Validate required fields
@@ -255,8 +262,8 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
         if (!content?.trim()) {
             return res.status(400).json({ error: 'Content is required' });
         }
-        if (!['destination', 'food', 'video'].includes(category)) {
-            return res.status(400).json({ error: 'Category must be destination, food, or video' });
+        if (!['destination', 'food', 'video', 'travel'].includes(category)) {
+            return res.status(400).json({ error: 'Category must be destination, food, video, or travel' });
         }
 
         // Sanitize HTML content to prevent XSS
@@ -277,6 +284,13 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
                 published: published === true,
                 likes: 0,
                 views: 0,
+                slug: slug?.trim() || null,
+                primary_keyword: primary_keyword?.trim() || null,
+                secondary_keywords: Array.isArray(secondary_keywords) ? secondary_keywords : [],
+                seo: seo || {},
+                images: Array.isArray(images) ? images : [],
+                seo_cluster: seo_cluster || {},
+                distribution_strategy: distribution_strategy || {},
             })
             .select()
             .single();
@@ -297,6 +311,8 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
             title, excerpt, content, image,
             author, author_avatar, category,
             type, video_url, published,
+            slug, primary_keyword, secondary_keywords,
+            seo, images, seo_cluster, distribution_strategy,
         } = req.body;
 
         // Build update object with only provided fields
@@ -311,6 +327,13 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
         if (type !== undefined) updates.type = type;
         if (video_url !== undefined) updates.video_url = video_url;
         if (published !== undefined) updates.published = published;
+        if (slug !== undefined) updates.slug = slug?.trim() || null;
+        if (primary_keyword !== undefined) updates.primary_keyword = primary_keyword?.trim() || null;
+        if (secondary_keywords !== undefined) updates.secondary_keywords = Array.isArray(secondary_keywords) ? secondary_keywords : [];
+        if (seo !== undefined) updates.seo = seo || {};
+        if (images !== undefined) updates.images = Array.isArray(images) ? images : [];
+        if (seo_cluster !== undefined) updates.seo_cluster = seo_cluster || {};
+        if (distribution_strategy !== undefined) updates.distribution_strategy = distribution_strategy || {};
 
         if (Object.keys(updates).length === 0) {
             return res.status(400).json({ error: 'No fields to update' });

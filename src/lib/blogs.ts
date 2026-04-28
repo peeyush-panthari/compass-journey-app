@@ -1,7 +1,7 @@
 import { getBackendUrl } from "@/lib/backendUrl";
 import { supabase } from "@/lib/supabaseClient";
 
-export type BlogCategory = "destination" | "food" | "video";
+export type BlogCategory = "destination" | "food" | "video" | "travel";
 export type BlogType = "blog" | "video";
 
 export interface BlogSummary {
@@ -16,6 +16,10 @@ export interface BlogSummary {
   likes: number;
   views: number;
   created_at: string;
+  slug: string | null;
+  primary_keyword: string | null;
+  secondary_keywords: string[];
+  images: string[];
 }
 
 export interface BlogPost extends BlogSummary {
@@ -23,6 +27,19 @@ export interface BlogPost extends BlogSummary {
   video_url: string | null;
   published: boolean;
   updated_at?: string | null;
+  seo: {
+    meta_title?: string;
+    meta_description?: string;
+    schema_type?: string;
+  };
+  seo_cluster: {
+    pillar?: string;
+    cluster_topics?: string[];
+  };
+  distribution_strategy: {
+    channels?: string[];
+    content_hooks?: string[];
+  };
 }
 
 export interface BlogPayload {
@@ -36,6 +53,13 @@ export interface BlogPayload {
   type?: BlogType;
   video_url?: string;
   published?: boolean;
+  slug?: string;
+  primary_keyword?: string;
+  secondary_keywords?: string[];
+  seo?: BlogPost["seo"];
+  images?: string[];
+  seo_cluster?: BlogPost["seo_cluster"];
+  distribution_strategy?: BlogPost["distribution_strategy"];
 }
 
 export async function fetchPublishedBlogs(category?: string) {

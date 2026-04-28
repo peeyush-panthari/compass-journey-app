@@ -63,9 +63,15 @@ async function main() {
     process.exit(1);
   }
 
-  const filePath = path.resolve(process.cwd(), fileArg);
+  // 1. Resolve file path: check direct path first, then check inside scripts/blogs/
+  let filePath = path.resolve(process.cwd(), fileArg);
   if (!fs.existsSync(filePath)) {
-    throw new Error(`Blog file not found: ${filePath}`);
+    const fallbackPath = path.resolve(__dirname, "blogs", fileArg);
+    if (fs.existsSync(fallbackPath)) {
+      filePath = fallbackPath;
+    } else {
+      throw new Error(`Blog file not found at ${filePath} or ${fallbackPath}`);
+    }
   }
 
   const raw = fs.readFileSync(filePath, "utf8");
@@ -86,6 +92,14 @@ async function main() {
     type: input.type || "blog",
     video_url: input.video_url || null,
     published: Boolean(input.published),
+    // Enhanced Schema Fields
+    slug: input.slug?.trim() || null,
+    primary_keyword: input.primary_keyword?.trim() || null,
+    secondary_keywords: Array.isArray(input.secondary_keywords) ? input.secondary_keywords : [],
+    seo: input.seo || {},
+    images: Array.isArray(input.images) ? input.images : [],
+    seo_cluster: input.seo_cluster || {},
+    distribution_strategy: input.distribution_strategy || {},
   };
 
   if (input.id) {

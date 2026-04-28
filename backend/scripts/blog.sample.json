@@ -1,11 +1,50 @@
 {
-  "title": "10 Best Street Foods in Bangkok",
-  "excerpt": "A quick guide to the food stalls, market stops, and late-night bites worth saving in Bangkok.",
-  "content": "<h2>Start in Yaowarat</h2><p>Bangkok's Chinatown is one of the best places to begin a street food crawl.</p><h2>What to order</h2><ul><li>Pad Thai</li><li>Mango sticky rice</li><li>Boat noodles</li></ul>",
-  "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&h=800&fit=crop",
+  "title": "Hidden Gems of Ubud: Beyond the Rice Terraces (2026 Insider Guide)",
+  "excerpt": "Go beyond the crowded rice terraces and discover Ubud’s hidden waterfalls, temples, jungle trails, and authentic experiences with a practical, strategy-driven travel guide.",
+  "slug": "hidden-gems-ubud",
+  "primary_keyword": "hidden gems ubud",
+  "secondary_keywords": [
+    "offbeat places in ubud",
+    "secret spots ubud bali",
+    "ubud travel guide 2026",
+    "things to do in ubud beyond rice terraces"
+  ],
+  "seo": {
+    "meta_title": "Hidden Gems of Ubud: Secret Places Beyond Rice Terraces (2026)",
+    "meta_description": "Discover hidden gems of Ubud including waterfalls, temples, and jungle trails. Complete insider travel guide with timing, budget, and local strategies.",
+    "schema_type": "TravelGuide"
+  },
+  "content": "<h2>Reality Check: The Ubud You Expect vs The Ubud That Exists</h2>\n<p>Ubud is often imagined as a peaceful jungle escape filled with rice terraces, yoga retreats, and quiet cafés. That version does exist—but only in fragments. The reality is that central Ubud has become crowded, traffic-heavy, and highly commercialized. If you follow standard itineraries, you’ll likely spend more time in traffic and queues than actually experiencing the place.</p>\n<p>But here’s the important part: Ubud hasn’t lost its charm. It has simply shifted. The real experience now lives slightly beyond the obvious. Hidden waterfalls, lesser-known temples, and quiet jungle paths still exist—you just have to be intentional about finding them.</p>\n<img src='https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/>\n<h2>Tibumana Waterfall: Silence Over Spectacle</h2>\n<p>Tibumana is the kind of place that reminds you what Bali used to feel like before mass tourism. Unlike multi-tier waterfalls that attract large crowds, this is a single-drop cascade tucked inside dense greenery. The path leading to it is calm, scenic, and immersive.</p>\n<p>What makes Tibumana special is not its size—it’s the atmosphere. The sound of water, filtered sunlight, and relatively low footfall create a sense of calm that’s increasingly rare in Ubud.</p>\n<p><strong>Strategy:</strong> Visit before 9 AM or after 4 PM. Midday brings tour groups.</p>\n<img src='https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/>\n<h2>Gunung Kawi: Effort Filters the Crowd</h2>\n<p>Gunung Kawi is one of the most culturally significant yet underrated sites in Bali. Ancient shrines carved directly into cliffs overlook a river valley, creating a setting that feels both historical and cinematic.</p>\n<p>The reason it remains peaceful is simple: access requires effort. You need to walk down several hundred steps. That barrier filters out casual visitors, leaving behind a more intentional crowd.</p>\n<p>This is where Ubud starts to feel less like a destination and more like a discovery.</p>\n<h2>Campuhan Ridge Walk: Why Timing Beats Location</h2>\n<p>Campuhan Ridge Walk is often recommended as a sunset spot—but that’s exactly when it’s most crowded. The real experience happens at sunrise. The air is cooler, the lighting is softer, and the path feels almost empty.</p>\n<p>This is a recurring theme in Ubud: the same place can feel completely different depending on when you visit.</p>\n<img src='https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/>\n<h2>How to Explore Ubud Efficiently (Critical for Experience Quality)</h2>\n<p>Ubud is not difficult to navigate—but it’s easy to waste time. Poor planning leads to long travel times between nearby places due to traffic patterns and road layouts.</p>\n<ul>\n<li>Group locations geographically</li>\n<li>Start early (6–7 AM)</li>\n<li>Avoid central Ubud mid-day</li>\n<li>Use a scooter or hire a local driver</li>\n</ul>\n<p>Efficiency is not just about saving time—it directly improves the quality of your experience.</p>\n<h2>Best Time to Visit Ubud</h2>\n<p>Timing has a bigger impact than most travelers expect.</p>\n<ul>\n<li><strong>April–June:</strong> Best balance of weather and crowd levels</li>\n<li><strong>September–October:</strong> Fewer tourists, slightly humid</li>\n<li><strong>July–August:</strong> Peak season, vibrant but crowded</li>\n</ul>\n<h2>Food Strategy: How to Actually Find Good Food</h2>\n<p>Instead of relying on ratings, observe patterns. Busy local eateries with high turnover usually offer fresher and better food than highly curated Instagram cafés.</p>\n<p>The difference is subtle but important: one optimizes for taste, the other for presentation.</p>\n<img src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200' style='width:100%;border-radius:12px;margin:20px 0;'/>\n<h2>Common Mistakes That Reduce Experience Quality</h2>\n<ul>\n<li>Following viral itineraries blindly</li>\n<li>Starting the day late</li>\n<li>Trying to cover too many locations</li>\n<li>Ignoring lesser-known spots</li>\n</ul>\n<p>Ubud rewards depth, not speed.</p>\n<h2>Budget Breakdown (Per Day)</h2>\n<ul>\n<li>Budget: IDR 300k–600k</li>\n<li>Mid-range: IDR 700k–1.5M</li>\n<li>Premium: IDR 2M+</li>\n</ul>\n<h2>Final Insight</h2>\n<p>The biggest shift you can make is mental. Stop chasing what’s popular and start looking for what feels real. That’s where Ubud still delivers its magic.</p>",
+  "images": [
+    "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
+    "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2",
+    "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836"
+  ],
   "author": "GlobeGenie Team",
-  "author_avatar": "GG",
-  "category": "food",
+  "category": "travel",
   "type": "blog",
-  "published": true
+  "published": true,
+  "seo_cluster": {
+    "pillar": "Bali Travel Guide",
+    "cluster_topics": [
+      "best things to do in Bali",
+      "Ubud itinerary",
+      "Bali waterfalls guide",
+      "Bali budget travel"
+    ]
+  },
+  "distribution_strategy": {
+    "channels": [
+      "SEO (Google)",
+      "Pinterest (travel visuals)",
+      "Reddit (r/travel, r/solotravel)",
+      "Medium republishing"
+    ],
+    "content_hooks": [
+      "Most people miss this side of Ubud",
+      "Avoid these common Ubud mistakes",
+      "Hidden places in Bali you won’t find on Instagram"
+    ]
+  }
 }
