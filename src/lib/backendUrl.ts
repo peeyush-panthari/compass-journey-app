@@ -7,15 +7,23 @@ const DEFAULT_BACKEND_PORT = 10000;
  * Override with `VITE_BACKEND_URL` for production or custom setups.
  */
 export function getBackendUrl(): string {
+  return getBackendUrlCandidates()[0];
+}
+
+export function getBackendUrlCandidates(): string[] {
+  const candidates = new Set<string>();
   const fromEnv = import.meta.env.VITE_BACKEND_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv) candidates.add(fromEnv.replace(/\/$/, ""));
 
   if (typeof window !== "undefined") {
     const { protocol, hostname } = window.location;
-    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-      return `${protocol}//${hostname}:${DEFAULT_BACKEND_PORT}`;
+    if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1") {
+      candidates.add(`${protocol}//${hostname}:${DEFAULT_BACKEND_PORT}`);
     }
   }
 
-  return `http://localhost:${DEFAULT_BACKEND_PORT}`;
+  candidates.add(`http://localhost:${DEFAULT_BACKEND_PORT}`);
+  candidates.add(`http://127.0.0.1:${DEFAULT_BACKEND_PORT}`);
+
+  return [...candidates];
 }

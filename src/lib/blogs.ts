@@ -62,6 +62,15 @@ export interface BlogPayload {
   distribution_strategy?: BlogPost["distribution_strategy"];
 }
 
+export function getBlogImageCandidates(blog: Pick<BlogSummary, "image" | "images" | "title">) {
+  return Array.from(
+    new Set([
+      blog.image,
+      ...(Array.isArray(blog.images) ? blog.images : []),
+    ].filter((src): src is string => Boolean(src)))
+  );
+}
+
 export async function fetchPublishedBlogs(category?: string) {
   const params = new URLSearchParams();
   params.set("limit", "30");

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import { countryCityData } from "@/data/destinations";
 import { useAuth } from "@/contexts/AuthContext";
-import { getBackendUrl } from "@/lib/backendUrl";
+import { getBackendUrlCandidates } from "@/lib/backendUrl";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -168,19 +168,43 @@ const PlanTrip = () => {
         userId: user.id
       };
 
+      const fetchWithFallbacks = async (path: string, init: RequestInit) => {
+        try {
+          const relativeRes = await fetch(path, init);
+          return relativeRes;
+        } catch {
+          // fall through to absolute backend candidates
+        }
+
+        const urls = getBackendUrlCandidates();
+        let lastErr: unknown = null;
+        for (const baseUrl of urls) {
+          try {
+            const response = await fetch(`${baseUrl}${path}`, init);
+            return response;
+          } catch (err) {
+            lastErr = err;
+          }
+        }
+        throw lastErr instanceof Error ? lastErr : new Error("Failed to reach backend");
+      };
+
       // 1. Create Trip Shell (Instant)
-      const BACKEND_URL = getBackendUrl();
-      const createRes = await fetch(`${BACKEND_URL}/api/trips`, {
+      const createRes = await fetchWithFallbacks("/api/trips", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(tripRequest)
       });
+      if (!createRes.ok) {
+        const err = await createRes.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to create trip");
+      }
       const trip = await createRes.json();
       if (!trip.id) throw new Error("Failed to create trip ID");
 
       // 2. Start AI Curation (High-Stability window)
       console.log(`[GENIE] Initiating AI Curation for identity: ${trip.id}`);
-      const genRes = await fetch(`${BACKEND_URL}/api/trips/${trip.id}/generate`, {
+      const genRes = await fetchWithFallbacks(`/api/trips/${trip.id}/generate`, {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' }
       });

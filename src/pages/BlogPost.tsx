@@ -5,7 +5,7 @@ import { ArrowLeft, Eye, Heart, Share2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { fetchBlogBySlugOrId, toggleBlogLike, type BlogPost as BlogPostType } from "@/lib/blogs";
+import { fetchBlogBySlugOrId, getBlogImageCandidates, toggleBlogLike, type BlogPost as BlogPostType } from "@/lib/blogs";
 
 const BlogPost = () => {
   const { slugOrId } = useParams();
@@ -88,6 +88,20 @@ const BlogPost = () => {
     }
   };
 
+  const handleBlogImageError = (event: { currentTarget: HTMLImageElement }) => {
+    const img = event.currentTarget;
+    const fallbacks = JSON.parse(img.dataset.fallbacks || "[]") as string[];
+    const currentIndex = Number(img.dataset.fallbackIndex || "0");
+    const nextSrc = fallbacks[currentIndex + 1];
+    if (nextSrc) {
+      img.dataset.fallbackIndex = String(currentIndex + 1);
+      img.src = nextSrc;
+      return;
+    }
+    img.removeAttribute("src");
+    img.classList.add("bg-muted");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -112,7 +126,14 @@ const BlogPost = () => {
           <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-card">
             {(blog.image || (blog.images && blog.images[0])) && (
               <div className="h-72 overflow-hidden bg-muted sm:h-96">
-                <img src={blog.image || blog.images[0]} alt={blog.title} className="h-full w-full object-cover" />
+                <img
+                  src={getBlogImageCandidates(blog)[0]}
+                  alt={blog.title}
+                  className="h-full w-full object-cover"
+                  data-fallbacks={JSON.stringify(getBlogImageCandidates(blog))}
+                  data-fallback-index="0"
+                  onError={handleBlogImageError}
+                />
               </div>
             )}
 

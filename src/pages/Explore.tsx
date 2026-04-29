@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 import Navbar from "@/components/Navbar";
 import { useToast } from "@/hooks/use-toast";
-import { fetchPublishedBlogs, type BlogSummary } from "@/lib/blogs";
+import { fetchPublishedBlogs, getBlogImageCandidates, type BlogSummary } from "@/lib/blogs";
 
 const categories = [
   { key: "all", label: "All" },
@@ -59,6 +59,20 @@ const Explore = () => {
     } catch {
       // share cancelled
     }
+  };
+
+  const handleBlogImageError = (event: { currentTarget: HTMLImageElement }) => {
+    const img = event.currentTarget;
+    const fallbacks = JSON.parse(img.dataset.fallbacks || "[]") as string[];
+    const currentIndex = Number(img.dataset.fallbackIndex || "0");
+    const nextSrc = fallbacks[currentIndex + 1];
+    if (nextSrc) {
+      img.dataset.fallbackIndex = String(currentIndex + 1);
+      img.src = nextSrc;
+      return;
+    }
+    img.removeAttribute("src");
+    img.classList.add("bg-muted");
   };
 
   return (
@@ -121,11 +135,19 @@ const Explore = () => {
 
                 <div className="relative h-48 shrink-0 overflow-hidden bg-muted">
                   {(blog.image || (blog.images && blog.images[0])) ? (
-                    <img
-                      src={blog.image || blog.images[0]}
+                    (() => {
+                      const fallbacks = getBlogImageCandidates(blog);
+                      return (
+                      <img
+                      src={fallbacks[0]}
                       alt={blog.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      data-fallbacks={JSON.stringify(fallbacks)}
+                      data-fallback-index="0"
+                      onError={handleBlogImageError}
                     />
+                      );
+                    })()
                   ) : (
                     <div className="flex h-full items-center justify-center bg-muted text-sm text-muted-foreground">
                       Cover image coming soon

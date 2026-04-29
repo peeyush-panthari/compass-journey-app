@@ -28,6 +28,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { resolveActivityPhotoUrl } from "@/lib/activityPhoto";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
+import { getBlogImageCandidates } from "@/lib/blogs";
 
 type Activity = ActivityDetail;
 interface Day {
@@ -480,6 +481,20 @@ const TripPage = () => {
       default:
         return [fields.category_name, fields.location, fields.date, fields.time].filter(Boolean).join(" • ");
     }
+  };
+
+  const handleBlogImageError = (event: { currentTarget: HTMLImageElement }) => {
+    const img = event.currentTarget;
+    const fallbacks = JSON.parse(img.dataset.fallbacks || "[]") as string[];
+    const currentIndex = Number(img.dataset.fallbackIndex || "0");
+    const nextSrc = fallbacks[currentIndex + 1];
+    if (nextSrc) {
+      img.dataset.fallbackIndex = String(currentIndex + 1);
+      img.src = nextSrc;
+      return;
+    }
+    img.removeAttribute("src");
+    img.classList.add("bg-muted");
   };
 
   // Fetch Live Data
@@ -1112,8 +1127,7 @@ const TripPage = () => {
               { key: "overview" as const, label: "Overview" },
               { key: "itinerary" as const, label: "Itinerary" },
               { key: "explore" as const, label: "Explore" },
-              { key: "budget" as const, label: "$" },
-              { key: "journal" as const, label: "Journal" },
+              { key: "budget" as const, label: "Budget" },
             ]).map(tab => (
               <button
                 key={tab.key}
@@ -1144,6 +1158,43 @@ const TripPage = () => {
                     </button>
                   ))}
                 </div>
+                {reservations.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {reservations.map((reservation) => (
+                      <div key={reservation.id} className="rounded-2xl border border-border/60 bg-card px-3 py-2.5 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground shrink-0">
+                                {reservation.type}
+                              </p>
+                              <p className="text-sm font-semibold text-foreground truncate">{reservationSummary(reservation)}</p>
+                            </div>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {reservation.attachments.length > 0 ? `${reservation.attachments.length} attachment${reservation.attachments.length === 1 ? "" : "s"}` : "No attachments"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                              onClick={() => openReservationDialog(reservation.type, reservation)}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-full p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDeleteReservation(reservation.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <Collapsible defaultOpen>
                 <CollapsibleTrigger className="flex items-center gap-2 mb-2">
@@ -1244,51 +1295,130 @@ const TripPage = () => {
               })()}
             </div>
           )}
+          {mobileTab === "explore" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-display font-bold text-foreground mb-2">Explore</h2>
+                <p className="text-sm text-muted-foreground">
+                  Discover travel blogs, food guides, and local picks related to this trip.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+                {relevantBlogs.length > 0 ? (
+                  relevantBlogs.map((blog, index) => (
+                    <Link
+                      key={blog.id || blog.slug || index}
+                      to={`/explore/${blog.slug || blog.id}`}
+                      className="min-w-[250px] max-w-[250px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card shadow-card"
+                    >
+                      <div className="h-36 w-full overflow-hidden bg-muted">
+                        {blog.image || (blog.images && blog.images[0]) ? (
+                          <img
+                            src={getBlogImageCandidates(blog)[0]}
+                            alt={blog.title}
+                            className="h-full w-full object-cover"
+                            data-fallbacks={JSON.stringify(getBlogImageCandidates(blog))}
+                            data-fallback-index="0"
+                            onError={handleBlogImageError}
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                            Cover image coming soon
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          {blog.category === "food"
+                            ? "Food & Dining"
+                            : blog.category === "video"
+                              ? "Video"
+                              : blog.category === "travel"
+                                ? "Travel Guide"
+                                : "Destination"}
+                        </p>
+                        <h3 className="line-clamp-2 text-sm font-bold text-foreground">{blog.title}</h3>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {blog.excerpt || "Open the article to read the full story."}
+                        </p>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  exploreCards.map((card, index) => (
+                    <div
+                      key={card.title || index}
+                      className="min-w-[250px] max-w-[250px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card shadow-card"
+                    >
+                      <img src={card.image} alt={card.title} className="h-36 w-full object-cover" />
+                      <div className="p-3">
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                          {card.source}
+                        </p>
+                        <h3 className="line-clamp-2 text-sm font-bold text-foreground">{card.title}</h3>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{card.description}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
           {mobileTab === "budget" && (
             <div className="space-y-6">
-              {budget ? (
-                <div className="bg-card border border-border/60 rounded-3xl p-5 shadow-card">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h4 className="text-3xl font-display font-bold text-foreground">{formatMoney(totalSpent, budgetCurrency)}</h4>
-                      <p className="text-sm text-muted-foreground mt-2">Budget: {formatMoney(budget, budgetCurrency)}</p>
-                    </div>
-                    <div className="space-y-3 text-sm font-semibold text-muted-foreground">
-                      <button className="flex items-center gap-2" onClick={() => toast({ title: "Breakdown coming soon" })}>
-                        <BarChart3 className="w-4 h-4" /> View breakdown
-                      </button>
-                      <button className="flex items-center gap-2" onClick={() => setAddTripmateOpen(true)}>
-                        <UserPlus className="w-4 h-4" /> Add tripmate
-                      </button>
-                      <button className="flex items-center gap-2" onClick={() => setExpenseSettingsOpen(true)}>
-                        <Settings className="w-4 h-4" /> Settings
-                      </button>
-                    </div>
+              <div className="bg-card border border-border/60 rounded-3xl p-5 shadow-card">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h4 className="text-3xl font-display font-bold text-foreground">{formatMoney(totalSpent, budgetCurrency)}</h4>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Budget: {formatMoney(budget || 0, budgetCurrency)}
+                    </p>
                   </div>
-
-                  <div className="mt-4 h-2 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${budgetProgress}%` }} />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-5">
-                    <Button onClick={() => { setBudgetDraft(String(budget)); setSetBudgetOpen(true); }} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
-                      <Pencil className="w-4 h-4 mr-2" /> Edit budget
-                    </Button>
-                    <Button onClick={() => setGroupBalancesOpen(true)} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
-                      <ReceiptText className="w-4 h-4 mr-2" /> Group balances
-                    </Button>
+                  <div className="space-y-3 text-sm font-semibold text-muted-foreground">
+                    <button className="flex items-center gap-2" onClick={() => toast({ title: "Breakdown coming soon" })}>
+                      <BarChart3 className="w-4 h-4" /> View breakdown
+                    </button>
+                    <button className="flex items-center gap-2" onClick={() => setShareDialogOpen(true)}>
+                      <UserPlus className="w-4 h-4" /> Add tripmate
+                    </button>
+                    <button className="flex items-center gap-2" onClick={() => setExpenseSettingsOpen(true)}>
+                      <Settings className="w-4 h-4" /> Settings
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-card border border-border/60 rounded-2xl p-8 flex flex-col items-center justify-center text-center py-12">
-                  <Wallet className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
-                  <h4 className="font-display font-bold mb-1">Set a budget to start tracking</h4>
-                  <p className="text-muted-foreground text-xs max-w-[240px] mb-6">Once your budget is set, we’ll track expenses and balances against it here.</p>
-                  <Button size="sm" className="rounded-xl px-6" onClick={() => { setBudgetDraft(budget ? String(budget) : ""); setSetBudgetOpen(true); }}>
-                    <Pencil className="w-4 h-4 mr-1" /> Set Budget
-                  </Button>
-                </div>
-              )}
+
+                {budget ? (
+                  <>
+                    <div className="mt-4 h-2 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${budgetProgress}%` }} />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mt-5">
+                      <Button onClick={() => { setBudgetDraft(String(budget)); setSetBudgetOpen(true); }} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
+                        <Pencil className="w-4 h-4 mr-2" /> Edit budget
+                      </Button>
+                      <Button onClick={() => setGroupBalancesOpen(true)} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
+                        <ReceiptText className="w-4 h-4 mr-2" /> Group balances
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <Button onClick={() => { setBudgetDraft(""); setSetBudgetOpen(true); }} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
+                        <Pencil className="w-4 h-4 mr-2" /> Set budget
+                      </Button>
+                      <Button onClick={() => setGroupBalancesOpen(true)} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
+                        <ReceiptText className="w-4 h-4 mr-2" /> Group balances
+                      </Button>
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Once a budget is set, we’ll track expenses and balances against it here.
+                    </p>
+                  </>
+                )}
+              </div>
 
               <div className="bg-card border border-border/60 rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -1452,7 +1582,14 @@ const TripPage = () => {
                 {relevantBlogs.length > 0 ? (
                   relevantBlogs.map((blog, i) => (
                     <Link key={i} to={`/explore/${blog.slug}`} className="flex min-w-[260px] max-w-[260px] flex-col bg-card rounded-xl border p-3 hover:shadow-md transition-shadow">
-                      <img src={blog.image} className="h-40 shrink-0 w-full object-cover rounded-lg mb-3" alt={blog.title} />
+                      <img
+                        src={getBlogImageCandidates(blog)[0]}
+                        className="h-40 shrink-0 w-full object-cover rounded-lg mb-3"
+                        alt={blog.title}
+                        data-fallbacks={JSON.stringify(getBlogImageCandidates(blog))}
+                        data-fallback-index="0"
+                        onError={handleBlogImageError}
+                      />
                       <div className="flex flex-1 flex-col">
                         <h4 className="text-sm font-bold line-clamp-2 leading-tight mb-1">{blog.title}</h4>
                         <p className="text-[11px] text-muted-foreground line-clamp-2 flex-1">{blog.excerpt}</p>

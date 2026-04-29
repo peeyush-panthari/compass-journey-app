@@ -6,17 +6,17 @@
     {
       "heading": "Where to Explore in Naples",
       "content": "<h3>Centro Storico</h3><p>The heart of Naples—dense, chaotic, and full of life.</p><h3>Spaccanapoli</h3><p>The most iconic walking street cutting through the city.</p><h3>Vomero</h3><p>Offers cleaner streets and panoramic views.</p>",
-      "image": "https://images.unsplash.com/photo-1533681701019-5a1c9e9c69b4"
+      "image": "https://picsum.photos/seed/naples-centro/1200/800"
     },
     {
       "heading": "Food Guide: Best Pizza in Naples",
       "content": "<h3>L’Antica Pizzeria da Michele</h3><p>Simple, iconic pizza.</p><h3>Sorbillo</h3><p>Balanced experience with variety.</p><h3>Di Matteo</h3><p>Best for street-style bites.</p>",
-      "image": "https://images.unsplash.com/photo-1548365328-9f547fb0953d"
+      "image": "https://picsum.photos/seed/naples-pizza/1200/800"
     },
     {
       "heading": "Pompeii & Amalfi Strategy",
       "content": "<p>Spend at least 4 hours in Pompeii. Start Amalfi trips early morning or stay overnight to avoid traffic.</p>",
-      "image": "https://images.unsplash.com/photo-1567962911435-7cbd9b0b68c2"
+      "image": "https://picsum.photos/seed/naples-amalfi/1200/800"
     }
   ],
   "practical_info": {
@@ -38,9 +38,9 @@
     ]
   },
   "images": [
-    "https://images.unsplash.com/photo-1533681701019-5a1c9e9c69b4",
-    "https://images.unsplash.com/photo-1548365328-9f547fb0953d",
-    "https://images.unsplash.com/photo-1567962911435-7cbd9b0b68c2"
+    "https://picsum.photos/seed/naples-cover/1200/800",
+    "https://picsum.photos/seed/naples-cover-2/1200/800",
+    "https://picsum.photos/seed/naples-cover-3/1200/800"
   ],
   "internal_links": [
     "italy-travel-guide",

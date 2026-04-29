@@ -29,6 +29,7 @@ const Hotels = () => {
   const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "rating">("rating");
   const [dynamicHotels, setDynamicHotels] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     const fetchHotels = async () => {
@@ -149,6 +150,23 @@ const Hotels = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="sm:hidden rounded-lg px-3 py-2 text-xs">
+                  <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
+                  Filters
+                  {activeFilterCount > 0 && <Badge className="ml-2 h-5 px-1.5 text-[10px]">{activeFilterCount}</Badge>}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[78vh] rounded-t-3xl">
+                <SheetHeader className="mb-4">
+                  <SheetTitle className="text-left">Filters</SheetTitle>
+                </SheetHeader>
+                <div className="overflow-y-auto pr-1 pb-6">
+                  <FiltersContent />
+                </div>
+              </SheetContent>
+            </Sheet>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="text-xs border border-border rounded-lg px-3 py-2 bg-card text-foreground">
               <option value="rating">Top Rated</option>
               <option value="price-asc">Price: Low to High</option>

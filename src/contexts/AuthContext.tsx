@@ -81,8 +81,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         );
       }
 
-      // 4. Now mark loading false (after everything is stable)
-      setLoading(false);
+      // 4. If there is no session, we can finish immediately.
+      //    If there is a session, wait for profile sync below to finish before
+      //    clearing loading so protected routes don't briefly think the user is absent.
+      if (!initialSession) {
+        setLoading(false);
+      }
     };
 
     initAuth();
@@ -113,6 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const syncProfile = async () => {
+      setLoading(true);
       try {
         const { data: profile, error } = await supabase
           .from("profiles")
@@ -159,6 +164,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             session.user.user_metadata?.name ||
             "User",
         });
+      } finally {
+        setLoading(false);
       }
     };
 

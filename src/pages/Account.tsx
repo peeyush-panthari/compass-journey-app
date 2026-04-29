@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { tripCardCoverUrl } from "@/lib/tripCover";
 import { Loader2 } from "lucide-react";
-import { fetchPublishedBlogs, type BlogSummary } from "@/lib/blogs";
+import { fetchPublishedBlogs, getBlogImageCandidates, type BlogSummary } from "@/lib/blogs";
 
 const ExploreCard = ({ blog, index }: { blog: BlogSummary; index: number }) => (
   <motion.div
@@ -31,10 +31,25 @@ const ExploreCard = ({ blog, index }: { blog: BlogSummary; index: number }) => (
 
     <div className="relative h-44 overflow-hidden bg-muted">
       {(blog.image || (blog.images && blog.images[0])) ? (
-        <img 
-          src={blog.image || blog.images[0]} 
-          alt={blog.title} 
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+        <img
+          src={getBlogImageCandidates(blog)[0]}
+          alt={blog.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          data-fallbacks={JSON.stringify(getBlogImageCandidates(blog))}
+          data-fallback-index="0"
+          onError={(event) => {
+            const img = event.currentTarget;
+            const fallbacks = JSON.parse(img.dataset.fallbacks || "[]") as string[];
+            const currentIndex = Number(img.dataset.fallbackIndex || "0");
+            const nextSrc = fallbacks[currentIndex + 1];
+            if (nextSrc) {
+              img.dataset.fallbackIndex = String(currentIndex + 1);
+              img.src = nextSrc;
+            } else {
+              img.removeAttribute("src");
+              img.classList.add("bg-muted");
+            }
+          }}
         />
       ) : (
         <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
