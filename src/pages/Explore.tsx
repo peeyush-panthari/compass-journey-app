@@ -92,12 +92,12 @@ const Explore = () => {
         {loading ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
-                <div className="h-48 animate-pulse bg-muted" />
-                <div className="space-y-3 p-4">
+              <div key={index} className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card">
+                <div className="h-48 shrink-0 animate-pulse bg-muted" />
+                <div className="flex flex-1 flex-col space-y-3 p-4">
                   <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
                   <div className="h-3 w-full animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+                  <div className="flex-1 h-3 w-2/3 animate-pulse rounded bg-muted" />
                 </div>
               </div>
             ))}
@@ -110,7 +110,7 @@ const Explore = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.04 }}
-                className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-card transition-shadow hover:shadow-elevated"
+                className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card transition-shadow hover:shadow-elevated"
               >
                 {/* Entire Card Link */}
                 <Link 
@@ -119,7 +119,7 @@ const Explore = () => {
                   aria-label={`Read ${blog.title}`}
                 />
 
-                <div className="relative h-48 overflow-hidden bg-muted">
+                <div className="relative h-48 shrink-0 overflow-hidden bg-muted">
                   {(blog.image || (blog.images && blog.images[0])) ? (
                     <img
                       src={blog.image || blog.images[0]}
@@ -142,7 +142,7 @@ const Explore = () => {
                   </span>
                 </div>
 
-                <div className="p-4">
+                <div className="flex flex-1 flex-col p-4">
                   <div className="mb-1 flex items-start justify-between gap-3">
                     <h2 className="line-clamp-2 font-display text-sm font-bold leading-tight text-foreground transition-colors group-hover:text-primary">
                       {blog.title}
@@ -160,7 +160,7 @@ const Explore = () => {
                       <Share2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">
+                  <p className="mb-3 line-clamp-2 flex-1 text-xs text-muted-foreground">
                     {blog.excerpt || "Open the article to read the full story."}
                   </p>
                   <div className="flex items-center justify-between">

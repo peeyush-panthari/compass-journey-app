@@ -1191,21 +1191,25 @@ const TripPage = () => {
             {/* Sections mapped from your design... */}
             <section id="section-explore" className="mb-8 scroll-mt-20">
               <h2 className="text-xl font-display font-bold mb-4">Explore</h2>
-              <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+              <div className="flex items-stretch gap-4 overflow-x-auto scrollbar-hide pb-2">
                 {relevantBlogs.length > 0 ? (
                   relevantBlogs.map((blog, i) => (
-                    <Link key={i} to={`/explore/${blog.slug}`} className="min-w-[280px] bg-card rounded-xl border p-3 hover:shadow-md transition-shadow">
-                      <img src={blog.image} className="h-40 w-full object-cover rounded-lg mb-2" alt={blog.title} />
-                      <h4 className="text-sm font-bold line-clamp-1">{blog.title}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{blog.excerpt}</p>
+                    <Link key={i} to={`/explore/${blog.slug}`} className="flex min-w-[260px] max-w-[260px] flex-col bg-card rounded-xl border p-3 hover:shadow-md transition-shadow">
+                      <img src={blog.image} className="h-40 shrink-0 w-full object-cover rounded-lg mb-3" alt={blog.title} />
+                      <div className="flex flex-1 flex-col">
+                        <h4 className="text-sm font-bold line-clamp-2 leading-tight mb-1">{blog.title}</h4>
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 flex-1">{blog.excerpt}</p>
+                      </div>
                     </Link>
                   ))
                 ) : (
                   exploreCards.map((card, i) => (
-                    <div key={i} className="min-w-[220px] bg-card rounded-xl border p-3">
-                      <img src={card.image} className="h-32 w-full object-cover rounded-lg mb-2" alt={card.title} />
-                      <h4 className="text-sm font-bold truncate">{card.title}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{card.description}</p>
+                    <div key={i} className="flex min-w-[240px] max-w-[240px] flex-col bg-card rounded-xl border p-3">
+                      <img src={card.image} className="h-36 shrink-0 w-full object-cover rounded-lg mb-3" alt={card.title} />
+                      <div className="flex flex-1 flex-col">
+                        <h4 className="text-sm font-bold leading-tight mb-1">{card.title}</h4>
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 flex-1">{card.description}</p>
+                      </div>
                     </div>
                   ))
                 )}
