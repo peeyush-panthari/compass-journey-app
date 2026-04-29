@@ -113,20 +113,29 @@ const recommendedPlaces = [
   { name: "Rijksmuseum", image: "https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=200&h=200&fit=crop" },
 ];
 
-interface Reservation {
-  id: string;
-  type: "Flight" | "Lodging" | "Rental car" | "Restaurant" | "Train" | "Bus" | "Ferry" | "Cruise" | "Other";
-  title: string;
-  details: string;
-  date: string;
-  confirmationNumber?: string;
-}
-
 interface Attachment {
   id: string;
   name: string;
   size: string;
   addedAt: string;
+}
+
+type ReservationType = "Flight" | "Lodging" | "Rental car" | "Restaurant" | "Train" | "Bus" | "Ferry" | "Cruise" | "Other";
+type ReservationFieldType = "text" | "date" | "time" | "datetime-local" | "textarea";
+
+interface ReservationFieldDefinition {
+  key: string;
+  label: string;
+  type: ReservationFieldType;
+  placeholder?: string;
+}
+
+interface ReservationRecord {
+  id: string;
+  type: ReservationType;
+  fields: Record<string, string>;
+  attachments: Attachment[];
+  updatedAt: string;
 }
 
 interface Expense {
@@ -174,6 +183,99 @@ const CATEGORY_OPTIONS = [
   { value: "Other", icon: ReceiptText },
 ] as const;
 
+const RESERVATION_OPTIONS = [
+  { value: "Flight", icon: Plane },
+  { value: "Lodging", icon: BedDouble },
+  { value: "Rental car", icon: Car },
+  { value: "Restaurant", icon: UtensilsCrossed },
+  { value: "Train", icon: TrainFront },
+  { value: "Bus", icon: Bus },
+  { value: "Ferry", icon: Ship },
+  { value: "Cruise", icon: Anchor },
+  { value: "Other", icon: ReceiptText },
+] as const;
+
+const RESERVATION_MENU_ITEMS = [
+  { icon: Plane, label: "Flight" },
+  { icon: BedDouble, label: "Lodging" },
+  { icon: Car, label: "Rental car" },
+  { icon: UtensilsCrossed, label: "Restaurant" },
+  { icon: TrainFront, label: "Train" },
+  { icon: Bus, label: "Bus" },
+  { icon: Ship, label: "Ferry" },
+  { icon: Anchor, label: "Cruise" },
+  { icon: ReceiptText, label: "Other" },
+] as const;
+
+const RESERVATION_FIELD_DEFS: Record<ReservationType, ReservationFieldDefinition[]> = {
+  Flight: [
+    { key: "airline_name", label: "Airline name", type: "text" },
+    { key: "flight_number", label: "Flight number", type: "text" },
+    { key: "departure_airport", label: "Departure airport", type: "text" },
+    { key: "arrival_airport", label: "Arrival airport", type: "text" },
+    { key: "departure_time", label: "Departure time", type: "datetime-local" },
+    { key: "arrival_time", label: "Arrival time", type: "datetime-local" },
+  ],
+  Lodging: [
+    { key: "hotel_name", label: "Hotel name", type: "text" },
+    { key: "address", label: "Address", type: "text" },
+    { key: "check_in_date", label: "Check-in date", type: "date" },
+    { key: "check_out_date", label: "Check-out date", type: "date" },
+    { key: "booking_platform", label: "Booking platform", type: "text", placeholder: "Booking.com, etc." },
+  ],
+  "Rental car": [
+    { key: "pickup_location", label: "Pickup location", type: "text" },
+    { key: "dropoff_location", label: "Dropoff location", type: "text" },
+    { key: "pickup_datetime", label: "Pickup datetime", type: "datetime-local" },
+    { key: "dropoff_datetime", label: "Dropoff datetime", type: "datetime-local" },
+    { key: "rental_company", label: "Rental company", type: "text" },
+  ],
+  Restaurant: [
+    { key: "restaurant_name", label: "Restaurant name", type: "text" },
+    { key: "location", label: "Location", type: "text" },
+    { key: "reservation_datetime", label: "Reservation datetime", type: "datetime-local" },
+    { key: "number_of_people", label: "Number of people", type: "text" },
+  ],
+  Train: [
+    { key: "train_name", label: "Train name", type: "text" },
+    { key: "train_number", label: "Train number", type: "text" },
+    { key: "departure_station", label: "Departure station", type: "text" },
+    { key: "arrival_station", label: "Arrival station", type: "text" },
+    { key: "departure_time", label: "Departure time", type: "datetime-local" },
+    { key: "arrival_time", label: "Arrival time", type: "datetime-local" },
+  ],
+  Bus: [
+    { key: "bus_operator", label: "Bus operator", type: "text" },
+    { key: "bus_type", label: "Bus type", type: "text", placeholder: "AC / Sleeper / etc." },
+    { key: "departure_location", label: "Departure location", type: "text" },
+    { key: "arrival_location", label: "Arrival location", type: "text" },
+    { key: "departure_time", label: "Departure time", type: "datetime-local" },
+    { key: "arrival_time", label: "Arrival time", type: "datetime-local" },
+  ],
+  Ferry: [
+    { key: "ferry_operator", label: "Ferry operator", type: "text" },
+    { key: "departure_port", label: "Departure port", type: "text" },
+    { key: "arrival_port", label: "Arrival port", type: "text" },
+    { key: "departure_time", label: "Departure time", type: "datetime-local" },
+    { key: "arrival_time", label: "Arrival time", type: "datetime-local" },
+  ],
+  Cruise: [
+    { key: "cruise_name", label: "Cruise name", type: "text" },
+    { key: "cruise_line", label: "Cruise line", type: "text" },
+    { key: "departure_port", label: "Departure port", type: "text" },
+    { key: "return_port", label: "Return port", type: "text" },
+    { key: "start_date", label: "Start date", type: "date" },
+    { key: "end_date", label: "End date", type: "date" },
+  ],
+  Other: [
+    { key: "category_name", label: "Category name", type: "text" },
+    { key: "location", label: "Location", type: "text" },
+    { key: "date", label: "Date", type: "date" },
+    { key: "time", label: "Time", type: "time" },
+    { key: "details", label: "Details", type: "textarea", placeholder: "Free text or JSON" },
+  ],
+};
+
 const getInitials = (name: string) =>
   name
     .split(/\s+/)
@@ -211,12 +313,13 @@ const TripPage = () => {
   const [budget, setBudget] = useState<number | null>(null);
   const [setBudgetOpen, setSetBudgetOpen] = useState(false);
   const [expenseSortBy, setExpenseSortBy] = useState<ExpenseSort>("newest");
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [reservationDialogOpen, setReservationDialogOpen] = useState<Reservation["type"] | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [reservations, setReservations] = useState<ReservationRecord[]>([]);
+  const [reservationDialogOpen, setReservationDialogOpen] = useState<ReservationType | null>(null);
+  const [editingReservationId, setEditingReservationId] = useState<string | null>(null);
+  const [reservationDraft, setReservationDraft] = useState<Record<string, string>>({});
+  const [reservationDraftAttachments, setReservationDraftAttachments] = useState<Attachment[]>([]);
+  const reservationFileInputRef = useRef<HTMLInputElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
-  const [otherPopoverOpen, setOtherPopoverOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<"overview" | "itinerary" | "explore" | "budget" | "journal">("overview");
   const [mobileSelectedDay, setMobileSelectedDay] = useState(0);
   const isMobile = useIsMobile();
@@ -322,6 +425,62 @@ const TripPage = () => {
   }, [expenses, tripmates]);
 
   const currentUserBalance = groupBalances.find((mate) => mate.id === tripmates[0]?.id)?.amount || 0;
+
+  const openReservationDialog = (type: ReservationType, existing?: ReservationRecord) => {
+    setReservationDialogOpen(type);
+    setEditingReservationId(existing?.id || null);
+    setReservationDraft(existing?.fields || Object.fromEntries(RESERVATION_FIELD_DEFS[type].map((field) => [field.key, ""])));
+    setReservationDraftAttachments(existing?.attachments || []);
+  };
+
+  const closeReservationDialog = () => {
+    setReservationDialogOpen(null);
+    setEditingReservationId(null);
+    setReservationDraft({});
+    setReservationDraftAttachments([]);
+  };
+
+  const handleReservationFileAdd = (files: FileList | null) => {
+    if (!files?.length) return;
+    const next = Array.from(files).map((file) => ({
+      id: crypto.randomUUID(),
+      name: file.name,
+      size: `${Math.max(1, Math.round(file.size / 1024))} KB`,
+      addedAt: new Date().toISOString(),
+    }));
+    setReservationDraftAttachments((prev) => [...prev, ...next]);
+    if (reservationFileInputRef.current) reservationFileInputRef.current.value = "";
+  };
+
+  const blurDateInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    window.setTimeout(() => input.blur(), 0);
+  };
+
+  const reservationSummary = (reservation: ReservationRecord) => {
+    const fields = reservation.fields;
+    switch (reservation.type) {
+      case "Flight":
+        return [fields.airline_name, fields.flight_number, fields.departure_airport && fields.arrival_airport ? `${fields.departure_airport} → ${fields.arrival_airport}` : ""].filter(Boolean).join(" • ");
+      case "Lodging":
+        return [fields.hotel_name, fields.check_in_date && fields.check_out_date ? `${fields.check_in_date} → ${fields.check_out_date}` : "", fields.booking_platform].filter(Boolean).join(" • ");
+      case "Rental car":
+        return [fields.rental_company, fields.pickup_location && fields.dropoff_location ? `${fields.pickup_location} → ${fields.dropoff_location}` : ""].filter(Boolean).join(" • ");
+      case "Restaurant":
+        return [fields.restaurant_name, fields.location, fields.reservation_datetime].filter(Boolean).join(" • ");
+      case "Train":
+        return [fields.train_name, fields.train_number, fields.departure_station && fields.arrival_station ? `${fields.departure_station} → ${fields.arrival_station}` : ""].filter(Boolean).join(" • ");
+      case "Bus":
+        return [fields.bus_operator, fields.bus_type, fields.departure_location && fields.arrival_location ? `${fields.departure_location} → ${fields.arrival_location}` : ""].filter(Boolean).join(" • ");
+      case "Ferry":
+        return [fields.ferry_operator, fields.departure_port && fields.arrival_port ? `${fields.departure_port} → ${fields.arrival_port}` : ""].filter(Boolean).join(" • ");
+      case "Cruise":
+        return [fields.cruise_name, fields.cruise_line, fields.start_date && fields.end_date ? `${fields.start_date} → ${fields.end_date}` : ""].filter(Boolean).join(" • ");
+      case "Other":
+      default:
+        return [fields.category_name, fields.location, fields.date, fields.time].filter(Boolean).join(" • ");
+    }
+  };
 
   // Fetch Live Data
   useEffect(() => {
@@ -444,6 +603,30 @@ const TripPage = () => {
             split: e.split,
             participants: e.participants || [],
             date: e.date
+          })));
+        }
+
+        const { data: reservationsData, error: reservationsErr } = await supabase
+          .from("reservations")
+          .select("*")
+          .eq("trip_id", id)
+          .order("created_at", { ascending: false });
+
+        if (!reservationsErr && reservationsData) {
+          setReservations(reservationsData.map((reservation: any) => ({
+            id: reservation.id,
+            type: reservation.type as ReservationType,
+            fields: reservation.fields && typeof reservation.fields === "object"
+              ? reservation.fields
+              : (() => {
+                  try {
+                    return reservation.details ? JSON.parse(reservation.details) : {};
+                  } catch {
+                    return {};
+                  }
+                })(),
+            attachments: Array.isArray(reservation.attachments) ? reservation.attachments : [],
+            updatedAt: reservation.updated_at || reservation.created_at || new Date().toISOString(),
           })));
         }
 
@@ -747,6 +930,74 @@ const TripPage = () => {
     toast({ title: "Expense added" });
   };
 
+  const handleSaveReservation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reservationDialogOpen) return;
+
+    const fields = RESERVATION_FIELD_DEFS[reservationDialogOpen];
+    const missingField = fields.find((field) => {
+      const value = reservationDraft[field.key]?.trim();
+      return !value;
+    });
+
+    if (missingField) {
+      toast({ title: `Please fill ${missingField.label.toLowerCase()}` });
+      return;
+    }
+
+    const nextReservation: ReservationRecord = {
+      id: editingReservationId || crypto.randomUUID(),
+      type: reservationDialogOpen,
+      fields: { ...reservationDraft },
+      attachments: reservationDraftAttachments,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const firstDateField = fields.find((field) => field.type === "date" || field.type === "datetime-local");
+    const dateValue = firstDateField ? reservationDraft[firstDateField.key] : "";
+
+    (async () => {
+      const payload = {
+        id: nextReservation.id,
+        trip_id: id,
+        type: nextReservation.type,
+        title: reservationSummary(nextReservation) || nextReservation.type,
+        details: JSON.stringify(nextReservation.fields),
+        date: dateValue || null,
+        confirmation_number: null,
+        fields: nextReservation.fields,
+        attachments: nextReservation.attachments,
+        updated_at: nextReservation.updatedAt,
+      };
+
+      const { error } = await supabase.from("reservations").upsert(payload, { onConflict: "id" });
+      if (error) {
+        toast({ title: "Failed to save reservation", variant: "destructive" });
+        return;
+      }
+
+      setReservations((prev) => {
+        const withoutCurrent = prev.filter((entry) => entry.id !== nextReservation.id);
+        return [nextReservation, ...withoutCurrent];
+      });
+
+      closeReservationDialog();
+      toast({ title: editingReservationId ? "Reservation updated" : "Reservation saved" });
+    })();
+  };
+
+  const handleDeleteReservation = (reservationId: string) => {
+    (async () => {
+      const { error } = await supabase.from("reservations").delete().eq("id", reservationId);
+      if (error) {
+        toast({ title: "Failed to delete reservation", variant: "destructive" });
+        return;
+      }
+      setReservations((prev) => prev.filter((entry) => entry.id !== reservationId));
+      toast({ title: "Reservation removed" });
+    })();
+  };
+
 
   const toggleExpenseParticipant = (participantId: string) => {
     setExpenseDraft((prev) => ({
@@ -881,16 +1132,15 @@ const TripPage = () => {
             <div className="space-y-6">
               <div>
                 <h3 className="text-sm font-bold text-foreground mb-3">Reservations and attachments</h3>
-                <div className="flex items-center gap-6">
-                  {([
-                    { icon: Plane, label: "Flight" },
-                    { icon: Hotel, label: "Lodging" },
-                    { icon: Car, label: "Rental car" },
-                    { icon: Paperclip, label: "Attachment" },
-                  ] as const).map(({ icon: Icon, label }) => (
-                    <button key={label} onClick={() => label === "Attachment" ? fileInputRef.current?.click() : setReservationDialogOpen(label as any)} className="flex flex-col items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors relative">
-                      <Icon className="w-6 h-6" />
-                      <span className="text-[10px]">{label}</span>
+                <div className="grid grid-cols-3 gap-2">
+                  {RESERVATION_OPTIONS.map(({ value, icon: Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => openReservationDialog(value)}
+                      className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-border/60 bg-card px-2 py-3 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors min-h-[72px]"
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-[10px] font-medium text-center leading-tight">{value}</span>
                     </button>
                   ))}
                 </div>
@@ -1108,22 +1358,29 @@ const TripPage = () => {
       <div className="hidden md:flex flex-1 overflow-hidden">
         {sidebarOpen && (
           <aside className="w-[240px] shrink-0 border-r border-border bg-card overflow-y-auto h-full">
-            <div className="p-4">
-              <Collapsible defaultOpen>
-                <CollapsibleTrigger className="group flex items-center gap-1.5 w-full text-left mb-1 px-2 py-2 rounded-lg data-[state=open]:bg-[#1D212B] data-[state=open]:text-white transition-colors">
-                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-data-[state=open]:text-white/70" />
-                  <span className="text-sm font-bold text-foreground group-data-[state=open]:text-white">Overview</span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="ml-5 space-y-0.5 mt-2">
-                    {["Explore", "Notes", "Flights", "Places to visit", "Untitled"].map((item) => (
-                      <button key={item} onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, "-"))} className={`block w-full text-left text-sm py-1.5 px-2 rounded-md transition-colors ${activeSection === item.toLowerCase().replace(/ /g, "-") ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+            <div className="px-4 pt-20 pb-4">
+              <div className="sticky top-0 z-10 -mx-4 bg-card px-4 py-3 mb-2 border-b border-border/60">
+                <span className="text-sm font-bold text-foreground leading-none">Overview</span>
+              </div>
+              <div className="ml-5 space-y-1">
+                {["Explore", "Reservations and Documents", "Notes"].map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, "-"))}
+                    className={`block w-full text-left text-sm py-1.5 px-2 rounded-md transition-colors ${
+                      item === "Explore"
+                        ? activeSection === item.toLowerCase().replace(/ /g, "-")
+                          ? "bg-primary/10 text-primary font-bold"
+                          : "text-foreground font-bold hover:bg-muted/50"
+                        : activeSection === item.toLowerCase().replace(/ /g, "-")
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
 
               <Collapsible defaultOpen className="mt-2">
                 <CollapsibleTrigger className="group flex items-center gap-1.5 w-full text-left mb-1 px-2 py-2 rounded-lg data-[state=open]:bg-[#1D212B] data-[state=open]:text-white transition-colors">
@@ -1214,6 +1471,63 @@ const TripPage = () => {
                   ))
                 )}
               </div>
+            </section>
+
+            <section id="section-reservations-and-documents" className="mb-8 scroll-mt-20">
+              <div className="bg-card rounded-[20px] border border-border/60 shadow-card p-3 sm:p-3.5">
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <h2 className="text-lg sm:text-xl font-display font-bold text-foreground">Reservations and attachments</h2>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-2">
+                  {RESERVATION_OPTIONS.map(({ value, icon: Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => openReservationDialog(value)}
+                      className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-border/60 bg-white/60 px-1.5 py-2 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors min-h-[64px]"
+                    >
+                      <Icon className="w-4.5 h-4.5" />
+                      <span className="text-[10px] font-medium text-center leading-tight whitespace-nowrap">{value}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {reservations.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  {reservations.map((reservation) => (
+                    <div key={reservation.id} className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3 shadow-sm">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground shrink-0">
+                              {reservation.type}
+                            </p>
+                            <h3 className="text-sm font-semibold text-foreground truncate">{reservationSummary(reservation)}</h3>
+                          </div>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {reservation.attachments.length > 0 ? `${reservation.attachments.length} attachment${reservation.attachments.length === 1 ? "" : "s"}` : "No attachments"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            className="rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            onClick={() => openReservationDialog(reservation.type, reservation)}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-full p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteReservation(reservation.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section id="section-notes" className="mb-8 scroll-mt-20">
@@ -1692,6 +2006,112 @@ const TripPage = () => {
                 />
               </div>
               <Button type="submit" className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 h-10 text-sm">
+                Save
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(reservationDialogOpen)}
+        onOpenChange={(open) => {
+          if (!open) closeReservationDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-xl rounded-3xl border border-border/60 shadow-elevated p-4 sm:p-5">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl font-display font-bold text-center">
+              {reservationDialogOpen ? `${reservationDialogOpen} details` : "Reservation details"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form className="mt-3 space-y-3 sm:space-y-4" onSubmit={handleSaveReservation}>
+            <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-2">
+              {(reservationDialogOpen ? RESERVATION_FIELD_DEFS[reservationDialogOpen] : []).map((field) => (
+                <div key={field.key} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-1">
+                    {field.label}
+                  </label>
+                  {field.type === "textarea" ? (
+                    <Textarea
+                      value={reservationDraft[field.key] || ""}
+                      onChange={(e) => setReservationDraft((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      className="min-h-[92px] rounded-2xl text-sm"
+                    />
+                  ) : (
+                    <Input
+                      type={field.type}
+                      value={reservationDraft[field.key] || ""}
+                      onChange={(e) => {
+                        setReservationDraft((prev) => ({ ...prev, [field.key]: e.target.value }));
+                        if (field.type === "date" || field.type === "time" || field.type === "datetime-local") {
+                          blurDateInput(e);
+                        }
+                      }}
+                      placeholder={field.placeholder}
+                      className="h-10 rounded-2xl text-sm"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-3 mb-2.5">
+                <div>
+                  <p className="text-sm font-bold text-foreground">Attachments</p>
+                  <p className="text-[11px] text-muted-foreground">Add tickets, booking confirmations, receipts, or documents.</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="rounded-full h-8 px-3.5 font-semibold text-sm"
+                  onClick={() => reservationFileInputRef.current?.click()}
+                >
+                  <Paperclip className="w-4 h-4 mr-2" /> Attach files
+                </Button>
+              </div>
+              <input
+                ref={reservationFileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleReservationFileAdd(e.target.files)}
+              />
+              {reservationDraftAttachments.length > 0 ? (
+                <div className="space-y-1.5">
+                  {reservationDraftAttachments.map((file) => (
+                    <div key={file.id} className="flex items-center justify-between rounded-xl bg-background px-3 py-2 text-xs sm:text-sm">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground truncate">{file.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{file.size}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => setReservationDraftAttachments((prev) => prev.filter((entry) => entry.id !== file.id))}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No attachments added yet.</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <button
+                type="button"
+                className="text-sm font-semibold text-muted-foreground hover:text-foreground"
+                onClick={closeReservationDialog}
+              >
+                Cancel
+              </button>
+              <Button type="submit" className="rounded-full h-9 px-5 font-bold text-sm">
                 Save
               </Button>
             </div>

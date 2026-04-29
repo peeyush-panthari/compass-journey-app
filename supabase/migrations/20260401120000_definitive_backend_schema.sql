@@ -24,6 +24,18 @@ CREATE TABLE IF NOT EXISTS public.reservations (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'reservations' AND column_name = 'fields') THEN
+        ALTER TABLE public.reservations ADD COLUMN fields JSONB DEFAULT '{}'::jsonb;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'reservations' AND column_name = 'attachments') THEN
+        ALTER TABLE public.reservations ADD COLUMN attachments JSONB DEFAULT '[]'::jsonb;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'reservations' AND column_name = 'updated_at') THEN
+        ALTER TABLE public.reservations ADD COLUMN updated_at TIMESTAMPTZ DEFAULT now();
+    END IF;
+END $$;
+
 -- ============================================
 -- ATTACHMENTS
 -- ============================================
@@ -244,6 +256,19 @@ CREATE POLICY "Trip members can access activities" ON public.activities FOR ALL
       UNION
       SELECT trip_id FROM public.trip_collaborators WHERE user_id = auth.uid() AND accepted = true AND role IN ('owner', 'editor')
     )
+  ));
+
+DROP POLICY IF EXISTS "Trip members can access reservations" ON public.reservations;
+CREATE POLICY "Trip members can access reservations" ON public.reservations FOR ALL
+  USING (trip_id IN (
+    SELECT id FROM public.trips WHERE user_id = auth.uid()
+    UNION
+    SELECT trip_id FROM public.trip_collaborators WHERE user_id = auth.uid() AND accepted = true AND role IN ('owner', 'editor')
+  ))
+  WITH CHECK (trip_id IN (
+    SELECT id FROM public.trips WHERE user_id = auth.uid()
+    UNION
+    SELECT trip_id FROM public.trip_collaborators WHERE user_id = auth.uid() AND accepted = true AND role IN ('owner', 'editor')
   ));
 
 -- SAVED HOTELS
