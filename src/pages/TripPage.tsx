@@ -7,7 +7,7 @@ import {
   Hotel, Car, UtensilsCrossed, Paperclip, DollarSign, Navigation, ThumbsUp, ThumbsDown,
   Heart, Smile, PanelLeftClose, PanelLeft, Search, X, UserPlus, Calendar, Pencil, List,
   Settings, Users, BarChart3, TrainFront, Bus, Ship, Anchor, Globe, Wallet, Info, Map as MapIcon,
-  ReceiptText, Sparkles, BedDouble, Wine, Landmark, ShoppingBag, Fuel, ShoppingCart, CircleDollarSign, X as CloseIcon
+  ReceiptText, Sparkles, BedDouble, Wine, Landmark, ShoppingBag, Fuel, ShoppingCart, CircleDollarSign, X as CloseIcon, Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
@@ -114,11 +114,17 @@ const recommendedPlaces = [
   { name: "Rijksmuseum", image: "https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=200&h=200&fit=crop" },
 ];
 
-interface Attachment {
+interface ReservationAttachment {
   id: string;
   name: string;
   size: string;
   addedAt: string;
+  storagePath?: string;
+  mimeType?: string;
+}
+
+interface ReservationDraftAttachment extends ReservationAttachment {
+  file?: File;
 }
 
 type ReservationType = "Flight" | "Lodging" | "Rental car" | "Restaurant" | "Train" | "Bus" | "Ferry" | "Cruise" | "Other";
@@ -135,7 +141,7 @@ interface ReservationRecord {
   id: string;
   type: ReservationType;
   fields: Record<string, string>;
-  attachments: Attachment[];
+  attachments: ReservationAttachment[];
   updatedAt: string;
 }
 
@@ -287,6 +293,343 @@ const getInitials = (name: string) =>
 
 const formatMoney = (amount: number, currency: string) => `${currency}${amount.toFixed(2)}`;
 
+const getReservationSummary = (reservation: ReservationRecord) => {
+  const fields = reservation.fields;
+  switch (reservation.type) {
+    case "Flight":
+      return [fields.airline_name, fields.flight_number, fields.departure_airport && fields.arrival_airport ? `${fields.departure_airport} → ${fields.arrival_airport}` : ""].filter(Boolean).join(" • ");
+    case "Lodging":
+      return [fields.hotel_name, fields.check_in_date && fields.check_out_date ? `${fields.check_in_date} → ${fields.check_out_date}` : "", fields.booking_platform].filter(Boolean).join(" • ");
+    case "Rental car":
+      return [fields.rental_company, fields.pickup_location && fields.dropoff_location ? `${fields.pickup_location} → ${fields.dropoff_location}` : ""].filter(Boolean).join(" • ");
+    case "Restaurant":
+      return [fields.restaurant_name, fields.location, fields.reservation_datetime].filter(Boolean).join(" • ");
+    case "Train":
+      return [fields.train_name, fields.train_number, fields.departure_station && fields.arrival_station ? `${fields.departure_station} → ${fields.arrival_station}` : ""].filter(Boolean).join(" • ");
+    case "Bus":
+      return [fields.bus_operator, fields.bus_type, fields.departure_location && fields.arrival_location ? `${fields.departure_location} → ${fields.arrival_location}` : ""].filter(Boolean).join(" • ");
+    case "Ferry":
+      return [fields.ferry_operator, fields.departure_port && fields.arrival_port ? `${fields.departure_port} → ${fields.arrival_port}` : ""].filter(Boolean).join(" • ");
+    case "Cruise":
+      return [fields.cruise_name, fields.cruise_line, fields.start_date && fields.end_date ? `${fields.start_date} → ${fields.end_date}` : ""].filter(Boolean).join(" • ");
+    case "Other":
+    default:
+      return [fields.category_name, fields.location, fields.date, fields.time].filter(Boolean).join(" • ");
+  }
+};
+
+const formatReservationFieldValue = (fieldKey: string, fieldValue: string) => {
+  if (!fieldValue) return "";
+  if (fieldKey.includes("date") || fieldKey.includes("time")) {
+    const parsed = new Date(fieldValue);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleString([], {
+        dateStyle: fieldKey.includes("date") ? "medium" : undefined,
+        timeStyle: fieldKey.includes("time") ? "short" : undefined,
+      } as Intl.DateTimeFormatOptions);
+    }
+  }
+  return fieldValue;
+};
+
+const getReservationFieldLabel = (type: ReservationType, key: string) => {
+  const definition = RESERVATION_FIELD_DEFS[type].find((field) => field.key === key);
+  return definition?.label || key.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
+const getReservationLayout = (reservation: ReservationRecord) => {
+  switch (reservation.type) {
+    case "Flight":
+      return {
+        titleFields: ["airline_name", "flight_number"],
+        rows: [
+          ["departure_airport", "arrival_airport"],
+          ["departure_time", "arrival_time"],
+        ],
+      };
+    case "Lodging":
+      return {
+        titleFields: ["hotel_name", "booking_platform"],
+        rows: [
+          ["check_in_date", "check_out_date"],
+          ["address"],
+        ],
+      };
+    case "Rental car":
+      return {
+        titleFields: ["rental_company"],
+        rows: [
+          ["pickup_location", "dropoff_location"],
+          ["pickup_datetime", "dropoff_datetime"],
+        ],
+      };
+    case "Restaurant":
+      return {
+        titleFields: ["restaurant_name"],
+        rows: [
+          ["reservation_datetime", "number_of_people"],
+          ["location"],
+        ],
+      };
+    case "Train":
+      return {
+        titleFields: ["train_name", "train_number"],
+        rows: [
+          ["departure_station", "arrival_station"],
+          ["departure_time", "arrival_time"],
+        ],
+      };
+    case "Bus":
+      return {
+        titleFields: ["bus_operator", "bus_type"],
+        rows: [
+          ["departure_location", "arrival_location"],
+          ["departure_time", "arrival_time"],
+        ],
+      };
+    case "Ferry":
+      return {
+        titleFields: ["ferry_operator"],
+        rows: [
+          ["departure_port", "arrival_port"],
+          ["departure_time", "arrival_time"],
+        ],
+      };
+    case "Cruise":
+      return {
+        titleFields: ["cruise_name", "cruise_line"],
+        rows: [
+          ["departure_port", "return_port"],
+          ["start_date", "end_date"],
+        ],
+      };
+    case "Other":
+    default:
+      return {
+        titleFields: ["category_name", "location"],
+        rows: [
+          ["date", "time"],
+          ["details"],
+        ],
+      };
+  }
+};
+
+const ReservationCard = ({
+  reservation,
+  onEdit,
+  onDelete,
+  onOpenAttachment,
+  onDownloadAttachment,
+  compact = false,
+}: {
+  reservation: ReservationRecord;
+  onEdit: (reservation: ReservationRecord) => void;
+  onDelete: (reservationId: string) => void;
+  onOpenAttachment: (attachment: ReservationAttachment) => void;
+  onDownloadAttachment: (attachment: ReservationAttachment) => void;
+  compact?: boolean;
+}) => {
+  const layout = getReservationLayout(reservation);
+  const titleParts = layout.titleFields
+    .map((key) => {
+      const value = reservation.fields[key]?.trim();
+      if (!value) return null;
+      return formatReservationFieldValue(key, value);
+    })
+    .filter((value): value is string => Boolean(value));
+  const headerLabel = [reservation.type, ...titleParts].join(" • ");
+
+  if (compact) {
+    return (
+      <div className="rounded-xl border border-border/60 bg-card/95 px-2.5 py-2 shadow-sm">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="min-w-0 truncate text-[13px] font-display font-bold leading-tight text-foreground">
+            {headerLabel || reservation.type}
+          </h3>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              onClick={() => onEdit(reservation)}
+              aria-label={`Edit ${reservation.type}`}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              className="rounded-full p-1 text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
+              onClick={() => onDelete(reservation.id)}
+              aria-label={`Delete ${reservation.type}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          {layout.rows.map((row, rowIndex) => {
+            const visibleFields = row
+              .map((fieldKey) => {
+                const rawValue = reservation.fields[fieldKey]?.trim();
+                if (!rawValue) return null;
+                return {
+                  key: fieldKey,
+                  label: getReservationFieldLabel(reservation.type, fieldKey),
+                  value: formatReservationFieldValue(fieldKey, rawValue),
+                };
+              })
+              .filter((entry): entry is { key: string; label: string; value: string } => Boolean(entry));
+
+            if (!visibleFields.length) return null;
+
+            return visibleFields.map((field) => (
+              <div key={`${reservation.id}-compact-${rowIndex}-${field.key}`} className={cn("min-w-0 rounded-md bg-muted/35 px-2.5 py-1 text-[10px] leading-snug text-muted-foreground", visibleFields.length === 1 ? "col-span-2" : "")}>
+                <span className="font-semibold text-foreground whitespace-nowrap">{field.label}:</span>{" "}
+                <span className="break-words">{field.value}</span>
+              </div>
+            ));
+          })}
+        </div>
+
+        <div className="mt-2 h-[44px] overflow-hidden rounded-md border border-dashed border-border/50 bg-background/60 px-2">
+          <div className="flex h-full items-center overflow-hidden">
+            {reservation.attachments.length > 0 ? (
+              <div className="flex w-full items-center gap-2 rounded-md bg-card px-2.5 py-1.5 shadow-sm">
+                <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 text-left text-foreground hover:text-primary transition-colors"
+                  onClick={() => {
+                    const first = reservation.attachments[0];
+                    if (first?.storagePath) void onOpenAttachment(first);
+                  }}
+                >
+                  <span className="truncate text-[10px] font-medium">
+                    {reservation.attachments[0]?.name || "Attachment"}
+                  </span>
+                </button>
+                {reservation.attachments[0]?.storagePath ? (
+                  <button
+                    type="button"
+                    className="rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    onClick={() => onDownloadAttachment(reservation.attachments[0])}
+                    aria-label={`Download ${reservation.attachments[0].name}`}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <div className="flex w-full items-center gap-2 rounded-md bg-card px-2.5 py-1.5 text-[10px] text-muted-foreground shadow-sm">
+                <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">No attachments added yet.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("rounded-xl border border-border/60 bg-card/95 shadow-sm", compact ? "px-2.5 py-2" : "px-3 py-2.5")}>
+      <div className="flex items-center justify-between gap-2.5">
+        <h3 className={cn("min-w-0 truncate font-display font-bold leading-tight text-foreground", compact ? "text-[14px]" : "text-[15px]")}>
+          {headerLabel || getReservationSummary(reservation) || reservation.type}
+        </h3>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            onClick={() => onEdit(reservation)}
+            aria-label={`Edit ${reservation.type}`}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            className="rounded-full p-1.5 text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
+            onClick={() => onDelete(reservation.id)}
+            aria-label={`Delete ${reservation.type}`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-2 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(240px,320px)] md:items-start">
+        <div className="space-y-1.5">
+          {layout.rows.map((row, rowIndex) => {
+            const visibleFields = row
+              .map((fieldKey) => {
+                const rawValue = reservation.fields[fieldKey]?.trim();
+                if (!rawValue) return null;
+                return {
+                  key: fieldKey,
+                  label: getReservationFieldLabel(reservation.type, fieldKey),
+                  value: formatReservationFieldValue(fieldKey, rawValue),
+                };
+              })
+              .filter((entry): entry is { key: string; label: string; value: string } => Boolean(entry));
+
+            if (!visibleFields.length) return null;
+
+            return (
+              <div key={`${reservation.id}-row-${rowIndex}`} className="grid gap-1.5 sm:grid-cols-2">
+                {visibleFields.map((field) => (
+                  <div key={field.key} className="min-w-0 rounded-md bg-muted/35 px-2.5 py-1 text-[10px] leading-snug text-muted-foreground">
+                    <span className="font-semibold text-foreground whitespace-nowrap">{field.label}:</span>{" "}
+                    <span className="break-words">{field.value}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="h-[44px] overflow-hidden rounded-lg border border-dashed border-border/50 bg-background/60 px-2 py-1">
+          <div className="flex h-full flex-col gap-1 overflow-y-auto pr-1">
+            {reservation.attachments.length > 0 ? (
+              reservation.attachments.map((attachment) => (
+                attachment.storagePath ? (
+                  <div key={attachment.id} className="flex items-center justify-between gap-2 rounded-md bg-card px-2.5 py-1.5 shadow-sm">
+                    <button
+                      type="button"
+                      className="flex min-w-0 items-center gap-2 text-left text-foreground hover:text-primary transition-colors"
+                      onClick={() => onOpenAttachment(attachment)}
+                    >
+                      <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate text-[10px] font-medium">{attachment.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      onClick={() => onDownloadAttachment(attachment)}
+                      aria-label={`Download ${attachment.name}`}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div key={attachment.id} className="flex items-center gap-2 rounded-md bg-card px-2.5 py-1.5 shadow-sm">
+                    <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate text-[10px] font-medium text-foreground">{attachment.name}</span>
+                  </div>
+                )
+              ))
+            ) : (
+              <div className="rounded-md bg-card px-2.5 py-1.5 text-[10px] text-muted-foreground shadow-sm">
+                No attachments added yet.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TripPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -318,7 +661,8 @@ const TripPage = () => {
   const [reservationDialogOpen, setReservationDialogOpen] = useState<ReservationType | null>(null);
   const [editingReservationId, setEditingReservationId] = useState<string | null>(null);
   const [reservationDraft, setReservationDraft] = useState<Record<string, string>>({});
-  const [reservationDraftAttachments, setReservationDraftAttachments] = useState<Attachment[]>([]);
+  const [reservationDraftAttachments, setReservationDraftAttachments] = useState<ReservationDraftAttachment[]>([]);
+  const [reservationOriginalAttachments, setReservationOriginalAttachments] = useState<ReservationAttachment[]>([]);
   const reservationFileInputRef = useRef<HTMLInputElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const [mobileTab, setMobileTab] = useState<"overview" | "itinerary" | "explore" | "budget" | "journal">("overview");
@@ -431,7 +775,8 @@ const TripPage = () => {
     setReservationDialogOpen(type);
     setEditingReservationId(existing?.id || null);
     setReservationDraft(existing?.fields || Object.fromEntries(RESERVATION_FIELD_DEFS[type].map((field) => [field.key, ""])));
-    setReservationDraftAttachments(existing?.attachments || []);
+    setReservationDraftAttachments((existing?.attachments || []).map((attachment) => ({ ...attachment })));
+    setReservationOriginalAttachments((existing?.attachments || []).map((attachment) => ({ ...attachment })));
   };
 
   const closeReservationDialog = () => {
@@ -439,6 +784,7 @@ const TripPage = () => {
     setEditingReservationId(null);
     setReservationDraft({});
     setReservationDraftAttachments([]);
+    setReservationOriginalAttachments([]);
   };
 
   const handleReservationFileAdd = (files: FileList | null) => {
@@ -448,9 +794,101 @@ const TripPage = () => {
       name: file.name,
       size: `${Math.max(1, Math.round(file.size / 1024))} KB`,
       addedAt: new Date().toISOString(),
+      file,
     }));
     setReservationDraftAttachments((prev) => [...prev, ...next]);
     if (reservationFileInputRef.current) reservationFileInputRef.current.value = "";
+  };
+
+  const normalizeReservationAttachment = (attachment: any): ReservationAttachment => ({
+    id: String(attachment?.id || crypto.randomUUID()),
+    name: String(attachment?.name || attachment?.file_name || "Attachment"),
+    size: String(attachment?.size || attachment?.fileSize || "0 KB"),
+    addedAt: String(attachment?.addedAt || attachment?.added_at || attachment?.created_at || new Date().toISOString()),
+    storagePath: attachment?.storagePath || attachment?.storage_path || attachment?.path || undefined,
+    mimeType: attachment?.mimeType || attachment?.mime_type || undefined,
+  });
+
+  const getReservationAttachmentStoragePath = (reservationId: string, attachment: ReservationDraftAttachment) => {
+    const safeName = attachment.name.replace(/[^a-zA-Z0-9._-]+/g, "_");
+    return `${id}/reservations/${reservationId}/${attachment.id}-${safeName}`;
+  };
+
+  const uploadReservationAttachments = async (reservationId: string) => {
+    const pending = reservationDraftAttachments.filter((attachment) => attachment.file);
+    const uploaded: ReservationAttachment[] = [];
+    const uploadedPaths: string[] = [];
+
+    for (const attachment of pending) {
+      if (!attachment.file) continue;
+      const storagePath = getReservationAttachmentStoragePath(reservationId, attachment);
+      const { error } = await supabase.storage
+        .from("trip-attachments")
+        .upload(storagePath, attachment.file, {
+          contentType: attachment.file.type || "application/octet-stream",
+          upsert: false,
+        });
+
+      if (error) {
+        if (uploadedPaths.length > 0) {
+          await supabase.storage.from("trip-attachments").remove(uploadedPaths);
+        }
+        throw error;
+      }
+
+      uploadedPaths.push(storagePath);
+      uploaded.push({
+        id: attachment.id,
+        name: attachment.name,
+        size: attachment.size,
+        addedAt: attachment.addedAt,
+        storagePath,
+        mimeType: attachment.file.type || undefined,
+      });
+    }
+
+    return uploaded;
+  };
+
+  const resolveReservationAttachmentUrl = async (attachment: ReservationAttachment) => {
+    if (!attachment.storagePath) return null;
+    const { data, error } = await supabase.storage.from("trip-attachments").createSignedUrl(attachment.storagePath, 60 * 10);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  };
+
+  const openReservationAttachment = async (attachment: ReservationAttachment) => {
+    const url = await resolveReservationAttachmentUrl(attachment);
+    if (!url) {
+      toast({ title: "Attachment unavailable", description: "This file could not be opened.", variant: "destructive" });
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const downloadReservationAttachment = async (attachment: ReservationAttachment) => {
+    const url = await resolveReservationAttachmentUrl(attachment);
+    if (!url) {
+      toast({ title: "Attachment unavailable", description: "This file could not be downloaded.", variant: "destructive" });
+      return;
+    }
+
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = attachment.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  };
+
+  const removeReservationAttachments = async (attachments: ReservationAttachment[]) => {
+    const paths = attachments.map((attachment) => attachment.storagePath).filter((path): path is string => Boolean(path));
+    if (!paths.length) return;
+    await supabase.storage.from("trip-attachments").remove(paths);
   };
 
   const blurDateInput = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -640,7 +1078,9 @@ const TripPage = () => {
                     return {};
                   }
                 })(),
-            attachments: Array.isArray(reservation.attachments) ? reservation.attachments : [],
+            attachments: Array.isArray(reservation.attachments)
+              ? reservation.attachments.map((attachment: any) => normalizeReservationAttachment(attachment))
+              : [],
             updatedAt: reservation.updated_at || reservation.created_at || new Date().toISOString(),
           })));
         }
@@ -945,7 +1385,7 @@ const TripPage = () => {
     toast({ title: "Expense added" });
   };
 
-  const handleSaveReservation = (e: React.FormEvent) => {
+  const handleSaveReservation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reservationDialogOpen) return;
 
@@ -964,59 +1404,83 @@ const TripPage = () => {
       id: editingReservationId || crypto.randomUUID(),
       type: reservationDialogOpen,
       fields: { ...reservationDraft },
-      attachments: reservationDraftAttachments,
+      attachments: [],
       updatedAt: new Date().toISOString(),
     };
 
     const firstDateField = fields.find((field) => field.type === "date" || field.type === "datetime-local");
     const dateValue = firstDateField ? reservationDraft[firstDateField.key] : "";
     const reservationDate = dateValue ? dateValue.slice(0, 10) : null;
+    let uploadedAttachments: ReservationAttachment[] = [];
 
-    (async () => {
+    try {
+      uploadedAttachments = await uploadReservationAttachments(nextReservation.id);
+      const currentAttachments = reservationDraftAttachments
+        .filter((attachment) => !attachment.file)
+        .map((attachment) => normalizeReservationAttachment(attachment));
+      const finalAttachments = [...currentAttachments, ...uploadedAttachments];
+
       const payload = {
         id: nextReservation.id,
         trip_id: id,
         type: nextReservation.type,
-        title: reservationSummary(nextReservation) || nextReservation.type,
+        title: reservationSummary({ ...nextReservation, attachments: finalAttachments }) || nextReservation.type,
         details: JSON.stringify(nextReservation.fields),
         date: reservationDate,
         confirmation_number: null,
         fields: nextReservation.fields,
-        attachments: nextReservation.attachments,
+        attachments: finalAttachments,
         updated_at: nextReservation.updatedAt,
       };
 
       const { error } = await supabase.from("reservations").upsert(payload, { onConflict: "id" });
-      if (error) {
-        console.error("[TripPage] Failed to save reservation:", error);
-        toast({
-          title: "Failed to save reservation",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
+      if (error) throw error;
+
+      if (reservationOriginalAttachments.length > 0) {
+        const originalPaths = reservationOriginalAttachments.map((attachment) => attachment.storagePath).filter((path): path is string => Boolean(path));
+        const nextPaths = finalAttachments.map((attachment) => attachment.storagePath).filter((path): path is string => Boolean(path));
+        const removedPaths = originalPaths.filter((path) => !nextPaths.includes(path));
+        if (removedPaths.length > 0) {
+          await supabase.storage.from("trip-attachments").remove(removedPaths);
+        }
       }
 
       setReservations((prev) => {
         const withoutCurrent = prev.filter((entry) => entry.id !== nextReservation.id);
-        return [nextReservation, ...withoutCurrent];
+        return [{
+          ...nextReservation,
+          attachments: finalAttachments,
+        }, ...withoutCurrent];
       });
 
       closeReservationDialog();
       toast({ title: editingReservationId ? "Reservation updated" : "Reservation saved" });
-    })();
+    } catch (error: any) {
+      if (uploadedAttachments.length > 0) {
+        await removeReservationAttachments(uploadedAttachments);
+      }
+      console.error("[TripPage] Failed to save reservation:", error);
+      toast({
+        title: "Failed to save reservation",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteReservation = (reservationId: string) => {
-    (async () => {
+  const handleDeleteReservation = async (reservationId: string) => {
+    const reservation = reservations.find((entry) => entry.id === reservationId);
+    try {
       const { error } = await supabase.from("reservations").delete().eq("id", reservationId);
-      if (error) {
-        toast({ title: "Failed to delete reservation", variant: "destructive" });
-        return;
+      if (error) throw error;
+      if (reservation?.attachments?.length) {
+        await removeReservationAttachments(reservation.attachments);
       }
       setReservations((prev) => prev.filter((entry) => entry.id !== reservationId));
       toast({ title: "Reservation removed" });
-    })();
+    } catch (error: any) {
+      toast({ title: "Failed to delete reservation", description: error?.message || "Please try again.", variant: "destructive" });
+    }
   };
 
 
@@ -1167,37 +1631,15 @@ const TripPage = () => {
                 {reservations.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {reservations.map((reservation) => (
-                      <div key={reservation.id} className="rounded-2xl border border-border/60 bg-card px-3 py-2.5 shadow-sm">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground shrink-0">
-                                {reservation.type}
-                              </p>
-                              <p className="text-sm font-semibold text-foreground truncate">{reservationSummary(reservation)}</p>
-                            </div>
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              {reservation.attachments.length > 0 ? `${reservation.attachments.length} attachment${reservation.attachments.length === 1 ? "" : "s"}` : "No attachments"}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              type="button"
-                              className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                              onClick={() => openReservationDialog(reservation.type, reservation)}
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-full p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleDeleteReservation(reservation.id)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                      <ReservationCard
+                        key={reservation.id}
+                        reservation={reservation}
+                        compact
+                        onEdit={(entry) => openReservationDialog(entry.type, entry)}
+                        onDelete={handleDeleteReservation}
+                        onOpenAttachment={openReservationAttachment}
+                        onDownloadAttachment={downloadReservationAttachment}
+                      />
                     ))}
                   </div>
                 )}
@@ -1637,37 +2079,14 @@ const TripPage = () => {
               {reservations.length > 0 && (
                 <div className="mt-4 space-y-3">
                   {reservations.map((reservation) => (
-                    <div key={reservation.id} className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3 shadow-sm">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground shrink-0">
-                              {reservation.type}
-                            </p>
-                            <h3 className="text-sm font-semibold text-foreground truncate">{reservationSummary(reservation)}</h3>
-                          </div>
-                          <p className="mt-1 text-[11px] text-muted-foreground">
-                            {reservation.attachments.length > 0 ? `${reservation.attachments.length} attachment${reservation.attachments.length === 1 ? "" : "s"}` : "No attachments"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            className="rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                            onClick={() => openReservationDialog(reservation.type, reservation)}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-full p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteReservation(reservation.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <ReservationCard
+                      key={reservation.id}
+                      reservation={reservation}
+                      onEdit={(entry) => openReservationDialog(entry.type, entry)}
+                      onDelete={handleDeleteReservation}
+                      onOpenAttachment={openReservationAttachment}
+                      onDownloadAttachment={downloadReservationAttachment}
+                    />
                   ))}
                 </div>
               )}
