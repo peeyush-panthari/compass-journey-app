@@ -970,6 +970,7 @@ const TripPage = () => {
 
     const firstDateField = fields.find((field) => field.type === "date" || field.type === "datetime-local");
     const dateValue = firstDateField ? reservationDraft[firstDateField.key] : "";
+    const reservationDate = dateValue ? dateValue.slice(0, 10) : null;
 
     (async () => {
       const payload = {
@@ -978,7 +979,7 @@ const TripPage = () => {
         type: nextReservation.type,
         title: reservationSummary(nextReservation) || nextReservation.type,
         details: JSON.stringify(nextReservation.fields),
-        date: dateValue || null,
+        date: reservationDate,
         confirmation_number: null,
         fields: nextReservation.fields,
         attachments: nextReservation.attachments,
@@ -987,7 +988,12 @@ const TripPage = () => {
 
       const { error } = await supabase.from("reservations").upsert(payload, { onConflict: "id" });
       if (error) {
-        toast({ title: "Failed to save reservation", variant: "destructive" });
+        console.error("[TripPage] Failed to save reservation:", error);
+        toast({
+          title: "Failed to save reservation",
+          description: error.message,
+          variant: "destructive",
+        });
         return;
       }
 
