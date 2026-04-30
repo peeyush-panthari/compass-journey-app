@@ -925,6 +925,15 @@ const TripPage = () => {
   const [reservationDraft, setReservationDraft] = useState<Record<string, string>>({});
   const [reservationDraftAttachments, setReservationDraftAttachments] = useState<ReservationDraftAttachment[]>([]);
   const [reservationOriginalAttachments, setReservationOriginalAttachments] = useState<ReservationAttachment[]>([]);
+  const [reservationExpenseEnabled, setReservationExpenseEnabled] = useState(false);
+  const [reservationExpenseDraft, setReservationExpenseDraft] = useState({
+    amount: "",
+    currency: "₹",
+    paidBy: "",
+    split: "none" as Expense["split"],
+    participants: [] as string[],
+    date: "",
+  });
   const reservationFileInputRef = useRef<HTMLInputElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
@@ -957,6 +966,14 @@ const TripPage = () => {
 
   useEffect(() => {
     setExpenseDraft((prev) => ({
+      ...prev,
+      paidBy: prev.paidBy || tripmates[0]?.id || "",
+      participants: prev.participants.length ? prev.participants : tripmates.map((mate) => mate.id),
+    }));
+  }, [tripmates]);
+
+  useEffect(() => {
+    setReservationExpenseDraft((prev) => ({
       ...prev,
       paidBy: prev.paidBy || tripmates[0]?.id || "",
       participants: prev.participants.length ? prev.participants : tripmates.map((mate) => mate.id),
@@ -1206,6 +1223,15 @@ const TripPage = () => {
     setReservationDraft(existing?.fields || Object.fromEntries(RESERVATION_FIELD_DEFS[type].map((field) => [field.key, ""])));
     setReservationDraftAttachments((existing?.attachments || []).map((attachment) => ({ ...attachment })));
     setReservationOriginalAttachments((existing?.attachments || []).map((attachment) => ({ ...attachment })));
+    setReservationExpenseEnabled(false);
+    setReservationExpenseDraft({
+      amount: "",
+      currency: defaultCurrency,
+      paidBy: tripmates[0]?.id || "",
+      split: "none",
+      participants: tripmates.map((mate) => mate.id),
+      date: "",
+    });
   };
 
   const closeReservationDialog = () => {
@@ -1214,6 +1240,15 @@ const TripPage = () => {
     setReservationDraft({});
     setReservationDraftAttachments([]);
     setReservationOriginalAttachments([]);
+    setReservationExpenseEnabled(false);
+    setReservationExpenseDraft({
+      amount: "",
+      currency: defaultCurrency,
+      paidBy: tripmates[0]?.id || "",
+      split: "none",
+      participants: tripmates.map((mate) => mate.id),
+      date: "",
+    });
   };
 
   const handleReservationFileAdd = (files: FileList | null) => {
@@ -1840,6 +1875,43 @@ const TripPage = () => {
     toast({ title: "Expense added" });
   };
 
+  const buildReservationLinkedExpense = (reservation: ReservationRecord) => {
+    const amount = Number(reservationExpenseDraft.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { error: "Enter a valid expense amount" as const };
+    }
+
+    const participants =
+      reservationExpenseDraft.split === "everyone"
+        ? tripmates.map((mate) => mate.id)
+        : reservationExpenseDraft.split === "individuals"
+          ? reservationExpenseDraft.participants
+          : [reservationExpenseDraft.paidBy];
+
+    if (reservationExpenseDraft.split === "individuals" && participants.length === 0) {
+      return { error: "Choose at least one person for the split" as const };
+    }
+
+    const dateField = RESERVATION_FIELD_DEFS[reservation.type].find((field) => field.type === "date" || field.type === "datetime-local");
+    const reservationDate = dateField ? reservation.fields[dateField.key]?.slice(0, 10) || "" : "";
+
+    return {
+      payload: {
+        id: crypto.randomUUID(),
+        trip_id: id,
+        amount,
+        currency: reservationExpenseDraft.currency,
+        category: reservation.type,
+        title: reservationSummary(reservation) || reservation.type,
+        paid_by: reservationExpenseDraft.paidBy,
+        split: reservationExpenseDraft.split,
+        participants,
+        date: reservationExpenseDraft.date || reservationDate || new Date().toISOString().slice(0, 10),
+        note: "Auto-added from reservation",
+      },
+    };
+  };
+
   const handleSaveReservation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reservationDialogOpen) return;
@@ -1862,6 +1934,12 @@ const TripPage = () => {
       attachments: [],
       updatedAt: new Date().toISOString(),
     };
+
+    const linkedExpense = reservationExpenseEnabled ? buildReservationLinkedExpense(nextReservation) : null;
+    if (linkedExpense && "error" in linkedExpense) {
+      toast({ title: linkedExpense.error });
+      return;
+    }
 
     const firstDateField = fields.find((field) => field.type === "date" || field.type === "datetime-local");
     const dateValue = firstDateField ? reservationDraft[firstDateField.key] : "";
@@ -1891,6 +1969,13 @@ const TripPage = () => {
       const { error } = await supabase.from("reservations").upsert(payload, { onConflict: "id" });
       if (error) throw error;
 
+      if (linkedExpense) {
+        const { error: linkedExpenseError } = await supabase.from("expenses").insert(linkedExpense.payload);
+        if (linkedExpenseError) {
+          throw linkedExpenseError;
+        }
+      }
+
       if (reservationOriginalAttachments.length > 0) {
         const originalPaths = reservationOriginalAttachments.map((attachment) => attachment.storagePath).filter((path): path is string => Boolean(path));
         const nextPaths = finalAttachments.map((attachment) => attachment.storagePath).filter((path): path is string => Boolean(path));
@@ -1908,11 +1993,31 @@ const TripPage = () => {
         }, ...withoutCurrent];
       });
 
+      if (linkedExpense && "payload" in linkedExpense) {
+          setExpenses((prev) => [
+            {
+              id: linkedExpense.payload.id,
+              amount: linkedExpense.payload.amount,
+              currency: linkedExpense.payload.currency,
+              category: linkedExpense.payload.category,
+              title: linkedExpense.payload.title,
+              paidBy: linkedExpense.payload.paid_by,
+              split: linkedExpense.payload.split as Expense["split"],
+              participants: linkedExpense.payload.participants,
+              date: linkedExpense.payload.date,
+            },
+            ...prev,
+          ]);
+      }
+
       closeReservationDialog();
       toast({ title: editingReservationId ? "Reservation updated" : "Reservation saved" });
     } catch (error: any) {
       if (uploadedAttachments.length > 0) {
         await removeReservationAttachments(uploadedAttachments);
+      }
+      if (reservationExpenseEnabled && !editingReservationId) {
+        await supabase.from("reservations").delete().eq("id", nextReservation.id);
       }
       console.error("[TripPage] Failed to save reservation:", error);
       toast({
@@ -1941,6 +2046,15 @@ const TripPage = () => {
 
   const toggleExpenseParticipant = (participantId: string) => {
     setExpenseDraft((prev) => ({
+      ...prev,
+      participants: prev.participants.includes(participantId)
+        ? prev.participants.filter((id) => id !== participantId)
+        : [...prev.participants, participantId],
+    }));
+  };
+
+  const toggleReservationExpenseParticipant = (participantId: string) => {
+    setReservationExpenseDraft((prev) => ({
       ...prev,
       participants: prev.participants.includes(participantId)
         ? prev.participants.filter((id) => id !== participantId)
@@ -2039,15 +2153,24 @@ const TripPage = () => {
                 <span>{dateRange}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="default" className="rounded-full text-xs h-8 px-4 font-semibold" onClick={() => setShareDialogOpen(true)}>Share</Button>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="rounded-full border-none shadow-none font-semibold leading-none"
+                  style={{ height: 24, minHeight: 24, paddingLeft: 10, paddingRight: 10, fontSize: 10 }}
+                  onClick={() => setShareDialogOpen(true)}
+                >
+                  Share
+                </Button>
                 {isTripOwner && (
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="rounded-full text-xs h-8 px-4 font-semibold"
+                    className="rounded-full border-none shadow-none font-semibold leading-none"
+                    style={{ height: 24, minHeight: 24, paddingLeft: 8, paddingRight: 8, fontSize: 9 }}
                     onClick={() => setDeleteTripOpen(true)}
                   >
-                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                    <Trash2 className="w-3 h-3 mr-1" /> Delete
                   </Button>
                 )}
                 <button className="text-muted-foreground"><MoreHorizontal className="w-5 h-5" /></button>
@@ -2059,9 +2182,9 @@ const TripPage = () => {
         <div className="sticky top-14 z-30 bg-background border-b border-border">
           <div className="flex overflow-x-auto scrollbar-hide px-4">
             {([
-              { key: "overview" as const, label: "Overview" },
-              { key: "itinerary" as const, label: "Itinerary" },
               { key: "explore" as const, label: "Explore" },
+              { key: "overview" as const, label: "Reservations and Attachments" },
+              { key: "itinerary" as const, label: "Itinerary" },
               { key: "budget" as const, label: "Budget" },
             ]).map(tab => (
               <button
@@ -2334,17 +2457,6 @@ const TripPage = () => {
                       Budget: {formatMoney(budget || 0, budgetCurrency)}
                     </p>
                   </div>
-                  <div className="space-y-3 text-sm font-semibold text-muted-foreground">
-                    <button className="flex items-center gap-2" onClick={() => toast({ title: "Breakdown coming soon" })}>
-                      <BarChart3 className="w-4 h-4" /> View breakdown
-                    </button>
-                    <button className="flex items-center gap-2" onClick={() => setShareDialogOpen(true)}>
-                      <UserPlus className="w-4 h-4" /> Add tripmate
-                    </button>
-                    <button className="flex items-center gap-2" onClick={() => setExpenseSettingsOpen(true)}>
-                      <Settings className="w-4 h-4" /> Settings
-                    </button>
-                  </div>
                 </div>
 
                 {budget ? (
@@ -2360,6 +2472,12 @@ const TripPage = () => {
                       <Button onClick={() => setGroupBalancesOpen(true)} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
                         <ReceiptText className="w-4 h-4 mr-2" /> Group balances
                       </Button>
+                      <Button onClick={() => setShareDialogOpen(true)} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
+                        <UserPlus className="w-4 h-4 mr-2" /> Add tripmate
+                      </Button>
+                      <Button onClick={() => setExpenseSettingsOpen(true)} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
+                        <Settings className="w-4 h-4 mr-2" /> Settings
+                      </Button>
                     </div>
                   </>
                 ) : (
@@ -2370,6 +2488,12 @@ const TripPage = () => {
                       </Button>
                       <Button onClick={() => setGroupBalancesOpen(true)} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
                         <ReceiptText className="w-4 h-4 mr-2" /> Group balances
+                      </Button>
+                      <Button onClick={() => setShareDialogOpen(true)} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
+                        <UserPlus className="w-4 h-4 mr-2" /> Add tripmate
+                      </Button>
+                      <Button onClick={() => setExpenseSettingsOpen(true)} variant="secondary" className="rounded-2xl h-11 bg-muted hover:bg-muted/80 text-foreground justify-start font-bold">
+                        <Settings className="w-4 h-4 mr-2" /> Settings
                       </Button>
                     </div>
                     <p className="mt-3 text-xs text-muted-foreground">
@@ -2529,10 +2653,10 @@ const TripPage = () => {
                   <Calendar className="w-4 h-4" /> <span>{dateRange}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="default" className="rounded-xl shadow-sm" onClick={() => setShareDialogOpen(true)}><Share2 className="w-4 h-4 mr-1" /> Share</Button>
+                  <Button variant="default" className="rounded-lg shadow-sm h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm" onClick={() => setShareDialogOpen(true)}><Share2 className="w-3.5 h-3.5 mr-1" /> Share</Button>
                   {isTripOwner && (
-                    <Button variant="destructive" className="rounded-xl shadow-sm" onClick={() => setDeleteTripOpen(true)}>
-                      <Trash2 className="w-4 h-4 mr-1" /> Delete
+                    <Button variant="destructive" className="rounded-lg shadow-sm h-7 px-2.5 text-[11px] sm:h-9 sm:px-4 sm:text-sm" onClick={() => setDeleteTripOpen(true)}>
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
                     </Button>
                   )}
                 </div>
@@ -2821,7 +2945,7 @@ const TripPage = () => {
 
             <section id="section-budget" className="mb-20 scroll-mt-20">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-4xl font-display font-bold text-foreground">Budgeting</h2>
+                <h2 className="text-4xl font-display font-bold text-foreground">Budget</h2>
                 <Button className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-6 h-11 border-none" onClick={openAddExpense}>
                   <Plus className="w-4 h-4 mr-1.5" strokeWidth={3} /> Add expense
                 </Button>
@@ -2844,19 +2968,13 @@ const TripPage = () => {
                       <Button onClick={() => setGroupBalancesOpen(true)} variant="secondary" className="rounded-2xl bg-muted hover:bg-muted/80 text-foreground font-bold px-5 h-12 flex gap-2">
                         <ReceiptText className="w-4 h-4" /> Group balances
                       </Button>
+                      <Button onClick={() => setShareDialogOpen(true)} variant="secondary" className="rounded-2xl bg-muted hover:bg-muted/80 text-foreground font-bold px-5 h-12 flex gap-2">
+                        <UserPlus className="w-4 h-4" /> Add tripmate
+                      </Button>
+                      <Button onClick={() => setExpenseSettingsOpen(true)} variant="secondary" className="rounded-2xl bg-muted hover:bg-muted/80 text-foreground font-bold px-5 h-12 flex gap-2">
+                        <Settings className="w-4 h-4" /> Settings
+                      </Button>
                     </div>
-                  </div>
-
-                  <div className="flex flex-col gap-5 pr-4 justify-center">
-                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => toast({ title: "Breakdown coming soon" })}>
-                      <BarChart3 className="w-5 h-5 opacity-70 group-hover:opacity-100" /> View breakdown
-                    </button>
-                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setShareDialogOpen(true)}>
-                      <UserPlus className="w-5 h-5 opacity-70 group-hover:opacity-100" /> Add tripmate
-                    </button>
-                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setExpenseSettingsOpen(true)}>
-                      <Settings className="w-5 h-5 opacity-70 group-hover:opacity-100" /> Settings
-                    </button>
                   </div>
                 </div>
               ) : (
@@ -2870,19 +2988,13 @@ const TripPage = () => {
                       <Button onClick={() => setGroupBalancesOpen(true)} variant="secondary" className="rounded-2xl bg-muted hover:bg-muted/80 text-foreground font-bold px-5 h-12 flex gap-2">
                         <ReceiptText className="w-4 h-4" /> Group balances
                       </Button>
+                      <Button onClick={() => setShareDialogOpen(true)} variant="secondary" className="rounded-2xl bg-muted hover:bg-muted/80 text-foreground font-bold px-5 h-12 flex gap-2">
+                        <UserPlus className="w-4 h-4" /> Add tripmate
+                      </Button>
+                      <Button onClick={() => setExpenseSettingsOpen(true)} variant="secondary" className="rounded-2xl bg-muted hover:bg-muted/80 text-foreground font-bold px-5 h-12 flex gap-2">
+                        <Settings className="w-4 h-4" /> Settings
+                      </Button>
                     </div>
-                  </div>
-
-                  <div className="flex flex-col gap-5 pr-4 justify-center">
-                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => toast({ title: "Breakdown coming soon" })}>
-                      <BarChart3 className="w-5 h-5 opacity-70 group-hover:opacity-100" /> View breakdown
-                    </button>
-                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setShareDialogOpen(true)}>
-                      <UserPlus className="w-5 h-5 opacity-70 group-hover:opacity-100" /> Add tripmate
-                    </button>
-                    <button className="flex items-center gap-3 text-muted-foreground hover:text-foreground font-bold text-sm transition-colors group" onClick={() => setExpenseSettingsOpen(true)}>
-                      <Settings className="w-5 h-5 opacity-70 group-hover:opacity-100" /> Settings
-                    </button>
                   </div>
                 </div>
               )}
@@ -3121,14 +3233,14 @@ const TripPage = () => {
           if (!open) closeReservationDialog();
         }}
       >
-        <DialogContent className="sm:max-w-xl rounded-3xl border border-border/60 shadow-elevated p-4 sm:p-5">
+        <DialogContent className="sm:max-w-xl max-h-[92vh] overflow-hidden rounded-3xl border border-border/60 shadow-elevated p-4 sm:p-5">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl font-display font-bold text-center">
               {reservationDialogOpen ? `${reservationDialogOpen} details` : "Reservation details"}
             </DialogTitle>
           </DialogHeader>
 
-          <form className="mt-3 space-y-3 sm:space-y-4" onSubmit={handleSaveReservation}>
+          <form className="mt-3 space-y-3 sm:space-y-4 max-h-[calc(92vh-5.5rem)] overflow-y-auto pr-1 pb-20" onSubmit={handleSaveReservation}>
             <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-2">
               {(reservationDialogOpen ? RESERVATION_FIELD_DEFS[reservationDialogOpen] : []).map((field) => (
                 <div key={field.key} className={field.type === "textarea" ? "sm:col-span-2" : ""}>
@@ -3158,6 +3270,123 @@ const TripPage = () => {
                   )}
                 </div>
               ))}
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-muted/15 p-2.5 sm:p-3 space-y-2.5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[13px] font-bold text-foreground leading-none">Add as Expense</p>
+                  <p className="text-[10px] text-muted-foreground leading-snug mt-1">Automatically create a shared expense when this reservation is saved.</p>
+                </div>
+                <Switch checked={reservationExpenseEnabled} onCheckedChange={setReservationExpenseEnabled} />
+              </div>
+
+              {reservationExpenseEnabled && (
+                <div className="space-y-2.5">
+                  <div className="rounded-2xl border border-border bg-card px-2.5 py-2 flex items-center gap-2">
+                    <Select
+                      value={reservationExpenseDraft.currency}
+                      onValueChange={(value) => setReservationExpenseDraft((prev) => ({ ...prev, currency: value }))}
+                    >
+                      <SelectTrigger className="w-10 border-none shadow-none px-0 text-sm font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CURRENCIES.map((currency) => (
+                          <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={reservationExpenseDraft.amount}
+                      onChange={(e) => setReservationExpenseDraft((prev) => ({ ...prev, amount: e.target.value }))}
+                      placeholder="0"
+                      className="border-none shadow-none text-lg px-0 h-auto font-semibold"
+                    />
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="flex items-center justify-between gap-2.5 rounded-2xl border border-border bg-card px-2.5 py-2">
+                      <span className="text-sm font-bold text-foreground">Paid by</span>
+                      <Select
+                        value={reservationExpenseDraft.paidBy}
+                        onValueChange={(value) => setReservationExpenseDraft((prev) => ({ ...prev, paidBy: value }))}
+                      >
+                        <SelectTrigger className="w-[150px] h-8.5 rounded-2xl border-none shadow-none text-sm font-medium">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tripmates.map((mate) => (
+                            <SelectItem key={mate.id} value={mate.id}>{mate.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2.5 rounded-2xl border border-border bg-card px-2.5 py-2">
+                      <span className="text-sm font-bold text-foreground">Split</span>
+                      <Select
+                        value={reservationExpenseDraft.split}
+                        onValueChange={(value: Expense["split"]) =>
+                          setReservationExpenseDraft((prev) => ({
+                            ...prev,
+                            split: value,
+                            participants: value === "everyone" ? tripmates.map((mate) => mate.id) : prev.participants,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="w-[130px] h-8.5 rounded-2xl border-none shadow-none text-sm font-medium">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="individuals">Individuals</SelectItem>
+                          <SelectItem value="everyone">Everyone</SelectItem>
+                          <SelectItem value="none">Don't split</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {reservationExpenseDraft.split === "individuals" && (
+                    <div className="space-y-1.5 pt-0.5">
+                      {tripmates.map((mate) => {
+                        const checked = reservationExpenseDraft.participants.includes(mate.id);
+                        return (
+                          <button
+                            key={mate.id}
+                            type="button"
+                            onClick={() => toggleReservationExpenseParticipant(mate.id)}
+                            className="flex items-center gap-3"
+                          >
+                            <div className={cn("w-6 h-6 rounded-md flex items-center justify-center border-2", checked ? "bg-primary border-primary text-primary-foreground" : "border-border text-transparent")}>
+                              <Check className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="w-8 h-8 rounded-full bg-muted text-foreground text-[11px] font-bold flex items-center justify-center">
+                              {getInitials(mate.name)}
+                            </div>
+                            <span className="text-sm text-foreground">{mate.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between gap-2.5 rounded-2xl border border-border bg-card px-2.5 py-2">
+                    <span className="text-sm font-bold text-foreground">Date</span>
+                    <Input
+                      type="date"
+                      value={reservationExpenseDraft.date}
+                      onChange={(e) => {
+                        setReservationExpenseDraft((prev) => ({ ...prev, date: e.target.value }));
+                        blurDateInput(e);
+                      }}
+                      className="w-[145px] h-8.5 rounded-2xl text-sm"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-3 sm:p-4">
@@ -3205,7 +3434,7 @@ const TripPage = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="sticky bottom-0 flex items-center justify-between gap-3 pt-3 pb-1 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
               <button
                 type="button"
                 className="text-sm font-semibold text-muted-foreground hover:text-foreground"
@@ -3246,15 +3475,6 @@ const TripPage = () => {
                   </div>
                 </div>
               ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mt-5">
-              <Button variant="outline" className="rounded-full h-10 text-sm font-bold" onClick={() => toast({ title: "Transaction history coming soon" })}>
-                <ReceiptText className="w-4 h-4 mr-2" /> Transaction history
-              </Button>
-              <Button variant="outline" className="rounded-full h-10 text-sm font-bold" onClick={() => toast({ title: "Currency switch coming soon" })}>
-                <DollarSign className="w-4 h-4 mr-2" /> Change currency
-              </Button>
             </div>
 
             <Button className="w-full rounded-full h-10 mt-4 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold" onClick={() => toast({ title: currentUserBalance < 0 ? "You owe the group" : currentUserBalance > 0 ? "The group owes you" : "You're settled up" })}>
