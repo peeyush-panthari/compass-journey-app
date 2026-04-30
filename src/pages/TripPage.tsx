@@ -31,11 +31,22 @@ import { format } from "date-fns";
 import { getBlogImageCandidates } from "@/lib/blogs";
 
 type Activity = ActivityDetail;
+
+const isArrivalCheckInActivity = (activity: { name?: string }) => {
+  const name = String(activity?.name || "").toLowerCase();
+  return (
+    name.includes("arrival and hotel check-in") ||
+    name.includes("arrival & hotel check-in") ||
+    name.includes("arrival check-in") ||
+    (name.includes("arrival") && name.includes("check-in"))
+  );
+};
 interface Day {
   id?: string;
   dayNumber: number;
   date: string;
   fullDate: string;
+  sourceDate?: string;
   city: string;
   country: string;
   activities: Activity[];
@@ -143,6 +154,20 @@ interface ReservationRecord {
   fields: Record<string, string>;
   attachments: ReservationAttachment[];
   updatedAt: string;
+}
+
+interface ReservationTimelineEntry {
+  id: string;
+  reservationId: string;
+  type: ReservationType;
+  eventLabel: string;
+  title: string;
+  subtitle: string;
+  timeLabel: string;
+  bucket: "early" | "mid" | "late";
+  dateKey: string;
+  sortKey: number;
+  attachments: ReservationAttachment[];
 }
 
 interface Expense {
@@ -283,6 +308,29 @@ const RESERVATION_FIELD_DEFS: Record<ReservationType, ReservationFieldDefinition
   ],
 };
 
+const ACTIVITY_BUCKET_ORDER: Array<{ key: "early" | "mid" | "late"; label: string }> = [
+  { key: "early", label: "Early morning" },
+  { key: "mid", label: "Midday" },
+  { key: "late", label: "Evening" },
+];
+
+const getActivityTimeBucket = (activity: Activity): "early" | "mid" | "late" => {
+  const timeOfDay = String(activity.timeOfDay || "").toLowerCase();
+  if (timeOfDay === "afternoon") return "mid";
+  if (timeOfDay === "evening") return "late";
+  return "early";
+};
+
+const groupReservationEntriesByBucket = (entries: ReservationTimelineEntry[]) => {
+  return entries.reduce(
+    (acc, entry) => {
+      acc[entry.bucket].push(entry);
+      return acc;
+    },
+    { early: [] as ReservationTimelineEntry[], mid: [] as ReservationTimelineEntry[], late: [] as ReservationTimelineEntry[] }
+  );
+};
+
 const getInitials = (name: string) =>
   name
     .split(/\s+/)
@@ -323,9 +371,10 @@ const formatReservationFieldValue = (fieldKey: string, fieldValue: string) => {
   if (fieldKey.includes("date") || fieldKey.includes("time")) {
     const parsed = new Date(fieldValue);
     if (!Number.isNaN(parsed.getTime())) {
+      const showDateAndTime = fieldKey === "departure_time" || fieldKey === "arrival_time";
       return parsed.toLocaleString([], {
-        dateStyle: fieldKey.includes("date") ? "medium" : undefined,
-        timeStyle: fieldKey.includes("time") ? "short" : undefined,
+        dateStyle: fieldKey.includes("date") || showDateAndTime ? "medium" : undefined,
+        timeStyle: fieldKey.includes("time") || showDateAndTime ? "short" : undefined,
       } as Intl.DateTimeFormatOptions);
     }
   }
@@ -333,6 +382,10 @@ const formatReservationFieldValue = (fieldKey: string, fieldValue: string) => {
 };
 
 const getReservationFieldLabel = (type: ReservationType, key: string) => {
+  if (type === "Flight") {
+    if (key === "departure_time") return "Departure Date Time";
+    if (key === "arrival_time") return "Arrival Date Time";
+  }
   const definition = RESERVATION_FIELD_DEFS[type].find((field) => field.key === key);
   return definition?.label || key.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
@@ -412,6 +465,146 @@ const getReservationLayout = (reservation: ReservationRecord) => {
           ["details"],
         ],
       };
+  }
+};
+
+const RESERVATION_TYPE_ICONS: Record<ReservationType, typeof Plane> = {
+  Flight: Plane,
+  Lodging: BedDouble,
+  "Rental car": Car,
+  Restaurant: UtensilsCrossed,
+  Train: TrainFront,
+  Bus: Bus,
+  Ferry: Ship,
+  Cruise: Anchor,
+  Other: ReceiptText,
+};
+
+const parseReservationDateValue = (value?: string | null) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? new Date(`${trimmed}T12:00:00`) : new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getReservationTimeBucket = (value?: string | null) => {
+  if (!value) return "early" as const;
+  const parsed = parseReservationDateValue(value);
+  if (!parsed) return "early" as const;
+  const hours = parsed.getHours() + parsed.getMinutes() / 60;
+  if (hours <= 11) return "early" as const;
+  if (hours < 16) return "mid" as const;
+  return "late" as const;
+};
+
+const formatReservationTimeLabel = (value?: string | null) => {
+  if (!value) return "All day";
+  const trimmed = value.trim();
+  if (!trimmed) return "All day";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return "All day";
+  const parsed = parseReservationDateValue(trimmed);
+  return parsed ? format(parsed, "p") : trimmed;
+};
+
+const getReservationTimelineSubtitle = (reservation: ReservationRecord) => {
+  const fields = reservation.fields;
+  switch (reservation.type) {
+    case "Flight":
+      return [fields.departure_airport && fields.arrival_airport ? `${fields.departure_airport} → ${fields.arrival_airport}` : "", fields.duration].filter(Boolean).join(" • ");
+    case "Lodging":
+      return [fields.address, fields.booking_platform].filter(Boolean).join(" • ");
+    case "Rental car":
+      return [fields.pickup_location && fields.dropoff_location ? `${fields.pickup_location} → ${fields.dropoff_location}` : "", fields.rental_company].filter(Boolean).join(" • ");
+    case "Restaurant":
+      return [fields.location, fields.number_of_people ? `${fields.number_of_people} guests` : ""].filter(Boolean).join(" • ");
+    case "Train":
+      return [fields.departure_station && fields.arrival_station ? `${fields.departure_station} → ${fields.arrival_station}` : "", fields.train_number].filter(Boolean).join(" • ");
+    case "Bus":
+      return [fields.departure_location && fields.arrival_location ? `${fields.departure_location} → ${fields.arrival_location}` : "", fields.bus_type].filter(Boolean).join(" • ");
+    case "Ferry":
+      return [fields.departure_port && fields.arrival_port ? `${fields.departure_port} → ${fields.arrival_port}` : ""].filter(Boolean).join(" • ");
+    case "Cruise":
+      return [fields.departure_port && fields.return_port ? `${fields.departure_port} → ${fields.return_port}` : "", fields.cruise_line].filter(Boolean).join(" • ");
+    case "Other":
+    default:
+      return [fields.location, fields.details].filter(Boolean).join(" • ");
+  }
+};
+
+const getReservationTimelineEntries = (reservation: ReservationRecord): ReservationTimelineEntry[] => {
+  const fields = reservation.fields;
+  const layout = getReservationLayout(reservation);
+  const title = layout.titleFields
+    .map((key) => {
+      const value = reservation.fields[key]?.trim();
+      if (!value) return null;
+      return formatReservationFieldValue(key, value);
+    })
+    .filter((value): value is string => Boolean(value))
+    .join(" • ") || reservation.type;
+  const subtitle = getReservationTimelineSubtitle(reservation) || getReservationSummary(reservation);
+  const buildEntry = (entrySuffix: string, eventLabel: string, dateValue?: string | null) => {
+    const parsed = parseReservationDateValue(dateValue);
+    if (!parsed) return null;
+    return {
+      id: `${reservation.id}-${entrySuffix}-${dateValue}`,
+      reservationId: reservation.id,
+      type: reservation.type,
+      eventLabel,
+      title,
+      subtitle,
+      timeLabel: formatReservationTimeLabel(dateValue),
+      bucket: getReservationTimeBucket(dateValue),
+      dateKey: format(parsed, "yyyy-MM-dd"),
+      sortKey: parsed.getTime(),
+      attachments: reservation.attachments,
+    };
+  };
+
+  switch (reservation.type) {
+    case "Flight":
+      return [
+        buildEntry("departure", "Departure", fields.departure_time),
+        buildEntry("arrival", "Arrival", fields.arrival_time),
+      ].filter((entry): entry is ReservationTimelineEntry => Boolean(entry));
+    case "Lodging":
+      return [
+        buildEntry("check-in", "Check-in", fields.check_in_date),
+        buildEntry("check-out", "Check-out", fields.check_out_date),
+      ].filter((entry): entry is ReservationTimelineEntry => Boolean(entry));
+    case "Rental car":
+      return [
+        buildEntry("pickup", "Pickup", fields.pickup_datetime),
+        buildEntry("dropoff", "Dropoff", fields.dropoff_datetime),
+      ].filter((entry): entry is ReservationTimelineEntry => Boolean(entry));
+    case "Restaurant":
+      return [buildEntry("reservation", "Reservation", fields.reservation_datetime)].filter((entry): entry is ReservationTimelineEntry => Boolean(entry));
+    case "Train":
+      return [
+        buildEntry("departure", "Departure", fields.departure_time),
+        buildEntry("arrival", "Arrival", fields.arrival_time),
+      ].filter((entry): entry is ReservationTimelineEntry => Boolean(entry));
+    case "Bus":
+      return [
+        buildEntry("departure", "Departure", fields.departure_time),
+        buildEntry("arrival", "Arrival", fields.arrival_time),
+      ].filter((entry): entry is ReservationTimelineEntry => Boolean(entry));
+    case "Ferry":
+      return [
+        buildEntry("departure", "Departure", fields.departure_time),
+        buildEntry("arrival", "Arrival", fields.arrival_time),
+      ].filter((entry): entry is ReservationTimelineEntry => Boolean(entry));
+    case "Cruise":
+      return [
+        buildEntry("start", "Start", fields.start_date),
+        buildEntry("end", "End", fields.end_date),
+      ].filter((entry): entry is ReservationTimelineEntry => Boolean(entry));
+    case "Other":
+    default: {
+      const combinedDate = fields.date ? (fields.time ? `${fields.date}T${fields.time}` : fields.date) : fields.time || null;
+      return [buildEntry("other", "Schedule", combinedDate)].filter((entry): entry is ReservationTimelineEntry => Boolean(entry));
+    }
   }
 };
 
@@ -630,6 +823,75 @@ const ReservationCard = ({
   );
 };
 
+const ReservationTimelineCard = ({
+  entry,
+  compact = false,
+}: {
+  entry: ReservationTimelineEntry;
+  compact?: boolean;
+}) => {
+  const Icon = RESERVATION_TYPE_ICONS[entry.type];
+
+  return (
+    <div className={cn("rounded-xl border border-border/60 bg-card shadow-sm", compact ? "px-2.5 py-2" : "px-3 py-2.5")}>
+      <div className="flex items-start gap-2.5">
+        <div className={cn("flex shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary", compact ? "h-7 w-7" : "h-8 w-8")}>
+          <Icon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {entry.type}
+            </span>
+            <span className="text-[10px] font-semibold text-primary/80">
+              {entry.eventLabel}
+            </span>
+            <span className="text-[10px] font-semibold text-primary">
+              {entry.timeLabel}
+            </span>
+          </div>
+          <h4 className={cn("min-w-0 truncate font-semibold leading-tight text-foreground", compact ? "text-[13px]" : "text-sm")}>
+            {entry.title}
+          </h4>
+          {entry.subtitle ? (
+            <p className={cn("mt-0.5 line-clamp-2 text-muted-foreground", compact ? "text-[10px]" : "text-[11px]")}>
+              {entry.subtitle}
+            </p>
+          ) : null}
+        </div>
+        {entry.attachments.length > 0 && (
+          <div className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {entry.attachments.length} file{entry.attachments.length === 1 ? "" : "s"}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ReservationBucketGroup = ({
+  label,
+  entries,
+  compact = false,
+}: {
+  label: string;
+  entries: ReservationTimelineEntry[];
+  compact?: boolean;
+}) => {
+  if (!entries.length) return null;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <Clock className="h-3 w-3" />
+        <span>{label}</span>
+      </div>
+      {entries.map((entry) => (
+        <ReservationTimelineCard key={entry.id} entry={entry} compact={compact} />
+      ))}
+    </div>
+  );
+};
+
 const TripPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -665,6 +927,7 @@ const TripPage = () => {
   const [reservationOriginalAttachments, setReservationOriginalAttachments] = useState<ReservationAttachment[]>([]);
   const reservationFileInputRef = useRef<HTMLInputElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
   const [mobileTab, setMobileTab] = useState<"overview" | "itinerary" | "explore" | "budget" | "journal">("overview");
   const [mobileSelectedDay, setMobileSelectedDay] = useState(0);
   const isMobile = useIsMobile();
@@ -673,6 +936,8 @@ const TripPage = () => {
   const [groupBalancesView, setGroupBalancesView] = useState<"summary" | "overview">("summary");
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareSubmitting, setShareSubmitting] = useState(false);
+  const [deleteTripOpen, setDeleteTripOpen] = useState(false);
+  const [deleteTripSubmitting, setDeleteTripSubmitting] = useState(false);
   const [expenseSettingsOpen, setExpenseSettingsOpen] = useState(false);
   const [simplifyGroupExpenses, setSimplifyGroupExpenses] = useState(true);
   const [defaultCurrency, setDefaultCurrency] = useState<(typeof CURRENCY_OPTIONS)[number]["symbol"]>("₹");
@@ -720,6 +985,8 @@ const TripPage = () => {
 
     return groups;
   }, [itinerary]);
+
+  const isTripOwner = Boolean(trip?.user_id && user?.id && trip.user_id === user.id);
 
   const totalSpent = useMemo(() => expenses.reduce((sum, expense) => sum + expense.amount, 0), [expenses]);
 
@@ -770,6 +1037,168 @@ const TripPage = () => {
   }, [expenses, tripmates]);
 
   const currentUserBalance = groupBalances.find((mate) => mate.id === tripmates[0]?.id)?.amount || 0;
+
+  const reservationTimelineByDay = useMemo(() => {
+    const grouped = new Map<string, ReservationTimelineEntry[]>();
+
+    reservations.forEach((reservation) => {
+      getReservationTimelineEntries(reservation).forEach((entry) => {
+        const existing = grouped.get(entry.dateKey) || [];
+        existing.push(entry);
+        grouped.set(entry.dateKey, existing);
+      });
+    });
+
+    grouped.forEach((entries) => {
+      entries.sort((a, b) => a.sortKey - b.sortKey || a.title.localeCompare(b.title));
+    });
+
+    return grouped;
+  }, [reservations]);
+
+  const tripDateBounds = useMemo(() => {
+    const parsed = itinerary
+      .map((day) => parseReservationDateValue(day.sourceDate || null))
+      .filter((value): value is Date => Boolean(value));
+    if (!parsed.length) return null;
+    const sorted = [...parsed].sort((a, b) => a.getTime() - b.getTime());
+    return {
+      start: sorted[0],
+      end: sorted[sorted.length - 1],
+    };
+  }, [itinerary]);
+
+  const reservationDatesOutsideTrip = useMemo(() => {
+    if (!tripDateBounds) return { before: [] as string[], after: [] as string[] };
+    const dates = [...reservationTimelineByDay.keys()]
+      .map((dateKey) => ({ dateKey, parsed: parseReservationDateValue(dateKey) }))
+      .filter((entry): entry is { dateKey: string; parsed: Date } => Boolean(entry.parsed));
+
+    return {
+      before: dates.filter(({ parsed }) => parsed.getTime() < tripDateBounds.start.getTime()).map(({ dateKey }) => dateKey).sort(),
+      after: dates.filter(({ parsed }) => parsed.getTime() > tripDateBounds.end.getTime()).map(({ dateKey }) => dateKey).sort(),
+    };
+  }, [reservationTimelineByDay, tripDateBounds]);
+
+  useEffect(() => {
+    const root = mainRef.current;
+    if (!root) return;
+
+    const daySections = Array.from(root.querySelectorAll<HTMLElement>('[id^="section-day-"]'));
+    if (!daySections.length) return;
+
+    let raf = 0;
+    const updateActiveDay = () => {
+      cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        const rootRect = root.getBoundingClientRect();
+        const anchor = rootRect.top + Math.min(150, rootRect.height * 0.18);
+        const visible = daySections
+          .map((section) => ({
+            index: Number(section.id.match(/section-day-(\d+)/)?.[1] || "0"),
+            rect: section.getBoundingClientRect(),
+          }))
+          .filter((entry) => !Number.isNaN(entry.index))
+          .sort((a, b) => a.rect.top - b.rect.top);
+
+        if (!visible.length) return;
+
+        let nextIndex = visible[0].index;
+        for (const entry of visible) {
+          if (entry.rect.top <= anchor && entry.rect.bottom > rootRect.top + 40) {
+            nextIndex = entry.index;
+          }
+        }
+
+        setActiveSection((prev) => (prev === `day-${nextIndex}` ? prev : `day-${nextIndex}`));
+      });
+    };
+
+    root.addEventListener("scroll", updateActiveDay, { passive: true });
+    window.addEventListener("resize", updateActiveDay);
+    updateActiveDay();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      root.removeEventListener("scroll", updateActiveDay);
+      window.removeEventListener("resize", updateActiveDay);
+    };
+  }, [itinerary.length]);
+
+  useEffect(() => {
+    if (mobileTab !== "itinerary") return;
+    const root = mobileScrollRef.current;
+    if (!root) return;
+
+    const daySections = Array.from(root.querySelectorAll<HTMLElement>('[data-mobile-day-index]'));
+    if (!daySections.length) return;
+
+    let raf = 0;
+    const updateActiveDay = () => {
+      cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        const anchor = root.scrollTop + Math.max(220, root.clientHeight * 0.32);
+        const indexed = daySections
+          .map((section) => ({
+            index: Number(section.dataset.mobileDayIndex || "0"),
+            top: section.offsetTop,
+          }))
+          .filter((entry) => !Number.isNaN(entry.index))
+          .sort((a, b) => a.top - b.top);
+
+        if (!indexed.length) return;
+
+        let nextIndex = indexed[0].index;
+        for (const entry of indexed) {
+          if (entry.top <= anchor) {
+            nextIndex = entry.index;
+          } else {
+            break;
+          }
+        }
+        setMobileSelectedDay((prev) => (prev === nextIndex ? prev : nextIndex));
+      });
+    };
+
+    root.addEventListener("scroll", updateActiveDay, { passive: true });
+    updateActiveDay();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      root.removeEventListener("scroll", updateActiveDay);
+    };
+  }, [itinerary.length, mobileTab]);
+
+  const renderReservationDateBlock = (dateKey: string, compact = false) => {
+    const entries = reservationTimelineByDay.get(dateKey) || [];
+    if (!entries.length) return null;
+    const grouped = groupReservationEntriesByBucket(entries);
+    const parsedDate = parseReservationDateValue(dateKey);
+    const dateLabel = parsedDate ? format(parsedDate, "EEE MM/dd") : dateKey;
+    const fullLabel = parsedDate ? format(parsedDate, "EEEE, MMMM do") : dateKey;
+
+    return (
+      <div className={cn("rounded-2xl border border-border/60 bg-card shadow-sm", compact ? "p-3" : "p-4")}>
+        <div className={cn("flex items-center gap-2", compact ? "mb-2" : "mb-3")}>
+          <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+          <div className="min-w-0">
+            <div className={cn("font-display font-bold text-foreground", compact ? "text-sm" : "text-base")}>{dateLabel}</div>
+            <div className="text-[10px] text-muted-foreground">{fullLabel}</div>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {ACTIVITY_BUCKET_ORDER.map((bucket) => (
+            <ReservationBucketGroup
+              key={`${dateKey}-${bucket.key}`}
+              label={bucket.label}
+              entries={grouped[bucket.key]}
+              compact={compact}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const openReservationDialog = (type: ReservationType, existing?: ReservationRecord) => {
     setReservationDialogOpen(type);
@@ -956,9 +1385,11 @@ const TripPage = () => {
           dayNumber: day.day_number,
           date: day.date ? format(new Date(day.date), "EEE MM/dd") : `Day ${day.day_number}`,
           fullDate: day.date ? format(new Date(day.date), "EEEE, MMMM do") : `Day ${day.day_number}`,
+          sourceDate: day.date || "",
           city: day.city || "City",
           country: day.country || "Country",
           activities: (day.activities || [])
+            .filter((act: any) => !isArrivalCheckInActivity(act))
             .sort((a: any, b: any) => a.sort_order - b.sort_order)
             .map((act: any) => ({
               ...act,
@@ -977,6 +1408,9 @@ const TripPage = () => {
               foodSuggestions: act.food_suggestions || act.foodSuggestions || [],
               hiddenGems: act.hidden_gems || act.hiddenGems || [],
               photoUrl: resolveActivityPhotoUrl(act.photo_url),
+              photos: Array.isArray(act.photos)
+                ? act.photos.map((photo: string) => resolveActivityPhotoUrl(photo))
+                : [],
               sortOrder: act.sort_order ?? act.sortOrder ?? 0,
               youtubeVideos: act.youtube_videos || []
             }))
@@ -1156,7 +1590,7 @@ const TripPage = () => {
   const addDay = () => {
     const n = itinerary.length + 1;
     const last = itinerary[itinerary.length - 1];
-    setItinerary(prev => [...prev, { dayNumber: n, date: `Day ${n}`, fullDate: `Day ${n}`, city: last?.city || "New City", country: last?.country || "Country", activities: [] }]);
+    setItinerary(prev => [...prev, { dayNumber: n, date: `Day ${n}`, fullDate: `Day ${n}`, sourceDate: last?.sourceDate || "", city: last?.city || "New City", country: last?.country || "Country", activities: [] }]);
     toast({ title: `Day ${n} added` });
   };
 
@@ -1267,6 +1701,27 @@ const TripPage = () => {
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
     toast({ title: "Link copied!" });
+  };
+
+  const handleDeleteTrip = async () => {
+    if (!id || !trip || !user?.id) return;
+    setDeleteTripSubmitting(true);
+    try {
+      const { error } = await supabase.from("trips").delete().eq("id", id).eq("user_id", user.id);
+      if (error) throw error;
+      setDeleteTripOpen(false);
+      toast({ title: "Trip deleted" });
+      navigate("/my-trips");
+    } catch (error: any) {
+      console.error("[TripPage] Failed to delete trip:", error);
+      toast({
+        title: "Failed to delete trip",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteTripSubmitting(false);
+    }
   };
 
   const resetExpenseDraft = () => {
@@ -1566,7 +2021,7 @@ const TripPage = () => {
       <Navbar />
 
       {/* MOBILE TAB BAR (< md) */}
-      <div className="md:hidden flex-1 overflow-y-auto">
+      <div ref={mobileScrollRef} className="md:hidden flex-1 overflow-y-auto">
         <div className="relative h-48 overflow-hidden bg-muted pt-14">
           {itinerary[0]?.activities[0]?.photoUrl ? (
             <img src={itinerary[0].activities[0].photoUrl} alt="Trip" className="w-full h-full object-cover" />
@@ -1585,6 +2040,16 @@ const TripPage = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="default" className="rounded-full text-xs h-8 px-4 font-semibold" onClick={() => setShareDialogOpen(true)}>Share</Button>
+                {isTripOwner && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="rounded-full text-xs h-8 px-4 font-semibold"
+                    onClick={() => setDeleteTripOpen(true)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                  </Button>
+                )}
                 <button className="text-muted-foreground"><MoreHorizontal className="w-5 h-5" /></button>
               </div>
             </div>
@@ -1658,89 +2123,135 @@ const TripPage = () => {
 
           {mobileTab === "itinerary" && (
             <div>
+              {reservationDatesOutsideTrip.before.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground px-1">Earlier reservation dates</p>
+                  <div className="space-y-2">
+                    {reservationDatesOutsideTrip.before.map((dateKey) => renderReservationDateBlock(dateKey, true))}
+                  </div>
+                </div>
+              )}
               {/* Day selector pills */}
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-3 -mx-1 px-1">
+              <div className="sticky top-[6.25rem] z-20 -mx-4 border-b border-border bg-background/95 backdrop-blur-sm px-4 py-2 shadow-sm">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-0.5">
                 {itinerary.map((day, i) => (
-                  <button key={i} onClick={() => setMobileSelectedDay(i)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${mobileSelectedDay === i ? "bg-foreground text-background" : "bg-muted text-foreground"}`}>
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setMobileSelectedDay(i);
+                      mobileScrollRef.current?.querySelector<HTMLElement>(`[data-mobile-day-index="${i}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className={`shrink-0 px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-colors ${mobileSelectedDay === i ? "bg-foreground text-background" : "bg-muted text-foreground"}`}
+                  >
                     Day {day.dayNumber}
                   </button>
                 ))}
+                </div>
               </div>
 
-              {itinerary[mobileSelectedDay] && (() => {
-                const day = itinerary[mobileSelectedDay];
-                const cityColor = getCityColor(day.city);
-                return (
-                  <div>
-                    {/* City sub-header for current day */}
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className={cn("w-2 h-2 rounded-full shrink-0", cityColor.dot)} />
-                      <span className="text-xs font-semibold text-foreground">
-                        {day.city}{day.country && day.country !== "Country" ? `, ${day.country}` : ""}
-                      </span>
-                    </div>
-                    <h2 className="text-base font-display font-bold text-foreground mb-2.5">
-                      Day {day.dayNumber} — {day.date}
-                    </h2>
-                    {/* Compact numbered activity list — no time-of-day grouping */}
-                    <div className="space-y-1.5">
-                      {day.activities.length === 0 && (
-                        <p className="text-xs text-muted-foreground italic py-1">No activities yet</p>
-                      )}
-                      {day.activities.map((activity, actIdx) => (
-                        (() => {
-                          const openingHours = getOpeningHoursLabel(activity);
-                          const showRating = hasActivityRating(activity);
-                          const showDuration = hasActivityDuration(activity);
+              <div className="space-y-4">
+                {itinerary.map((day, i) => {
+                  const cityColor = getCityColor(day.city);
+                  const dayReservations = day.sourceDate ? (reservationTimelineByDay.get(day.sourceDate) || []) : [];
+                  const reservationBuckets = groupReservationEntriesByBucket(dayReservations);
+                  const indexedActivities = day.activities.map((activity) => ({
+                    activity,
+                    bucketKey: getActivityTimeBucket(activity),
+                  }));
+                  return (
+                    <div key={day.id || i} data-mobile-day-index={i} className="space-y-2 rounded-2xl border border-border/60 bg-card p-3 scroll-mt-24">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className={cn("w-2 h-2 rounded-full shrink-0", cityColor.dot)} />
+                        <span className="text-xs font-semibold text-foreground">
+                          {day.city}{day.country && day.country !== "Country" ? `, ${day.country}` : ""}
+                        </span>
+                      </div>
+                      <h2 className="text-base font-display font-bold text-foreground mb-2.5">
+                        Day {day.dayNumber} — {day.date}
+                      </h2>
+                      <div className="space-y-3">
+                        {ACTIVITY_BUCKET_ORDER.map((bucket) => {
+                          const bucketReservations = reservationBuckets[bucket.key];
+                          const bucketActivities = indexedActivities.filter((entry) => entry.bucketKey === bucket.key);
+                          if (!bucketReservations.length && !bucketActivities.length) return null;
                           return (
-                            <div
-                              key={activity.id}
-                              className="flex items-center gap-2.5 px-2.5 py-2 bg-card border border-border/60 rounded-xl cursor-pointer"
-                              onClick={() => setSelectedActivity(activity)}
-                            >
-                              <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
-                                {actIdx + 1}
+                            <div key={bucket.key} className="space-y-1.5">
+                              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                <span>{bucket.label}</span>
                               </div>
-                              <div className="w-10 h-10 shrink-0 overflow-hidden rounded-lg bg-muted">
-                                <img src={activity.photoUrl} className="w-full h-full object-cover" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-foreground text-sm leading-tight truncate">{activity.name}</h4>
-                                <p className="mt-0.5 text-xs leading-relaxed text-foreground/85 line-clamp-2">
-                                  {getEditorSummary(activity)}
-                                </p>
-                                <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-1 text-[10px] text-muted-foreground">
-                                  {showRating && (
-                                    <span className="flex items-center gap-1 min-w-0">
-                                      <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0" />
-                                      <span className="truncate">{activity.rating}</span>
-                                    </span>
-                                  )}
-                                  {openingHours && (
-                                    <span className="flex items-center gap-1 min-w-0">
-                                      <Clock className="w-2.5 h-2.5 shrink-0" />
-                                      <span className="truncate">{openingHours}</span>
-                                    </span>
-                                  )}
-                                  {showDuration && (
-                                    <span className="flex items-center gap-1 min-w-0 col-span-2">
-                                      <Clock className="w-2.5 h-2.5 shrink-0" />
-                                      <span className="truncate">Avg Time Spend: {activity.duration}</span>
-                                    </span>
-                                  )}
-                                </div>
+                              <div className="space-y-1.5">
+                                {bucketReservations.map((entry) => (
+                                  <ReservationTimelineCard key={entry.id} entry={entry} compact />
+                                ))}
+                                {bucketActivities.map(({ activity }) => {
+                                  const openingHours = getOpeningHoursLabel(activity);
+                                  const showRating = hasActivityRating(activity);
+                                  const showDuration = hasActivityDuration(activity);
+                                  return (
+                                    <div
+                                      key={activity.id}
+                                      className="flex items-start gap-2 px-2.5 py-1.5 bg-muted/30 border border-border/60 rounded-xl cursor-pointer"
+                                      onClick={() => setSelectedActivity(activity)}
+                                    >
+                                      <div className="w-10 h-10 shrink-0 overflow-hidden rounded-lg bg-muted mt-0.5">
+                                        <img src={activity.photoUrl} className="w-full h-full object-cover" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-start gap-2 min-w-0">
+                                          <h4 className="flex-1 min-w-0 font-semibold text-foreground text-sm leading-tight truncate">{activity.name}</h4>
+                                        </div>
+                                        <p className="mt-0.5 text-xs leading-relaxed text-foreground/85 line-clamp-1">
+                                          {getEditorSummary(activity)}
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] text-muted-foreground">
+                                          {showRating && (
+                                            <span className="flex items-center gap-1 min-w-0">
+                                              <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0" />
+                                              <span className="truncate">{activity.rating}</span>
+                                            </span>
+                                          )}
+                                          {openingHours && (
+                                            <span className="flex items-center gap-1 min-w-0">
+                                              <Clock className="w-2.5 h-2.5 shrink-0" />
+                                              <span className="truncate">{openingHours}</span>
+                                            </span>
+                                          )}
+                                          {showDuration && (
+                                            <span className="flex items-center gap-1 min-w-0 col-span-2">
+                                              <Clock className="w-2.5 h-2.5 shrink-0" />
+                                              <span className="truncate">Avg Time Spend: {activity.duration}</span>
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
-                        })()
-                      ))}
+                        })}
+                        {day.activities.length === 0 && !dayReservations.length && (
+                          <p className="text-xs text-muted-foreground italic py-1">No activities yet</p>
+                        )}
+                      </div>
+                      <Button variant="ghost" size="sm" className="w-full h-8 text-xs text-muted-foreground border border-dashed border-border/50 rounded-xl mt-2 hover:border-primary/40 hover:text-primary" onClick={() => setAddActivityDayIndex(i)}>
+                        <Plus className="w-3 h-3 mr-1" strokeWidth={2.5} /> Add Activity
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm" className="w-full h-8 text-xs text-muted-foreground border border-dashed border-border/50 rounded-xl mt-2 hover:border-primary/40 hover:text-primary" onClick={() => setAddActivityDayIndex(mobileSelectedDay)}>
-                      <Plus className="w-3 h-3 mr-1" strokeWidth={2.5} /> Add Activity
-                    </Button>
+                  );
+                })}
+              </div>
+
+              {reservationDatesOutsideTrip.after.length > 0 && (
+                <div className="space-y-2 mt-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground px-1">Later reservation dates</p>
+                  <div className="space-y-2">
+                    {reservationDatesOutsideTrip.after.map((dateKey) => renderReservationDateBlock(dateKey, true))}
                   </div>
-                );
-              })()}
+                </div>
+              )}
             </div>
           )}
           {mobileTab === "explore" && (
@@ -1968,7 +2479,7 @@ const TripPage = () => {
                 <CollapsibleContent>
                   <div className="ml-5 space-y-1 mt-2">
                     {itinerary.map((day, i) => (
-                      <button key={i} onClick={() => { scrollToSection(`day-${i}`); setExpandedDays(prev => new Set(prev).add(i)); }} className={`block w-full text-left py-1.5 px-2 rounded-md transition-colors ${activeSection === `day-${i}` ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+                      <button key={i} onClick={() => { scrollToSection(`day-${i}`); setExpandedDays(prev => new Set(prev).add(i)); }} className={`block w-full text-left py-1.5 px-2 rounded-md transition-colors ${activeSection === `day-${i}` ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
                         <span className="text-xs font-medium">{day.date}</span>
                         <p className="text-[10px] truncate">{day.activities.map(a => a.name).join(" • ")}</p>
                       </button>
@@ -2019,6 +2530,11 @@ const TripPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="default" className="rounded-xl shadow-sm" onClick={() => setShareDialogOpen(true)}><Share2 className="w-4 h-4 mr-1" /> Share</Button>
+                  {isTripOwner && (
+                    <Button variant="destructive" className="rounded-xl shadow-sm" onClick={() => setDeleteTripOpen(true)}>
+                      <Trash2 className="w-4 h-4 mr-1" /> Delete
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -2097,6 +2613,24 @@ const TripPage = () => {
               <Textarea placeholder="Share details or tips..." value={notes} onChange={e => setNotes(e.target.value)} className="min-h-[80px] rounded-xl" />
             </section>
 
+            {reservationDatesOutsideTrip.before.length > 0 && (
+              <section className="mb-8 scroll-mt-20 space-y-3">
+                <h2 className="text-xl font-display font-bold">Earlier reservation dates</h2>
+                <div className="space-y-3">
+                  {reservationDatesOutsideTrip.before.map((dateKey) => renderReservationDateBlock(dateKey))}
+                </div>
+              </section>
+            )}
+
+            {reservationDatesOutsideTrip.after.length > 0 && (
+              <section className="mb-8 scroll-mt-20 space-y-3">
+                <h2 className="text-xl font-display font-bold">Later reservation dates</h2>
+                <div className="space-y-3">
+                  {reservationDatesOutsideTrip.after.map((dateKey) => renderReservationDateBlock(dateKey))}
+                </div>
+              </section>
+            )}
+
 
 
             <div className="border-t border-border my-8" />
@@ -2126,14 +2660,19 @@ const TripPage = () => {
                       <div className={cn("ml-3 border-l-2 pl-5 space-y-4", cityColor.border)}>
                         {group.days.map((day: any) => {
                           const dayIdx = itinerary.findIndex(d => d.id === day.id);
+                          const dayReservations = day.sourceDate ? (reservationTimelineByDay.get(day.sourceDate) || []) : [];
+                          const reservationBuckets = groupReservationEntriesByBucket(dayReservations);
+                          const indexedActivities = day.activities.map((activity: any, actIdx: number) => ({
+                            activity,
+                            actIdx,
+                            bucketKey: getActivityTimeBucket(activity),
+                          }));
                           return (
                             <div key={day.id} id={`section-day-${dayIdx}`} className="scroll-mt-24 relative">
                               {/* Timeline dot */}
                               <div className={cn("absolute top-2.5 -left-[29px] w-3 h-3 rounded-full bg-background border-2 z-10", cityColor.border)} />
 
-                              {/* Change 4: Reduced day header — smaller text, less vertical padding,
-                                   tighter sticky bar so it consumes less screen real estate */}
-                              <div className="flex items-center justify-between mb-2 sticky top-16 z-30 bg-background/95 backdrop-blur-sm py-2 -mx-2 px-2 border-b border-border/40">
+                              <div className="flex items-center justify-between mb-2 py-2 -mx-2 px-2 border-b border-border/40">
                                 <h3 className="text-sm font-display font-bold text-foreground">
                                   Day {day.dayNumber}
                                   <span className="text-muted-foreground font-normal ml-2">— {day.date}</span>
@@ -2144,10 +2683,10 @@ const TripPage = () => {
                                     setItinerary(prev => prev.filter((_, i) => i !== dayIdx));
                                     toast({ title: "Day removed" });
                                   }}
-                                >
-                                  <Trash2 className="w-3 h-3" /> Remove
-                                </button>
-                              </div>
+                                  >
+                                    <Trash2 className="w-3 h-3" /> Remove
+                                  </button>
+                                </div>
 
                               <Droppable droppableId={String(dayIdx)}>
                                 {(provided, snapshot) => (
@@ -2159,90 +2698,91 @@ const TripPage = () => {
                                       snapshot.isDraggingOver ? "bg-muted/20" : ""
                                     )}
                                   >
-                                    {/* Change 3: Removed Morning/Afternoon/Evening grouping.
-                                         Activities are now rendered as a flat numbered list.
-                                         The number badge replaces the time-of-day label. */}
-                                    {day.activities.length === 0 && (
+                                    {day.activities.length === 0 && dayReservations.length === 0 && (
                                       <p className="text-xs text-muted-foreground italic py-1.5 px-1 opacity-60">No activities yet — add one below</p>
                                     )}
 
-                                    {day.activities.map((activity: any, actIdx: number) => (
-                                      <Draggable key={activity.id} draggableId={activity.id} index={actIdx}>
-                                        {(prov, snap) => (
-                                          (() => {
-                                            const openingHours = getOpeningHoursLabel(activity);
-                                            const showRating = hasActivityRating(activity);
-                                            const showDuration = hasActivityDuration(activity);
-                                            return (
-                                              // Change 4: Compact card — p-2.5 instead of p-3,
-                                              // smaller photo (w-12 h-12 vs w-16 h-16),
-                                              // tighter gap, no transport divider between items
-                                              <div
-                                                ref={prov.innerRef}
-                                                {...prov.draggableProps}
-                                                className={cn(
-                                                  "group relative flex items-center gap-2.5 px-2.5 py-2 bg-card border border-border/60 rounded-xl transition-all",
-                                                  snap.isDragging ? "shadow-elevated ring-2 ring-primary/20 z-50 scale-[1.01]" : "hover:shadow-sm hover:border-border"
-                                                )}
-                                              >
-                                                {/* Drag handle */}
-                                                <div {...prov.dragHandleProps} className="shrink-0 text-muted-foreground/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/60 transition-opacity">
-                                                  <GripVertical className="w-3.5 h-3.5" />
-                                                </div>
-
-                                                {/* Number badge — replaces time-of-day label */}
-                                                <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
-                                                  {actIdx + 1}
-                                                </div>
-
-                                                {/* Thumbnail — smaller than before */}
-                                                <div className="w-11 h-11 shrink-0 overflow-hidden rounded-lg bg-muted border border-border/10">
-                                                  <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover" />
-                                                </div>
-
-                                                {/* Content */}
-                                                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedActivity(activity)}>
-                                                  <h4 className="font-semibold text-foreground text-sm leading-tight truncate group-hover:text-primary transition-colors">
-                                                    {activity.name}
-                                                  </h4>
-                                                  <p className="mt-0.5 text-sm leading-relaxed text-foreground/85 line-clamp-2">
-                                                    {getEditorSummary(activity)}
-                                                  </p>
-                                                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-3 gap-y-1.5 mt-1 text-[11px] text-muted-foreground font-medium">
-                                                    {showRating && (
-                                                      <span className="flex items-center gap-1 min-w-0">
-                                                        <Star className="w-2.5 h-2.5 text-gold fill-gold shrink-0" />
-                                                        <span className="truncate">{activity.rating}</span>
-                                                      </span>
-                                                    )}
-                                                    {openingHours && (
-                                                      <span className="flex items-center gap-1 min-w-0">
-                                                        <Clock className="w-2.5 h-2.5 shrink-0" />
-                                                        <span className="truncate">{openingHours}</span>
-                                                      </span>
-                                                    )}
-                                                    {showDuration && (
-                                                      <span className="flex items-center gap-1 min-w-0">
-                                                        <Clock className="w-2.5 h-2.5 shrink-0" />
-                                                        <span className="truncate">Avg Time Spend: {activity.duration}</span>
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                </div>
-
-                                                {/* Delete */}
-                                                <button
-                                                  className="opacity-0 group-hover:opacity-40 hover:!opacity-100 p-1.5 transition-all hover:bg-destructive/10 hover:text-destructive rounded-lg shrink-0"
-                                                  onClick={(e) => { e.stopPropagation(); deleteActivity(dayIdx, activity.id); }}
-                                                >
-                                                  <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                              </div>
-                                            );
-                                          })()
-                                        )}
-                                      </Draggable>
-                                    ))}
+                                    {ACTIVITY_BUCKET_ORDER.map((bucket) => {
+                                      const bucketActivities = indexedActivities.filter((entry) => entry.bucketKey === bucket.key);
+                                      const bucketReservations = reservationBuckets[bucket.key];
+                                      if (!bucketActivities.length && !bucketReservations.length) return null;
+                                      return (
+                                        <div key={bucket.key} className="space-y-1.5">
+                                          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                            <Clock className="w-3 h-3" />
+                                            <span>{bucket.label}</span>
+                                          </div>
+                                          <div className="space-y-1.5">
+                                            {bucketReservations.map((entry) => (
+                                              <ReservationTimelineCard key={entry.id} entry={entry} />
+                                            ))}
+                                            {bucketActivities.map(({ activity, actIdx }) => {
+                                              const openingHours = getOpeningHoursLabel(activity);
+                                              const showRating = hasActivityRating(activity);
+                                              const showDuration = hasActivityDuration(activity);
+                                              return (
+                                                <Draggable key={activity.id} draggableId={activity.id} index={actIdx}>
+                                                  {(prov, snap) => (
+                                                    <div
+                                                      ref={prov.innerRef}
+                                                      {...prov.draggableProps}
+                                                      className={cn(
+                                                        "group relative flex items-center gap-2.5 px-2.5 py-2 bg-card border border-border/60 rounded-xl transition-all",
+                                                        snap.isDragging ? "shadow-elevated ring-2 ring-primary/20 z-50 scale-[1.01]" : "hover:shadow-sm hover:border-border"
+                                                      )}
+                                                    >
+                                                      <div {...prov.dragHandleProps} className="shrink-0 text-muted-foreground/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/60 transition-opacity">
+                                                        <GripVertical className="w-3.5 h-3.5" />
+                                                      </div>
+                                                      <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                        {actIdx + 1}
+                                                      </div>
+                                                      <div className="w-11 h-11 shrink-0 overflow-hidden rounded-lg bg-muted border border-border/10">
+                                                        <img src={activity.photoUrl} alt={activity.name} className="w-full h-full object-cover" />
+                                                      </div>
+                                                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedActivity(activity)}>
+                                                        <h4 className="font-semibold text-foreground text-sm leading-tight truncate group-hover:text-primary transition-colors">
+                                                          {activity.name}
+                                                        </h4>
+                                                        <p className="mt-0.5 text-sm leading-relaxed text-foreground/85 line-clamp-2">
+                                                          {getEditorSummary(activity)}
+                                                        </p>
+                                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-3 gap-y-1.5 mt-1 text-[11px] text-muted-foreground font-medium">
+                                                          {showRating && (
+                                                            <span className="flex items-center gap-1 min-w-0">
+                                                              <Star className="w-2.5 h-2.5 text-gold fill-gold shrink-0" />
+                                                              <span className="truncate">{activity.rating}</span>
+                                                            </span>
+                                                          )}
+                                                          {openingHours && (
+                                                            <span className="flex items-center gap-1 min-w-0">
+                                                              <Clock className="w-2.5 h-2.5 shrink-0" />
+                                                              <span className="truncate">{openingHours}</span>
+                                                            </span>
+                                                          )}
+                                                          {showDuration && (
+                                                            <span className="flex items-center gap-1 min-w-0">
+                                                              <Clock className="w-2.5 h-2.5 shrink-0" />
+                                                              <span className="truncate">Avg Time Spend: {activity.duration}</span>
+                                                            </span>
+                                                          )}
+                                                        </div>
+                                                      </div>
+                                                      <button
+                                                        className="opacity-0 group-hover:opacity-40 hover:!opacity-100 p-1.5 transition-all hover:bg-destructive/10 hover:text-destructive rounded-lg shrink-0"
+                                                        onClick={(e) => { e.stopPropagation(); deleteActivity(dayIdx, activity.id); }}
+                                                      >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                      </button>
+                                                    </div>
+                                                  )}
+                                                </Draggable>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                     {provided.placeholder}
 
                                     {/* Add Activity Button — compact ghost style */}
@@ -2755,6 +3295,39 @@ const TripPage = () => {
                 }}
               >
                 {shareSubmitting ? "Sending..." : "Send invite"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteTripOpen} onOpenChange={setDeleteTripOpen}>
+        <DialogContent className="sm:max-w-sm rounded-3xl border border-border/60 shadow-elevated p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-display font-bold text-center">Delete Trip?</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-5">
+            <p className="text-sm text-muted-foreground leading-6 text-center">
+              This will permanently delete the trip, all itinerary days, activities, reservations, expenses, and notes. This action cannot be undone.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-2xl h-12 font-bold text-sm"
+                onClick={() => setDeleteTripOpen(false)}
+                disabled={deleteTripSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="rounded-2xl h-12 font-bold text-sm"
+                onClick={handleDeleteTrip}
+                disabled={deleteTripSubmitting}
+              >
+                {deleteTripSubmitting ? "Deleting..." : "Delete Trip"}
               </Button>
             </div>
           </div>

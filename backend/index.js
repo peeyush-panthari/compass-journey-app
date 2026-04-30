@@ -148,7 +148,7 @@ app.post('/api/trips/:id/generate', async (req, res) => {
       const want = Number(d.dayNumber) || dIdx + 1;
       const dayId = days.find((r) => Number(r.day_number) === want)?.id;
       if (dayId) {
-        d.activities?.forEach((act, aIdx) => {
+        (d.activities || []).filter((act) => !isArrivalCheckInActivity(act)).forEach((act, aIdx) => {
           actsToInsert.push({
             day_id: dayId,
             name: act.name,
@@ -174,12 +174,12 @@ app.post('/api/trips/:id/generate', async (req, res) => {
       await supabase.from('activities').insert(actsToInsert);
     }
 
-    // 4. Async Enrichment (Visuals) — do not await; logs to console for debugging
-    runBackgroundEnrichment(trip.id, trip.countries?.[0] || "").catch((e) =>
+    // 4. Visual Enrichment — await so the trip opens with photos/videos already stored
+    await runBackgroundEnrichment(trip.id, trip.countries?.[0] || "").catch((e) =>
       console.error("[GENIE][Enrichment] Unhandled:", e?.message || e)
     );
 
-    res.status(200).json({ status: "success" });
+    res.status(200).json({ status: "success", enriched: true });
   } catch (err) {
     console.error(`[FATAL]`, err.message);
     res.status(500).json({ error: err.message });
@@ -189,6 +189,20 @@ app.post('/api/trips/:id/generate', async (req, res) => {
 /** Store only the photo reference; client resolves via /api/place-photo (keeps key off the client). */
 function placePhotoStorageToken(photoReference) {
   return `placephoto:${photoReference}`;
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function isArrivalCheckInActivity(act) {
+  const name = String(act?.name || "").toLowerCase();
+  return (
+    name.includes("arrival and hotel check-in") ||
+    name.includes("arrival & hotel check-in") ||
+    name.includes("arrival check-in") ||
+    (name.includes("arrival") && name.includes("check-in"))
+  );
 }
 
 /**
@@ -252,11 +266,26 @@ async function enrichPlaceFromGoogle(placesKey, placeName, queryCity) {
     }
   }
 
+  if (photoRefs.length < 5) {
+    try {
+      const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(`${placeName} in ${queryCity}`)}&key=${placesKey}`;
+      const tRes = await fetch(textSearchUrl);
+      const tData = await tRes.json();
+      const supplemental = uniqueStrings(
+        (tData.results || []).flatMap(result => (result.photos || []).map(photo => photo.photo_reference))
+      );
+      photoRefs = uniqueStrings([...photoRefs, ...supplemental]);
+      console.log(`[GENIE][Places] Supplemental photo refs for "${placeName}": ${photoRefs.length}`);
+    } catch (e) {
+      console.error(`[GENIE][Places] Supplemental photo search failed for "${placeName}":`, e?.message || e);
+    }
+  }
+
   const out = {
     google_place_id: c.place_id,
     rating: c.rating ?? null,
     photo_url: photoRef ? placePhotoStorageToken(photoRef) : null,
-    photos: photoRefs.slice(0, 10).map(ref => placePhotoStorageToken(ref)) // Get up to 10 photos
+    photos: uniqueStrings(photoRefs).slice(0, 30).map(ref => placePhotoStorageToken(ref)) // Get up to 30 photos
   };
   
   if (!out.photo_url) {

@@ -6,6 +6,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function isArrivalCheckInActivity(act: any) {
+  const name = String(act?.name || "").toLowerCase();
+  return (
+    name.includes("arrival and hotel check-in") ||
+    name.includes("arrival & hotel check-in") ||
+    name.includes("arrival check-in") ||
+    (name.includes("arrival") && name.includes("check-in"))
+  );
+}
+
 // Global logger helper
 async function logEvent(supabase: any, requestId: string, userId: string | null, eventType: string, status: string, message: string, payload?: any) {
   try {
@@ -118,6 +128,7 @@ serve(async (req) => {
       const d = new Date(startObj);
       d.setDate(startObj.getDate() + dIdx);
       day.date = d.toISOString().split('T')[0];
+      day.activities = (day.activities || []).filter((act: any) => !isArrivalCheckInActivity(act));
       day.activities?.forEach((act: any) => {
         act.photoUrl = `https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800`;
         act.photos = [act.photoUrl];
@@ -180,7 +191,7 @@ serve(async (req) => {
     itinerary.forEach((d: any) => {
       const dayId = days.find((r: any) => r.day_number === d.dayNumber)?.id
       if (dayId) {
-        d.activities?.forEach((act: any, aIdx: number) => {
+        (d.activities || []).filter((act: any) => !isArrivalCheckInActivity(act)).forEach((act: any, aIdx: number) => {
           actsToInsert.push({
               day_id: dayId,
               name: act.name,

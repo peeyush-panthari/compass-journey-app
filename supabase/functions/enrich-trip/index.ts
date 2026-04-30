@@ -6,6 +6,75 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function placePhotoStorageToken(photoReference: string) {
+  return `placephoto:${photoReference}`;
+}
+
+function uniqueStrings(values: Array<string | null | undefined>) {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+async function getPlaceAddress(placesKey: string, placeId: string) {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=formatted_address&key=${placesKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === "OK" && data.result?.formatted_address) {
+      return data.result.formatted_address as string;
+    }
+    return null;
+  } catch (e) {
+    console.error("[ENRICH_TRIP] address lookup failed:", (e as any)?.message || e);
+    return null;
+  }
+}
+
+async function enrichPlaceFromGoogle(placesKey: string, placeName: string, city: string) {
+  const input = encodeURIComponent(`${placeName} in ${city}`);
+  const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${input}&inputtype=textquery&fields=place_id,rating,photos,formatted_address&key=${placesKey}`;
+  const pRes = await fetch(findUrl);
+  const pData = await pRes.json();
+
+  if (!pData.candidates?.[0]) return null;
+
+  const c = pData.candidates[0];
+  let photoRefs = c.photos?.map((p: any) => p.photo_reference).filter(Boolean) || [];
+  let photoRef = photoRefs[0] || null;
+
+  if (!photoRef && c.place_id) {
+    const dUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(c.place_id)}&fields=photos,rating&key=${placesKey}`;
+    const dRes = await fetch(dUrl);
+    const dData = await dRes.json();
+    if (dData.status === "OK") {
+      photoRefs = dData.result?.photos?.map((p: any) => p.photo_reference).filter(Boolean) || [];
+      photoRef = photoRefs[0] || null;
+    }
+  }
+
+  if (photoRefs.length < 5) {
+    try {
+      const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(`${placeName} in ${city}`)}&key=${placesKey}`;
+      const tRes = await fetch(textSearchUrl);
+      const tData = await tRes.json();
+      const supplemental = uniqueStrings(
+        (tData.results || [])
+          .flatMap((result: any) => (result.photos || []).map((photo: any) => photo.photo_reference))
+      );
+      photoRefs = uniqueStrings([...photoRefs, ...supplemental]);
+    } catch (e) {
+      console.error("[ENRICH_TRIP] supplemental photo search failed:", (e as any)?.message || e);
+    }
+  }
+
+  return {
+    google_place_id: c.place_id || null,
+    rating: c.rating ?? null,
+    photo_url: photoRef ? placePhotoStorageToken(photoRef) : null,
+    photos: uniqueStrings(photoRefs).slice(0, 30).map((ref: string) => placePhotoStorageToken(ref)),
+    formatted_address: c.formatted_address || null,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -39,8 +108,10 @@ serve(async (req) => {
     }
 
     // 2. Parallel Enrichment (Batch of 15)
-    // We only enrich if youtube_videos is null or empty
-    const targets = activities.filter(a => !a.youtube_videos || a.youtube_videos.length === 0)
+    // Enrich if any visual payload is missing.
+    const targets = activities.filter(a =>
+      !a.youtube_videos || a.youtube_videos.length === 0 || !a.photo_url || !a.photos || a.photos.length === 0 || !a.google_place_id
+    )
     console.log(`[ENRICH_TRIP] Found ${targets.length} targets for enrichment.`)
 
     const BATCH_SIZE = 15;
@@ -50,15 +121,23 @@ serve(async (req) => {
         const city = act.itinerary_days.city;
         const updates: any = {};
 
-        if (placesKey && !act.google_place_id) {
+        if (placesKey) {
           try {
-            const query = encodeURIComponent(`${act.name} in ${city}`);
-            const placesUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${query}&inputtype=textquery&fields=place_id,rating,formatted_address&key=${placesKey}`;
-            const pRes = await fetch(placesUrl);
-            const pData = await pRes.json();
-            if (pData.candidates?.[0]) {
-              updates.google_place_id = pData.candidates[0].place_id;
-              updates.rating = pData.candidates[0].rating || 4.8;
+            const place = await enrichPlaceFromGoogle(placesKey, act.name, city);
+            if (place) {
+              if (place.google_place_id) {
+                updates.google_place_id = place.google_place_id;
+                updates.google_maps_url = `https://www.google.com/maps/place/?q=place_id:${place.google_place_id}`;
+              }
+              if (place.rating != null) updates.rating = place.rating;
+              if (place.photo_url) updates.photo_url = place.photo_url;
+              if (place.photos && place.photos.length > 0) updates.photos = place.photos;
+              if (!act.address && place.google_place_id) {
+                const address = await getPlaceAddress(placesKey, place.google_place_id);
+                if (address) updates.address = address;
+              } else if (!act.address && place.formatted_address) {
+                updates.address = place.formatted_address;
+              }
             }
           } catch (e) {}
         }

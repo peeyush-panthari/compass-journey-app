@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { resolveActivityPhotoUrl } from "@/lib/activityPhoto";
 
 const formatTime = (timeString?: string | null) => {
   if (!timeString || timeString === "Not Available") return "Not Available";
@@ -64,6 +65,12 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
   };
 
   const isShorts = (url: string) => url.includes('/shorts/');
+  const galleryPhotos = (activity.photos && activity.photos.length > 0
+    ? activity.photos
+    : [activity.photoUrl]
+  )
+    .map((photo) => resolveActivityPhotoUrl(photo))
+    .filter(Boolean);
 
   return (
     <>
@@ -146,7 +153,7 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
               )}
 
               {/* Discovery Gallery */}
-              {activity.photos && activity.photos.length > 0 && (
+              {galleryPhotos.length > 0 && (
                 <>
                   <Separator className="opacity-50" />
                   <div>
@@ -154,7 +161,7 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
                        <Camera className="w-4 h-4 text-primary" /> Visual Journey Gallery
                     </h3>
                     <div className="flex w-full overflow-x-auto gap-4 pb-3 snap-x snap-mandatory scrollbar-hide">
-                      {activity.photos.map((photo, i) => (
+                      {galleryPhotos.map((photo, i) => (
                         <div key={i} className="w-28 h-28 sm:w-36 sm:h-36 flex-none rounded-2xl overflow-hidden snap-center cursor-pointer border-2 border-transparent hover:border-primary transition-all shadow-md group" onClick={() => setFullScreenPhotoIndex(i)}>
                           <img src={photo} alt={`${activity.name} gallery ${i}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         </div>
@@ -228,19 +235,19 @@ const ActivityDetailDialog = ({ activity, open, onOpenChange }: ActivityDetailDi
       <Dialog open={fullScreenPhotoIndex !== null} onOpenChange={(iso) => !iso && setFullScreenPhotoIndex(null)}>
         <DialogContent className="max-w-[100vw] w-screen h-screen max-h-[100vh] p-0 m-0 rounded-none border-none bg-black/98 flex items-center justify-center [&>button]:hidden z-[200]">
           <DialogTitle className="sr-only">Photo Details</DialogTitle>
-          {fullScreenPhotoIndex !== null && activity.photos && (
+          {fullScreenPhotoIndex !== null && galleryPhotos.length > 0 && (
             <div className="relative w-full h-full flex items-center justify-center p-6">
               <button className="absolute top-8 right-8 text-white/50 hover:text-white p-3 hover:bg-white/10 rounded-full transition-all z-[210]" onClick={() => setFullScreenPhotoIndex(null)}>
                 <X className="w-8 h-8" />
               </button>
-              {activity.photos.length > 1 && (
-                <button className="absolute left-6 text-white/50 hover:text-white p-4 h-24 bg-white/5 hover:bg-white/10 rounded-2xl transition-all z-[210]" onClick={(e) => { e.stopPropagation(); setFullScreenPhotoIndex((prev) => prev! === 0 ? activity.photos!.length - 1 : prev! - 1); }}>
+              {galleryPhotos.length > 1 && (
+                <button className="absolute left-6 text-white/50 hover:text-white p-4 h-24 bg-white/5 hover:bg-white/10 rounded-2xl transition-all z-[210]" onClick={(e) => { e.stopPropagation(); setFullScreenPhotoIndex((prev) => prev! === 0 ? galleryPhotos.length - 1 : prev! - 1); }}>
                   <ChevronLeft className="w-10 h-10" />
                 </button>
               )}
-              <img src={activity.photos[fullScreenPhotoIndex]} className="max-w-[95%] max-h-[92vh] object-contain shadow-2xl rounded-sm" />
-              {activity.photos.length > 1 && (
-                <button className="absolute right-6 text-white/50 hover:text-white p-4 h-24 bg-white/5 hover:bg-white/10 rounded-2xl transition-all z-[210]" onClick={(e) => { e.stopPropagation(); setFullScreenPhotoIndex((prev) => prev! === activity.photos!.length - 1 ? 0 : prev! + 1); }}>
+              <img src={galleryPhotos[fullScreenPhotoIndex]} className="max-w-[95%] max-h-[92vh] object-contain shadow-2xl rounded-sm" />
+              {galleryPhotos.length > 1 && (
+                <button className="absolute right-6 text-white/50 hover:text-white p-4 h-24 bg-white/5 hover:bg-white/10 rounded-2xl transition-all z-[210]" onClick={(e) => { e.stopPropagation(); setFullScreenPhotoIndex((prev) => prev! === galleryPhotos.length - 1 ? 0 : prev! + 1); }}>
                   <ChevronRight className="w-10 h-10" />
                 </button>
               )}
